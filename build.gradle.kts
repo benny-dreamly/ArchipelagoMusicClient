@@ -1,5 +1,6 @@
 plugins {
     id("java")
+    id("application")
     id("org.openjfx.javafxplugin") version "0.1.0"
 }
 
@@ -8,6 +9,14 @@ version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
+}
+
+application {
+    applicationDefaultJvmArgs = listOf(
+        "--enable-native-access=javafx.graphics"
+    )
+    // fully qualified name of your main Application class
+    mainClass.set("app.MusicAppDemo")
 }
 
 javafx {
