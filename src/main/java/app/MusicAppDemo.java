@@ -106,6 +106,19 @@ public class MusicAppDemo extends Application {
 
         loadTask.setOnSucceeded(e -> {
             albums.addAll(loadTask.getValue());
+
+            // Temporarily unlock all songs
+            for (Album album : albums) {
+                for (Song song : album.getSongs()) {
+                    unlockedSongs.add(song.getTitle());
+                }
+            }
+
+            // Enable all sets for now
+            enabledSets.add("standard");
+            enabledSets.add("rerecording");
+            enabledSets.add("vault"); // if you have vault songs
+
             refreshTree(treeView); // populate TreeView after loading
         });
 
