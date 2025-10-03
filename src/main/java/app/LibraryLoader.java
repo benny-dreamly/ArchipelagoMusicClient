@@ -1,6 +1,7 @@
 package app;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 
 import java.io.FileReader;
@@ -12,7 +13,13 @@ import java.util.List;
 public class LibraryLoader {
 
     public List<SongJSON> loadSongs(String resourcePath) throws Exception {
-        Gson gson = new Gson();
+        Gson gson = new GsonBuilder()
+                .registerTypeAdapter(
+                        new TypeToken<List<String>>(){}.getType(),
+                        new RequiresDeserializer()
+                )
+                .create();
+        ;
         Type listType = new TypeToken<List<SongJSON>>() {}.getType();
 
         // Load JSON from resources
