@@ -30,4 +30,13 @@ public class Album {
     public String getType() {
         return type;
     }
+
+    public Song getSong(String title) {
+        for (Song song : songs) {
+            if (song.getTitle().equalsIgnoreCase(title)) {
+                return song; // Found it
+            }
+        }
+        return null; // Not found
+    }
 }
