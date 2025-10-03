@@ -1,8 +1,12 @@
 package app;
 
 import javafx.application.Application;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.concurrent.Task;
@@ -22,22 +26,67 @@ public class MusicAppDemo extends Application {
     @Override
     public void start(Stage stage) {
         TreeView<String> treeView = new TreeView<>();
-        refreshTree(treeView); // initially empty
+        refreshTree(treeView);
 
-        // Buttons to simulate unlocking songs and toggling sets
-        VBox root = getVBox(treeView);
-        stage.setScene(new Scene(root, 400, 400));
+        // Bottom controls HBox
+        HBox bottomBar = new HBox(20);
+        bottomBar.setPadding(new Insets(10));
+        bottomBar.setAlignment(Pos.CENTER);
+
+        // Left: Archipelago connection panel
+        VBox connectionPanel = new VBox(5);
+        TextField hostField = new TextField("localhost");
+        TextField portField = new TextField("38281");
+        TextField slotField = new TextField("Player1");
+        Button connectButton = new Button("Connect");
+        Label statusLabel = new Label("Not connected");
+
+        connectionPanel.getChildren().addAll(
+                new Label("Host:"), hostField,
+                new Label("Port:"), portField,
+                new Label("Slot:"), slotField,
+                connectButton,
+                statusLabel
+        );
+        connectionPanel.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(connectionPanel, Priority.ALWAYS);
+
+        // Right: Music player panel
+        HBox playerControls = new HBox(5);
+        Button playButton = new Button("▶");
+        Button pauseButton = new Button("⏸");
+        Label currentSongLabel = new Label("No song");
+
+        playerControls.getChildren().addAll(playButton, pauseButton, currentSongLabel);
+        playerControls.setAlignment(Pos.CENTER_RIGHT);
+        HBox.setHgrow(playerControls, Priority.ALWAYS);
+
+        // Add panels to bottom bar
+        bottomBar.getChildren().addAll(connectionPanel, playerControls);
+
+        VBox root = new VBox(10, treeView, bottomBar);
+        stage.setScene(new Scene(root, 600, 600));
         stage.setTitle("MusicApp Demo");
         stage.show();
 
-        // Add sets
-        enabledSets.add("standard");
-        enabledSets.add("rerecording");
-
-        // === Background loading of JSON ===
-        Task<List<Album>> loadTask = getLoadTask(treeView);
-
-        new Thread(loadTask).start();
+//        // Archipelago connection handler
+//        connectButton.setOnAction(e -> {
+//            String host = hostField.getText();
+//            int port = Integer.parseInt(portField.getText());
+//            String slot = slotField.getText();
+//
+//            try {
+//                // Example AP client code (replace with your library usage)
+//                APClient client = new APClient(host, port, slot, (message) -> {
+//                    Platform.runLater(() -> statusLabel.setText(message));
+//                });
+//                client.connect();
+//                statusLabel.setText("Connected!");
+//            } catch (Exception ex) {
+//                statusLabel.setText("Connection failed");
+//                ex.printStackTrace();
+//            }
+//        });
     }
 
     private Task<List<Album>> getLoadTask(TreeView<String> treeView) {
@@ -60,23 +109,6 @@ public class MusicAppDemo extends Application {
             loadTask.getException().printStackTrace();
         });
         return loadTask;
-    }
-
-    private VBox getVBox(TreeView<String> treeView) {
-        Button unlockLoveStory = new Button("Unlock 'Love Story'");
-        unlockLoveStory.setOnAction(e -> {
-            unlockedSongs.add("Love Story");
-            refreshTree(treeView);
-        });
-
-        Button toggleVault = new Button("Toggle Vault songs");
-        toggleVault.setOnAction(e -> {
-            if (enabledSets.contains("vault")) enabledSets.remove("vault");
-            else enabledSets.add("vault");
-            refreshTree(treeView);
-        });
-
-        return new VBox(10, treeView, unlockLoveStory, toggleVault);
     }
 
     private void refreshTree(TreeView<String> treeView) {
