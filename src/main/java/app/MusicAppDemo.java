@@ -122,6 +122,15 @@ public class MusicAppDemo extends Application {
         });
     }
 
+    @Override
+    public void stop() throws Exception {
+        super.stop();
+        if (client != null && client.isConnected()) {
+            client.disconnect();
+        }
+        System.exit(0); // ensures all threads are killed
+    }
+
     private Task<List<Album>> getLoadTask(TreeView<String> treeView) {
         Task<List<Album>> loadTask = new Task<>() {
             @Override
