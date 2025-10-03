@@ -11,6 +11,7 @@ public class APClient extends Client {
     public APClient(String host, int port, String slot, String password) {
         super();
         this.setGame("manual_TaylorSwiftDiscography_bennydreamly");
+        setPassword(password);
         this.address = host + ":" + port;
         setName(slot);
     }
