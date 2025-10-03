@@ -26,4 +26,8 @@ public class Album {
     public List<Song> getSongs() {
         return songs;
     }
+
+    public String getType() {
+        return type;
+    }
 }
