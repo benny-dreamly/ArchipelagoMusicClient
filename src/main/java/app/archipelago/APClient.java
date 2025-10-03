@@ -30,6 +30,12 @@ public class APClient extends Client {
         super.connect(this.address);
     }
 
+    public void disconnect() {
+        if (isConnected()) {
+            super.disconnect();
+        }
+    }
+
     @Override
     public void onError(Exception e) {
         if (onErrorCallback != null) {

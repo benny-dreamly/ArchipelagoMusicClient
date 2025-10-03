@@ -5,10 +5,7 @@ import app.archipelago.ConnectionListener;
 import app.player.*;
 import app.player.json.LibraryLoader;
 import app.player.json.SongJSON;
-import io.github.archipelagomw.events.ConnectionResultEvent;
-import io.github.archipelagomw.network.ConnectionResult;
 import javafx.application.Application;
-import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -26,6 +23,10 @@ public class MusicAppDemo extends Application {
     private final List<Album> albums = new ArrayList<>();
     private final Set<String> unlockedSongs = new HashSet<>();
     private final Set<String> enabledSets = new HashSet<>();
+
+    private APClient client;
+    private Button connectButton;
+    private Label statusLabel;
 
     public static void main(String[] args) {
         launch();
@@ -47,8 +48,8 @@ public class MusicAppDemo extends Application {
         TextField portField = new TextField("38281");
         TextField slotField = new TextField("Player1");
         TextField passwordField = new TextField();
-        Button connectButton = new Button("Connect");
-        Label statusLabel = new Label("Not connected");
+        connectButton = new Button("Connect");
+        statusLabel = new Label("Not connected");
 
         connectionPanel.getChildren().addAll(
                 new Label("Host:"), hostField,
@@ -85,29 +86,38 @@ public class MusicAppDemo extends Application {
 
         // Archipelago connection handler
         connectButton.setOnAction(e -> {
-            String host = hostField.getText();
-            int port = Integer.parseInt(portField.getText());
-            String slot = slotField.getText();
-            String password = passwordField.getText();
+            if (client == null || !client.isConnected()) {
+                String host = hostField.getText();
+                int port = Integer.parseInt(portField.getText());
+                String slot = slotField.getText();
+                String password = passwordField.getText();
 
-            APClient client = new APClient(host, port, slot, password);
+                client = new APClient(host, port, slot, password);
 
-            client.setOnErrorCallback(ex -> {
-                statusLabel.setText("Connection failed");
-                Alert alert = new Alert(Alert.AlertType.ERROR);
-                alert.setTitle("Connection Failed");
-                alert.setHeaderText("Failed to connect to Archipelago server");
-                alert.setContentText("Reason: " + ex.getMessage());
-                alert.showAndWait();
-            });
+                client.setOnErrorCallback(ex -> {
+                    statusLabel.setText("Connection failed");
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Connection Failed");
+                    alert.setHeaderText("Failed to connect to Archipelago server");
+                    alert.setContentText("Reason: " + ex.getMessage());
+                    alert.showAndWait();
+                });
 
-            try {
-                client.getEventManager().registerListener(new ConnectionListener(statusLabel));
-                client.connect();
-                statusLabel.setText("Connected!");
-            } catch (Exception ex) {
-                statusLabel.setText("Connection failed");
-                ex.printStackTrace();
+                try {
+                    client.getEventManager().registerListener(new ConnectionListener(statusLabel));
+                    client.connect();
+                    statusLabel.setText("Connected!");
+                    connectButton.setText("Disconnect"); // toggle button text
+                } catch (Exception ex) {
+                    statusLabel.setText("Connection failed");
+                    showError(ex.getMessage());
+                    connectButton.setText("Connect");
+                }
+            } else {
+                // DISCONNECT
+                client.disconnect();
+                statusLabel.setText("Disconnected");
+                connectButton.setText("Connect"); // toggle button text
             }
         });
     }
@@ -193,5 +203,13 @@ public class MusicAppDemo extends Application {
         }
 
         treeView.setRoot(rootItem);
+    }
+
+    private void showError(String content) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Connection Failed");
+        alert.setHeaderText("Failed to connect to Archipelago server");
+        alert.setContentText(content);
+        alert.showAndWait();
     }
 }
