@@ -6,7 +6,7 @@ import java.net.URISyntaxException;
 
 public class APClient extends Client {
 
-    private String address;
+    private final String address;
 
     public APClient(String host, int port, String slot, String password) {
         super();
