@@ -1,5 +1,6 @@
 plugins {
     id("java")
+    id("org.openjfx.javafxplugin") version "0.1.0"
 }
 
 group = "org.example"
@@ -9,12 +10,15 @@ repositories {
     mavenCentral()
 }
 
+javafx {
+    version = "24"
+    modules = listOf("javafx.controls", "javafx.media")
+}
+
 dependencies {
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    implementation("org.openjfx:javafx-controls:24.0.0.1")
-    implementation("org.openjfx:javafx-media:24.0.0.1")
     implementation("io.github.archipelagomw:Java-Client:0.2.0")
 }
 
