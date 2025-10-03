@@ -15,6 +15,7 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     implementation("org.openjfx:javafx-controls:24.0.0.1")
     implementation("org.openjfx:javafx-media:24.0.0.1")
+    implementation("io.github.archipelagomw:Java-Client:0.2.0")
 }
 
 tasks.test {
