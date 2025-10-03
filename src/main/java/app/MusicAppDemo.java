@@ -1,9 +1,12 @@
 package app;
 
 import app.archipelago.APClient;
+import app.archipelago.ConnectionListener;
 import app.player.*;
 import app.player.json.LibraryLoader;
 import app.player.json.SongJSON;
+import io.github.archipelagomw.events.ConnectionResultEvent;
+import io.github.archipelagomw.network.ConnectionResult;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -87,9 +90,19 @@ public class MusicAppDemo extends Application {
             String slot = slotField.getText();
             String password = passwordField.getText();
 
+            APClient client = new APClient(host, port, slot, password);
+
+            client.setOnErrorCallback(ex -> {
+                statusLabel.setText("Connection failed");
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Connection Failed");
+                alert.setHeaderText("Failed to connect to Archipelago server");
+                alert.setContentText("Reason: " + ex.getMessage());
+                alert.showAndWait();
+            });
+
             try {
-                // Example AP client code (replace with your library usage)
-                APClient client = new APClient(host, port, slot, password);
+                client.getEventManager().registerListener(new ConnectionListener(statusLabel));
                 client.connect();
                 statusLabel.setText("Connected!");
             } catch (Exception ex) {
