@@ -1,9 +1,11 @@
 package app;
 
+import app.archipelago.APClient;
 import app.player.*;
 import app.player.json.LibraryLoader;
 import app.player.json.SongJSON;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -41,6 +43,7 @@ public class MusicAppDemo extends Application {
         TextField hostField = new TextField("localhost");
         TextField portField = new TextField("38281");
         TextField slotField = new TextField("Player1");
+        TextField passwordField = new TextField();
         Button connectButton = new Button("Connect");
         Label statusLabel = new Label("Not connected");
 
@@ -48,6 +51,7 @@ public class MusicAppDemo extends Application {
                 new Label("Host:"), hostField,
                 new Label("Port:"), portField,
                 new Label("Slot:"), slotField,
+                new Label("Password:"), passwordField,
                 connectButton,
                 statusLabel
         );
@@ -76,24 +80,23 @@ public class MusicAppDemo extends Application {
 
         new Thread(loadTask).start();
 
-//        // Archipelago connection handler
-//        connectButton.setOnAction(e -> {
-//            String host = hostField.getText();
-//            int port = Integer.parseInt(portField.getText());
-//            String slot = slotField.getText();
-//
-//            try {
-//                // Example AP client code (replace with your library usage)
-//                APClient client = new APClient(host, port, slot, (message) -> {
-//                    Platform.runLater(() -> statusLabel.setText(message));
-//                });
-//                client.connect();
-//                statusLabel.setText("Connected!");
-//            } catch (Exception ex) {
-//                statusLabel.setText("Connection failed");
-//                ex.printStackTrace();
-//            }
-//        });
+        // Archipelago connection handler
+        connectButton.setOnAction(e -> {
+            String host = hostField.getText();
+            int port = Integer.parseInt(portField.getText());
+            String slot = slotField.getText();
+            String password = passwordField.getText();
+
+            try {
+                // Example AP client code (replace with your library usage)
+                APClient client = new APClient(host, port, slot, password);
+                client.connect();
+                statusLabel.setText("Connected!");
+            } catch (Exception ex) {
+                statusLabel.setText("Connection failed");
+                ex.printStackTrace();
+            }
+        });
     }
 
     private Task<List<Album>> getLoadTask(TreeView<String> treeView) {
