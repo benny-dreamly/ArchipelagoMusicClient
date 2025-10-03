@@ -1,4 +1,4 @@
-package app;
+package app.player.json;
 
 import com.google.gson.*;
 import java.lang.reflect.Type;

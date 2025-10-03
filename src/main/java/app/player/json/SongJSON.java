@@ -1,4 +1,4 @@
-package app;
+package app.player.json;
 
 import java.util.List;
 

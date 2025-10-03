@@ -1,5 +1,8 @@
 package app;
 
+import app.player.*;
+import app.player.json.LibraryLoader;
+import app.player.json.SongJSON;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;

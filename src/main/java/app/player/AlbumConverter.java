@@ -1,4 +1,6 @@
-package app;
+package app.player;
+
+import app.player.json.SongJSON;
 
 import java.util.*;
 
