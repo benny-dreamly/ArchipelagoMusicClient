@@ -69,6 +69,10 @@ public class MusicAppDemo extends Application {
         stage.setTitle("MusicApp Demo");
         stage.show();
 
+        Task<List<Album>> loadTask = getLoadTask(treeView);
+
+        new Thread(loadTask).start();
+
 //        // Archipelago connection handler
 //        connectButton.setOnAction(e -> {
 //            String host = hostField.getText();
