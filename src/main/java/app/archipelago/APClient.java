@@ -5,6 +5,7 @@ import io.github.archipelagomw.flags.ItemsHandling;
 import javafx.application.Platform;
 
 import java.net.URISyntaxException;
+import java.util.Map;
 import java.util.function.Consumer;
 
 public class APClient extends Client {
@@ -47,6 +48,16 @@ public class APClient extends Client {
     @Override
     public void onClose(String message, int i) {
         disconnect();
+    }
+
+    public void sendCheck(String locationName) {
+        Long locationID = getDataPackage().getGame(getGame()).locationNameToId.get(locationName);
+
+        if (locationID != null) {
+            checkLocation(locationID);
+        } else {
+            System.out.println("No location ID found for location: " + locationName);
+        }
     }
 
 
