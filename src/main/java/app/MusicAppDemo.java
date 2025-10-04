@@ -38,7 +38,7 @@ public class MusicAppDemo extends Application {
     @Override
     public void start(Stage stage) {
         treeView = new TreeView<>();
-        refreshTree(treeView);
+        refreshTree();
 
         // Bottom controls HBox
         HBox bottomBar = new HBox(20);
@@ -149,17 +149,17 @@ public class MusicAppDemo extends Application {
         loadTask.setOnSucceeded(e -> {
             albums.addAll(loadTask.getValue());
 
-            // Temporarily unlock all songs
-            for (Album album : albums) {
-                for (Song song : album.getSongs()) {
-                    unlockedSongs.add(song.getTitle());
-                }
-            }
+//            // Temporarily unlock all songs
+//            for (Album album : albums) {
+//                for (Song song : album.getSongs()) {
+//                    unlockedSongs.add(song.getTitle());
+//                }
+//            }
 
-            // Enable all sets for now
-            enabledSets.add("standard");
-            enabledSets.add("rerecording");
-            enabledSets.add("vault"); // if you have vault songs
+//            // Enable all sets for now
+//            enabledSets.add("standard");
+//            enabledSets.add("rerecording");
+//            enabledSets.add("vault"); // if you have vault songs
 
             refreshTree(); // populate TreeView after loading
         });
@@ -170,7 +170,7 @@ public class MusicAppDemo extends Application {
         return loadTask;
     }
 
-    private void refreshTree() {
+    public void refreshTree() {
         // Custom album order
         List<String> albumOrder = List.of(
                 "Taylor Swift",
@@ -242,5 +242,16 @@ public class MusicAppDemo extends Application {
                 break;
             }
         }
+    }
+
+    public Set<String> getEnabledSets() {
+        return enabledSets;
+    }
+
+    public Album getAlbumByName(String name) {
+        for (Album album : albums) {
+            if (album.getName().equals(name)) return album;
+        }
+        return null;
     }
 }
