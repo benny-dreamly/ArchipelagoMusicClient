@@ -471,10 +471,13 @@ public class MusicAppDemo extends Application {
                 String baseName = file.getName().replaceFirst("[.][^.]+$", ""); // remove extension
 
                 // Strip track/CD prefixes like "01 - ", "2-05 ", "CD1 01 - "
-                baseName = baseName.replaceFirst("(?i)^(cd\\d+ )?\\d+[-. ]+", "");
+                baseName = baseName.replaceFirst("(?i)^(cd\\d+ )?\\d+[-. _]+", "");
 
-                // Remove all parentheses and content inside
+                // Remove all parentheses and their contents
                 baseName = baseName.replaceAll("\\(.*?\\)", "").trim();
+
+                // Remove underscores and special chars
+                baseName = baseName.replaceAll("[^a-zA-Z0-9 ]+", "").trim();
 
                 Song matchedSong = null;
 
@@ -490,14 +493,13 @@ public class MusicAppDemo extends Application {
                 if (matchedSong == null) {
                     String normalizedFile = normalize(baseName);
 
-                    // Try to find the best match using startsWith or contains
+                    int bestScore = Integer.MAX_VALUE; // lower is better
                     for (Song s : album.getSongs()) {
                         String normalizedTitle = normalize(s.getTitle());
-
-                        if (normalizedTitle.startsWith(normalizedFile) || normalizedTitle.contains(normalizedFile)
-                                || normalizedFile.contains(normalizedTitle)) {
+                        int score = levenshteinDistance(normalizedFile, normalizedTitle);
+                        if (score < bestScore) {
+                            bestScore = score;
                             matchedSong = s;
-                            break;
                         }
                     }
                 }
@@ -511,8 +513,25 @@ public class MusicAppDemo extends Application {
         }
     }
 
+    // normalize: lowercase, remove punctuation and whitespace
     private String normalize(String s) {
-        // lowercase, remove punctuation and whitespace
         return s.toLowerCase().replaceAll("[^a-z0-9]+", "").trim();
+    }
+
+    // Levenshtein distance helper
+    private int levenshteinDistance(String a, String b) {
+        int[] costs = new int[b.length() + 1];
+        for (int j = 0; j < costs.length; j++) costs[j] = j;
+        for (int i = 1; i <= a.length(); i++) {
+            costs[0] = i;
+            int nw = i - 1;
+            for (int j = 1; j <= b.length(); j++) {
+                int cj = Math.min(1 + Math.min(costs[j], costs[j - 1]),
+                        a.charAt(i - 1) == b.charAt(j - 1) ? nw : nw + 1);
+                nw = costs[j];
+                costs[j] = cj;
+            }
+        }
+        return costs[b.length()];
     }
 }
