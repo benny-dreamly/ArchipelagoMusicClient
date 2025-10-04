@@ -496,7 +496,7 @@ public class MusicAppDemo extends Application {
 
                 // Fuzzy matching with threshold
                 if (matchedSong == null) {
-                    String normalizedFile = normalize(baseName);
+                    String normalizedFile = normalizeFileName(file.getName());
                     int bestScore = Integer.MAX_VALUE;
                     Song bestSong = null;
 
@@ -548,5 +548,27 @@ public class MusicAppDemo extends Application {
             }
         }
         return costs[b.length()];
+    }
+
+    private String normalizeFileName(String filename) {
+        // Remove extension
+        String name = filename.replaceFirst("[.][^.]+$", "");
+
+        // Remove track/CD prefixes like "01 - ", "2-05 ", "CD1 01 - "
+        name = name.replaceFirst("(?i)^(cd\\d+ )?\\d+[-. _]+", "");
+
+        // Trim whitespace
+        name = name.trim();
+
+        // Fix truncated parentheses: remove unmatched '(' at the end
+        if (name.endsWith("(")) {
+            name = name.substring(0, name.length() - 1).trim();
+        }
+
+        // Remove underscores, multiple spaces, special chars (except apostrophes and !)
+        name = name.replaceAll("[^a-zA-Z0-9'! ]+", " ").replaceAll(" +", " ").trim();
+
+        // Convert to lowercase for comparison
+        return name.toLowerCase();
     }
 }
