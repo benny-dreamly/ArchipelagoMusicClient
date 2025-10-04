@@ -7,6 +7,7 @@ import app.player.*;
 import app.player.json.LibraryLoader;
 import app.player.json.SongJSON;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import javafx.application.Application;
 import javafx.geometry.Insets;
@@ -452,8 +453,12 @@ public class MusicAppDemo extends Application {
 
         try {
             configFile.createNewFile(); // make sure the file exists
+            Gson gson = new GsonBuilder()
+                    .setPrettyPrinting()
+                    .disableHtmlEscaping() // keeps ' as-is instead of \u0027
+                    .create();
             try (Writer writer = new FileWriter(configFile)) {
-                new Gson().toJson(defaultFolders, writer);
+                gson.toJson(defaultFolders, writer);
             }
             System.out.println("Generated default albumFolders.json at " + configFile.getAbsolutePath());
         } catch (Exception e) {
