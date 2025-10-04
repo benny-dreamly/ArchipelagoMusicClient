@@ -494,19 +494,28 @@ public class MusicAppDemo extends Application {
                     }
                 }
 
-                // Fuzzy matching
+                // Fuzzy matching with threshold
                 if (matchedSong == null) {
                     String normalizedFile = normalize(baseName);
+                    int bestScore = Integer.MAX_VALUE;
+                    Song bestSong = null;
 
-                    int bestScore = Integer.MAX_VALUE; // lower is better
                     for (Song s : album.getSongs()) {
                         String normalizedTitle = normalize(s.getTitle());
+
+                        // Only consider titles that contain some part of the filename
+                        if (!normalizedTitle.contains(normalizedFile) && !normalizedFile.contains(normalizedTitle)) continue;
+
                         int score = levenshteinDistance(normalizedFile, normalizedTitle);
-                        if (score < bestScore) {
+                        int maxDistance = Math.max(3, normalizedTitle.length() / 3); // dynamic threshold
+
+                        if (score < bestScore && score <= maxDistance) {
                             bestScore = score;
-                            matchedSong = s;
+                            bestSong = s;
                         }
                     }
+
+                    matchedSong = bestSong;
                 }
 
                 if (matchedSong != null) {
