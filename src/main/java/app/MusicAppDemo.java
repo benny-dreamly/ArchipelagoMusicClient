@@ -102,7 +102,11 @@ public class MusicAppDemo extends Application {
 
         playButton.setOnAction(e -> {
             if (currentSong != null) {
-                playSong(currentSong);
+                if (currentSong.getFilePath() != null) {
+                    playSong(currentSong);
+                } else {
+                    showError("File Not Found", "Cannot play song", "File not found for: " + currentSong.getTitle());
+                }
             }
         });
 
@@ -162,7 +166,7 @@ public class MusicAppDemo extends Application {
                     connectButton.setText("Disconnect"); // toggle button text
                 } catch (Exception ex) {
                     statusLabel.setText("Connection failed");
-                    showError(ex.getMessage());
+                    showError("Connection Failed", "Failed to connect to Archipelago server", ex.getMessage());
                     connectButton.setText("Connect");
                 }
             } else {
@@ -292,10 +296,10 @@ public class MusicAppDemo extends Application {
         treeView.setRoot(rootItem);
     }
 
-    private void showError(String content) {
+    private void showError(String title, String header, String content) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Connection Failed");
-        alert.setHeaderText("Failed to connect to Archipelago server");
+        alert.setTitle(title);
+        alert.setHeaderText(header);
         alert.setContentText(content);
         alert.showAndWait();
     }
@@ -351,7 +355,7 @@ public class MusicAppDemo extends Application {
         if (song == null) return;
 
         if (song.getFilePath() == null || !new File(song.getFilePath()).exists()) {
-            showError("File not found for " + song.getTitle());
+            showError("File Not Found", "Cannot play song", "File not found for: " + song.getTitle());
             playNextInQueue();
             return;
         }
@@ -361,6 +365,7 @@ public class MusicAppDemo extends Application {
         }
 
         Media media = new Media(Paths.get(song.getFilePath()).toUri().toString());
+        System.out.println("Media URI: " + Paths.get(song.getFilePath()).toUri());
         currentPlayer = new MediaPlayer(media);
 
         currentPlayer.setOnEndOfMedia(() -> {
