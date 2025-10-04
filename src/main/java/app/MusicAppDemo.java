@@ -21,9 +21,7 @@ import javafx.scene.media.Media;
 import javafx.stage.Stage;
 import javafx.concurrent.Task;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.Reader;
+import java.io.*;
 import java.lang.reflect.Type;
 import java.nio.file.Paths;
 import java.util.*;
@@ -198,8 +196,9 @@ public class MusicAppDemo extends Application {
         loadTask.setOnSucceeded(e -> {
             albums.addAll(loadTask.getValue());
 
-            Map<String, String> albumFolders = new HashMap<>();
+            generateDefaultAlbumFolders(albums);
 
+            Map<String, String> albumFolders = new HashMap<>();
             File configFile = getConfigFile();
 
             if (configFile.exists()) {
@@ -419,17 +418,46 @@ public class MusicAppDemo extends Application {
 
     private File getConfigFile() {
         String userHome = System.getProperty("user.home");
-        File configFile;
+        File configDir;
 
         String os = System.getProperty("os.name").toLowerCase();
         if (os.contains("win")) {
-            configFile = new File(userHome, "AppData\\Roaming\\MusicAppDemo\\albumFolders.json");
+            configDir = new File(userHome, "AppData\\Roaming\\MusicAppDemo");
         } else if (os.contains("mac")) {
-            configFile = new File(userHome, "Library/Application Support/MusicAppDemo/albumFolders.json");
+            configDir = new File(userHome, "Library/Application Support/MusicAppDemo");
         } else { // Linux / others
-            configFile = new File(userHome, ".config/MusicAppDemo/albumFolders.json");
+            configDir = new File(userHome, ".config/MusicAppDemo");
         }
 
-        return configFile;
+        // Ensure the directory exists
+        if (!configDir.exists()) {
+            if (!configDir.mkdirs()) {
+                System.err.println("Failed to create config directory: " + configDir.getAbsolutePath());
+            }
+        }
+
+        return new File(configDir, "albumFolders.json");
+    }
+
+    private void generateDefaultAlbumFolders(List<Album> albums) {
+        File configFile = getConfigFile();
+
+        // If the file already exists, do nothing
+        if (configFile.exists()) return;
+
+        Map<String, String> defaultFolders = new LinkedHashMap<>();
+        for (Album album : albums) {
+            defaultFolders.put(album.getName(), ""); // empty string as placeholder
+        }
+
+        try {
+            configFile.createNewFile(); // make sure the file exists
+            try (Writer writer = new FileWriter(configFile)) {
+                new Gson().toJson(defaultFolders, writer);
+            }
+            System.out.println("Generated default albumFolders.json at " + configFile.getAbsolutePath());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
