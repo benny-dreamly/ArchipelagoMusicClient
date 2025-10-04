@@ -457,8 +457,7 @@ public class MusicAppDemo extends Application {
             File folder = new File(folderPath);
             if (!folder.exists() || !folder.isDirectory()) continue;
 
-            // Load overrides if any
-            Map<String, String> overrides = album.getFilenameOverrides(); // implement this in Album
+            Map<String, String> overrides = album.getFilenameOverrides(); // optional manual mapping
 
             File[] files = folder.listFiles((dir, name) ->
                     name.toLowerCase().endsWith(".mp3") ||
@@ -469,14 +468,14 @@ public class MusicAppDemo extends Application {
             if (files == null) continue;
 
             for (File file : files) {
-                String baseName = file.getName().replaceFirst("[.][^.]+$", "");
+                String baseName = file.getName().replaceFirst("[.][^.]+$", ""); // remove extension
 
-                // Strip track numbers like "01 - " or "1. "
-                baseName = baseName.replaceFirst("^\\d+[-. ]+", "");
+                // Strip common track/CD prefixes: "01 - ", "1. ", "CD1 01 - "
+                baseName = baseName.replaceFirst("(?i)^(cd\\d+ )?\\d+[-. ]+", "");
 
                 Song song = null;
 
-                // Check overrides first
+                // First try overrides
                 for (Map.Entry<String, String> entry : overrides.entrySet()) {
                     if (entry.getValue().equalsIgnoreCase(file.getName())) {
                         song = getSongByTitle(entry.getKey());
@@ -484,12 +483,13 @@ public class MusicAppDemo extends Application {
                     }
                 }
 
-                // Fuzzy match if no override
+                // Fuzzy matching: remove punctuation, normalize spaces, ignore case
                 if (song == null) {
-                    String normalizedBase = normalize(baseName);
+                    String normalizedFile = normalize(baseName);
+
                     for (Song s : album.getSongs()) {
-                        if (normalize(s.getTitle()).contains(normalizedBase) ||
-                                normalizedBase.contains(normalize(s.getTitle()))) {
+                        String normalizedTitle = normalize(s.getTitle());
+                        if (normalizedTitle.contains(normalizedFile) || normalizedFile.contains(normalizedTitle)) {
                             song = s;
                             break;
                         }
@@ -505,7 +505,15 @@ public class MusicAppDemo extends Application {
         }
     }
 
+    /**
+     * Normalize a string for fuzzy matching:
+     * - lowercase
+     * - remove punctuation
+     * - remove multiple spaces
+     */
     private String normalize(String s) {
-        return s.toLowerCase().replaceAll("[^a-z0-9]", "");
+        return s.toLowerCase()
+                .replaceAll("[^a-z0-9]+", "") // remove punctuation and spaces
+                .trim();
     }
 }
