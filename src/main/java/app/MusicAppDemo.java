@@ -41,9 +41,10 @@ public class MusicAppDemo extends Application {
 
     private Song currentSong;
     private Label currentSongLabel;
-    private Label queuedSongLabel;    // shows what's next in queue
 
-    private Queue<Song> playQueue = new LinkedList<>();
+    // queue UI + data
+    private final Queue<Song> playQueue = new LinkedList<>();
+    private ListView<String> queueListView;   // visual queue (titles)
     private MediaPlayer currentPlayer;
 
     public static void main(String[] args) {
@@ -54,8 +55,10 @@ public class MusicAppDemo extends Application {
     public void start(Stage stage) {
         treeView = new TreeView<>();
         currentSongLabel = new Label("Currently Playing: None");
-        queuedSongLabel = new Label("Queued: None");
+        queueListView = new ListView<>();
+        queueListView.setPrefHeight(120);
 
+        // When a tree item (song) is selected, add to queue
         treeView.getSelectionModel().selectedItemProperty().addListener((obs, oldSel, newSel) -> {
             if (newSel == null) return;
 
@@ -65,13 +68,14 @@ public class MusicAppDemo extends Application {
             if (song != null) {
                 // Add to queue
                 playQueue.add(song);
-                queuedSongLabel.setText("Queued: " + song.getTitle());
+                updateQueueDisplay();
 
                 // If nothing is playing, start immediately
                 if (currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) {
-                    currentSong = playQueue.poll(); // dequeue first song
-                    if (currentSong != null) {
-                        playSong(currentSong);
+                    Song next = playQueue.poll();
+                    updateQueueDisplay();
+                    if (next != null) {
+                        playSong(next);
                     }
                 }
             }
@@ -104,23 +108,45 @@ public class MusicAppDemo extends Application {
         connectionPanel.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(connectionPanel, Priority.ALWAYS);
 
-        // Right: Music player panel
-        HBox playerControls = new HBox(5);
+        // Right: Music player panel (with queue ListView and queue controls)
+        VBox queueBox = new VBox(6);
+        queueBox.setAlignment(Pos.CENTER_RIGHT);
+
+        HBox playerButtons = new HBox(6);
         Button playButton = new Button("▶");
         Button pauseButton = new Button("⏸");
+        playerButtons.getChildren().addAll(playButton, pauseButton);
 
+        // Queue control buttons
+        HBox queueButtons = new HBox(6);
+        Button removeSelectedBtn = new Button("Remove Selected");
+        Button clearQueueBtn = new Button("Clear Queue");
+        queueButtons.getChildren().addAll(removeSelectedBtn, clearQueueBtn);
+
+        queueBox.getChildren().addAll(currentSongLabel, playerButtons, new Label("Queue:"), queueListView, queueButtons);
+        queueBox.setAlignment(Pos.CENTER_RIGHT);
+        HBox.setHgrow(queueBox, Priority.ALWAYS);
+
+        // Play button behaviour
         playButton.setOnAction(e -> {
-            if (currentSong != null) {
+            // If paused, resume. If nothing playing but queue has items, start next.
+            if (currentPlayer != null && currentPlayer.getStatus() == MediaPlayer.Status.PAUSED) {
+                currentPlayer.play();
+                if (currentSong != null) currentSongLabel.setText("Currently Playing: " + currentSong.getTitle());
+                return;
+            }
+
+            if (currentSong != null && (currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING)) {
+                // start current (if file exists)
                 if (currentSong.getFilePath() != null) {
-                    if (currentPlayer != null && currentPlayer.getStatus() == MediaPlayer.Status.PAUSED) {
-                        currentPlayer.play(); // resume
-                        currentSongLabel.setText("Playing: " + currentSong.getTitle());
-                    } else {
-                        playSong(currentSong); // start new if not paused
-                    }
+                    playSong(currentSong);
                 } else {
                     showError("File Not Found", "Cannot play song", "File not found for: " + currentSong.getTitle());
                 }
+            } else if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) && !playQueue.isEmpty()) {
+                Song next = playQueue.poll();
+                updateQueueDisplay();
+                if (next != null) playSong(next);
             }
         });
 
@@ -129,22 +155,34 @@ public class MusicAppDemo extends Application {
                 MediaPlayer.Status status = currentPlayer.getStatus();
                 if (status == MediaPlayer.Status.PLAYING) {
                     currentPlayer.pause();
-                    currentSongLabel.setText("Paused: " + currentSong.getTitle());
+                    if (currentSong != null) currentSongLabel.setText("Paused: " + currentSong.getTitle());
                 } else if (status == MediaPlayer.Status.PAUSED) {
                     currentPlayer.play();
-                    currentSongLabel.setText("Playing: " + currentSong.getTitle());
+                    if (currentSong != null) currentSongLabel.setText("Currently Playing: " + currentSong.getTitle());
                 }
             }
         });
 
-        playerControls.getChildren().addAll(playButton, pauseButton, currentSongLabel, queuedSongLabel);        playerControls.setAlignment(Pos.CENTER_RIGHT);
-        HBox.setHgrow(playerControls, Priority.ALWAYS);
+        // Remove selected from the queue (both ListView and underlying queue)
+        removeSelectedBtn.setOnAction(e -> {
+            String sel = queueListView.getSelectionModel().getSelectedItem();
+            if (sel != null) {
+                removeFromQueue(sel);
+                updateQueueDisplay();
+            }
+        });
+
+        // Clear queue
+        clearQueueBtn.setOnAction(e -> {
+            playQueue.clear();
+            updateQueueDisplay();
+        });
 
         // Add panels to bottom bar
-        bottomBar.getChildren().addAll(connectionPanel, playerControls);
+        bottomBar.getChildren().addAll(connectionPanel, queueBox);
 
         VBox root = new VBox(10, treeView, bottomBar);
-        stage.setScene(new Scene(root, 600, 600));
+        stage.setScene(new Scene(root, 800, 600));
         stage.setTitle("MusicApp Demo");
         stage.show();
 
@@ -239,18 +277,6 @@ public class MusicAppDemo extends Application {
 
             // After assigning folder paths in loadTask.setOnSucceeded
             assignFilesToSongs();
-
-//            // Temporarily unlock all songs
-//            for (Album album : albums) {
-//                for (Song song : album.getSongs()) {
-//                    unlockedSongs.add(song.getTitle());
-//                }
-//            }
-
-//            // Enable all sets for now
-//            enabledSets.add("standard");
-//            enabledSets.add("rerecording");
-//            enabledSets.add("vault"); // if you have vault songs
 
             refreshTree(); // populate TreeView after loading
         });
@@ -391,21 +417,17 @@ public class MusicAppDemo extends Application {
 
         currentPlayer.play();
         currentSongLabel.setText("Currently Playing: " + song.getTitle());
+        updateQueueDisplay();
         highlightCurrentSong(song.getTitle());
     }
 
     private void playNextInQueue() {
         Song next = playQueue.poll();
+        updateQueueDisplay();
         if (next != null) {
             playSong(next);
-            if (playQueue.peek() != null) {
-                queuedSongLabel.setText("Queued: " + playQueue.peek().getTitle());
-            } else {
-                queuedSongLabel.setText("Queued: None");
-            }
         } else {
             currentSongLabel.setText("Currently Playing: None");
-            queuedSongLabel.setText("Queued: None");
             currentPlayer = null;
         }
     }
@@ -424,6 +446,32 @@ public class MusicAppDemo extends Application {
             }
         }
     }
+
+    // Queue helpers -----------------------------------------------------
+
+    private void updateQueueDisplay() {
+        queueListView.getItems().clear();
+        for (Song s : playQueue) {
+            queueListView.getItems().add(s.getTitle());
+        }
+        if (playQueue.isEmpty()) {
+            queueListView.getItems().add("(empty)");
+        }
+    }
+
+    private void removeFromQueue(String title) {
+        // remove first occurrence in queue matching title
+        Iterator<Song> it = playQueue.iterator();
+        while (it.hasNext()) {
+            Song s = it.next();
+            if (s.getTitle().equals(title)) {
+                it.remove();
+                return;
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------
 
     private File getConfigFile() {
         String userHome = System.getProperty("user.home");
