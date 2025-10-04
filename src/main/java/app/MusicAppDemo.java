@@ -58,14 +58,13 @@ public class MusicAppDemo extends Application {
         treeView.getSelectionModel().selectedItemProperty().addListener((obs, oldSel, newSel) -> {
             if (newSel == null) return;
             String songTitle = newSel.getValue();
-
-            Album album = getAlbumForSong(songTitle);
-            if (album != null) {
-                Song song = getSongByTitle(songTitle);
-                if (song != null) {
-                    currentSong = song;
-                    playQueue.add(song); // add to queue
-                    currentSongLabel.setText("Queued: " + song.getTitle());
+            Song song = getSongByTitle(songTitle);
+            if (song != null) {
+                playQueue.add(song);
+                currentSongLabel.setText("Queued: " + song.getTitle());
+                // Auto-play if nothing is currently playing
+                if (currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) {
+                    playSong(Objects.requireNonNull(playQueue.poll()));
                 }
             }
         });
@@ -105,6 +104,19 @@ public class MusicAppDemo extends Application {
         playButton.setOnAction(e -> {
             if (currentSong != null) {
                 playSong(currentSong);
+            }
+        });
+
+        pauseButton.setOnAction(e -> {
+            if (currentPlayer != null) {
+                MediaPlayer.Status status = currentPlayer.getStatus();
+                if (status == MediaPlayer.Status.PLAYING) {
+                    currentPlayer.pause();
+                    currentSongLabel.setText("Paused: " + currentSong.getTitle());
+                } else if (status == MediaPlayer.Status.PAUSED) {
+                    currentPlayer.play();
+                    currentSongLabel.setText("Playing: " + currentSong.getTitle());
+                }
             }
         });
 
@@ -347,8 +359,11 @@ public class MusicAppDemo extends Application {
     }
 
     private void playSong(Song song) {
-        if (song.getFilePath() == null) {
+        if (song == null) return;
+
+        if (song.getFilePath() == null || !new File(song.getFilePath()).exists()) {
             showError("File not found for " + song.getTitle());
+            playNextInQueue();
             return;
         }
 
@@ -363,14 +378,36 @@ public class MusicAppDemo extends Application {
             if (client != null && client.isConnected()) {
                 client.sendCheck(song.getTitle());
             }
-
-            // Play next song in queue
-            Song next = playQueue.poll();
-            if (next != null) playSong(next);
-            else currentSongLabel.setText("No song");
+            playNextInQueue();
         });
 
         currentPlayer.play();
         currentSongLabel.setText("Playing: " + song.getTitle());
+        highlightCurrentSong(song.getTitle());
+    }
+
+    private void playNextInQueue() {
+        Song next = playQueue.poll();
+        if (next != null) {
+            playSong(next);
+        } else {
+            currentSongLabel.setText("No song");
+            currentPlayer = null;
+        }
+    }
+
+    private void highlightCurrentSong(String songTitle) {
+        TreeItem<String> root = treeView.getRoot();
+        if (root == null) return;
+
+        for (TreeItem<String> albumItem : root.getChildren()) {
+            for (TreeItem<String> songItem : albumItem.getChildren()) {
+                if (songItem.getValue().equals(songTitle)) {
+                    treeView.getSelectionModel().select(songItem);
+                    treeView.scrollTo(treeView.getSelectionModel().getSelectedIndex());
+                    return;
+                }
+            }
+        }
     }
 }
