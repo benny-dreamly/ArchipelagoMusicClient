@@ -200,14 +200,17 @@ public class MusicAppDemo extends Application {
 
             Map<String, String> albumFolders = new HashMap<>();
 
-            try (Reader reader = new FileReader("albumFolders.json")) {
-                Type type = new TypeToken<Map<String, String>>(){}.getType();
-                albumFolders = new Gson().fromJson(reader, type);
-            } catch (java.io.FileNotFoundException ex) {
-                // file not found, just continue without folder paths
-                System.out.println("albumFolders.json not found, skipping folder assignment");
-            } catch (Exception ex) {
-                ex.printStackTrace(); // other errors we still want to know about
+            File configFile = getConfigFile();
+
+            if (configFile.exists()) {
+                try (Reader reader = new FileReader(configFile)) {
+                    Type type = new TypeToken<Map<String, String>>(){}.getType();
+                    albumFolders = new Gson().fromJson(reader, type);
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            } else {
+                System.out.println("No config file found at " + configFile.getAbsolutePath() + ", skipping album folder assignment");
             }
 
             // assign folder paths to albums
@@ -412,5 +415,21 @@ public class MusicAppDemo extends Application {
                 }
             }
         }
+    }
+
+    private File getConfigFile() {
+        String userHome = System.getProperty("user.home");
+        File configFile;
+
+        String os = System.getProperty("os.name").toLowerCase();
+        if (os.contains("win")) {
+            configFile = new File(userHome, "AppData\\Roaming\\MusicAppDemo\\albumFolders.json");
+        } else if (os.contains("mac")) {
+            configFile = new File(userHome, "Library/Application Support/MusicAppDemo/albumFolders.json");
+        } else { // Linux / others
+            configFile = new File(userHome, ".config/MusicAppDemo/albumFolders.json");
+        }
+
+        return configFile;
     }
 }
