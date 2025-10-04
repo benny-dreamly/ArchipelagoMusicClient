@@ -47,6 +47,8 @@ public class MusicAppDemo extends Application {
     private ListView<String> queueListView;   // visual queue (titles)
     private MediaPlayer currentPlayer;
 
+    private boolean isUpdatingSelection = false;
+
     public static void main(String[] args) {
         launch();
     }
@@ -436,15 +438,19 @@ public class MusicAppDemo extends Application {
         TreeItem<String> root = treeView.getRoot();
         if (root == null) return;
 
+        isUpdatingSelection = true; // guard on
+
         for (TreeItem<String> albumItem : root.getChildren()) {
             for (TreeItem<String> songItem : albumItem.getChildren()) {
                 if (songItem.getValue().equals(songTitle)) {
                     treeView.getSelectionModel().select(songItem);
                     treeView.scrollTo(treeView.getSelectionModel().getSelectedIndex());
-                    return;
+                    break;
                 }
             }
         }
+
+        isUpdatingSelection = false; // guard off
     }
 
     // Queue helpers -----------------------------------------------------
