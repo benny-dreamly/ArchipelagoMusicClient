@@ -364,6 +364,9 @@ public class MusicAppDemo extends Application {
             currentPlayer.stop();
         }
 
+        System.out.println("Attempting to play: " + song.getFilePath());
+        System.out.println("URI: " + Paths.get(song.getFilePath()).toUri().toString());
+
         Media media = new Media(Paths.get(song.getFilePath()).toUri().toString());
         System.out.println("Media URI: " + Paths.get(song.getFilePath()).toUri());
         currentPlayer = new MediaPlayer(media);
@@ -459,12 +462,12 @@ public class MusicAppDemo extends Application {
             String folderPath = album.getFolderPath();
             if (folderPath == null) continue;
 
-            File folder = new File(folderPath);
-            if (!folder.exists() || !folder.isDirectory()) continue;
+            File albumDirectory = new File(folderPath);
+            if (!albumDirectory.exists() || !albumDirectory.isDirectory()) continue;
 
             Map<String, String> overrides = album.getFilenameOverrides();
 
-            File[] files = folder.listFiles((dir, name) ->
+            File[] files = albumDirectory.listFiles((dir, name) ->
                     name.toLowerCase().endsWith(".mp3") ||
                             name.toLowerCase().endsWith(".m4a") ||
                             name.toLowerCase().endsWith(".wav")
@@ -472,55 +475,22 @@ public class MusicAppDemo extends Application {
 
             if (files == null) continue;
 
-            for (File file : files) {
-                String baseName = file.getName().replaceFirst("[.][^.]+$", ""); // remove extension
-
-                // Strip track/CD prefixes like "01 - ", "2-05 ", "CD1 01 - "
-                baseName = baseName.replaceFirst("(?i)^(cd\\d+ )?\\d+[-. _]+", "");
-
-                // Remove all parentheses and their contents
-                baseName = baseName.replaceAll("\\(.*?\\)", "").trim();
-
-                // Remove underscores and special chars
-                baseName = baseName.replaceAll("[^a-zA-Z0-9 ]+", "").trim();
-
+            for (File file : Objects.requireNonNull(albumDirectory.listFiles())) {
+                String normalizedFile = normalizeFilename(file.getName());
                 Song matchedSong = null;
 
-                // Check overrides first
-                for (Map.Entry<String, String> entry : overrides.entrySet()) {
-                    if (entry.getValue().equalsIgnoreCase(file.getName())) {
-                        matchedSong = getSongByTitle(entry.getKey());
+                for (Song song : album.getSongs()) {
+                    String normalizedSong = normalizeSongTitle(song.getTitle());
+
+                    if (normalizedFile.equalsIgnoreCase(normalizedSong) || normalizedFile.contains(normalizedSong)) {
+                        matchedSong = song;
                         break;
                     }
                 }
 
-                // Fuzzy matching with threshold
-                if (matchedSong == null) {
-                    String normalizedFile = normalizeFilename(file.getName());
-                    int bestScore = Integer.MAX_VALUE;
-                    Song bestSong = null;
-
-                    for (Song s : album.getSongs()) {
-                        String normalizedTitle = normalizeSongTitle(s.getTitle());
-
-                        // Only consider titles that contain some part of the filename
-                        if (!normalizedTitle.contains(normalizedFile) && !normalizedFile.contains(normalizedTitle)) continue;
-
-                        int score = levenshteinDistance(normalizedFile, normalizedTitle);
-                        int maxDistance = Math.max(3, normalizedTitle.length() / 3); // dynamic threshold
-
-                        if (score < bestScore && score <= maxDistance) {
-                            bestScore = score;
-                            bestSong = s;
-                        }
-                    }
-
-                    matchedSong = bestSong;
-                }
-
                 if (matchedSong != null) {
                     matchedSong.setFilePath(file.getAbsolutePath());
-                    System.out.println("Matched: " + file.getName() + " -> " + matchedSong.getTitle());
+                    System.out.println("Matched: " + file.getName() + " -> " + matchedSong.getTitle() + " | path: " + matchedSong.getFilePath());
                 } else {
                     System.out.println("Could not match file to song: " + file.getName() + " in album " + album.getName());
                 }

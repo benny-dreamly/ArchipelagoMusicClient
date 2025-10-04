@@ -21,7 +21,8 @@ public class Song {
     }
 
     public void setFilePath(String absolutePath) {
-        this.filePath = filePath;
+        System.out.println("Setting file path for " + title + " -> " + absolutePath);
+        this.filePath = absolutePath;
     }
 
     public String getFilePath() {
