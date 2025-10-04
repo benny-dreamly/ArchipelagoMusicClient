@@ -203,8 +203,11 @@ public class MusicAppDemo extends Application {
             try (Reader reader = new FileReader("albumFolders.json")) {
                 Type type = new TypeToken<Map<String, String>>(){}.getType();
                 albumFolders = new Gson().fromJson(reader, type);
+            } catch (java.io.FileNotFoundException ex) {
+                // file not found, just continue without folder paths
+                System.out.println("albumFolders.json not found, skipping folder assignment");
             } catch (Exception ex) {
-                ex.printStackTrace();
+                ex.printStackTrace(); // other errors we still want to know about
             }
 
             // assign folder paths to albums
