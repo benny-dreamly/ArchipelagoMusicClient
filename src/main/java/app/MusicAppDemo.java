@@ -14,8 +14,10 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.media.Media;
@@ -59,6 +61,23 @@ public class MusicAppDemo extends Application {
         currentSongLabel = new Label("Currently Playing: None");
         queueListView = new ListView<>();
         queueListView.setPrefHeight(120);
+
+        ScrollPane queueScrollPane = new ScrollPane(queueListView);
+        queueScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.ALWAYS);
+        queueScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+
+        // Fit the ListView nicely inside the ScrollPane
+        queueScrollPane.setFitToHeight(true);
+        queueListView.setMinWidth(Region.USE_PREF_SIZE);
+
+        // Map vertical scroll to horizontal scroll
+        queueScrollPane.addEventFilter(ScrollEvent.SCROLL, event -> {
+            if (event.getDeltaY() != 0) {
+                double h = queueScrollPane.getHvalue() - event.getDeltaY() * 0.005; // smoother scaling
+                queueScrollPane.setHvalue(Math.min(Math.max(h, 0), 1));
+                event.consume();
+            }
+        });
 
         // When a tree item (song) is selected, add to queue
         treeView.getSelectionModel().selectedItemProperty().addListener((obs, oldSel, newSel) -> {
@@ -125,7 +144,7 @@ public class MusicAppDemo extends Application {
         Button clearQueueBtn = new Button("Clear Queue");
         queueButtons.getChildren().addAll(removeSelectedBtn, clearQueueBtn);
 
-        queueBox.getChildren().addAll(currentSongLabel, playerButtons, new Label("Queue:"), queueListView, queueButtons);
+        queueBox.getChildren().addAll(currentSongLabel, playerButtons, new Label("Queue:"), queueScrollPane, queueButtons);
         queueBox.setAlignment(Pos.CENTER_RIGHT);
         HBox.setHgrow(queueBox, Priority.ALWAYS);
 
