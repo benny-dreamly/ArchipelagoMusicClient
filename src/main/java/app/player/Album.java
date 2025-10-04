@@ -9,6 +9,8 @@ public class Album {
 
     private final String type;
 
+    private String folderPath; // path to album folder
+
     public Album(String name, String type) {
         this.name = name;
         this.type = type;
@@ -39,4 +41,7 @@ public class Album {
         }
         return null; // Not found
     }
+
+    public String getFolderPath() { return folderPath; }
+    public void setFolderPath(String folderPath) { this.folderPath = folderPath; }
 }
