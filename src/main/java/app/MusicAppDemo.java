@@ -221,24 +221,7 @@ public class MusicAppDemo extends Application {
             }
 
             // After assigning folder paths in loadTask.setOnSucceeded
-            for (Album album : albums) {
-                if (album.getFolderPath() != null) {
-                    File folder = new File(album.getFolderPath());
-                    if (folder.exists() && folder.isDirectory()) {
-                        File[] files = folder.listFiles((dir, name) -> name.endsWith(".mp3") || name.endsWith(".m4a") || name.endsWith(".wav"));
-                        if (files != null) {
-                            for (File f : files) {
-                                // Try to match by filename to Song title
-                                String baseName = f.getName().replaceFirst("[.][^.]+$", ""); // removes extension
-                                Song song = getSongByTitle(baseName);
-                                if (song != null) {
-                                    song.setFilePath(f.getAbsolutePath());
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            assignFilesToSongs();
 
 //            // Temporarily unlock all songs
 //            for (Album album : albums) {
@@ -464,5 +447,65 @@ public class MusicAppDemo extends Application {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private void assignFilesToSongs() {
+        for (Album album : albums) {
+            String folderPath = album.getFolderPath();
+            if (folderPath == null) continue;
+
+            File folder = new File(folderPath);
+            if (!folder.exists() || !folder.isDirectory()) continue;
+
+            // Load overrides if any
+            Map<String, String> overrides = album.getFilenameOverrides(); // implement this in Album
+
+            File[] files = folder.listFiles((dir, name) ->
+                    name.toLowerCase().endsWith(".mp3") ||
+                            name.toLowerCase().endsWith(".m4a") ||
+                            name.toLowerCase().endsWith(".wav")
+            );
+
+            if (files == null) continue;
+
+            for (File file : files) {
+                String baseName = file.getName().replaceFirst("[.][^.]+$", "");
+
+                // Strip track numbers like "01 - " or "1. "
+                baseName = baseName.replaceFirst("^\\d+[-. ]+", "");
+
+                Song song = null;
+
+                // Check overrides first
+                for (Map.Entry<String, String> entry : overrides.entrySet()) {
+                    if (entry.getValue().equalsIgnoreCase(file.getName())) {
+                        song = getSongByTitle(entry.getKey());
+                        break;
+                    }
+                }
+
+                // Fuzzy match if no override
+                if (song == null) {
+                    String normalizedBase = normalize(baseName);
+                    for (Song s : album.getSongs()) {
+                        if (normalize(s.getTitle()).contains(normalizedBase) ||
+                                normalizedBase.contains(normalize(s.getTitle()))) {
+                            song = s;
+                            break;
+                        }
+                    }
+                }
+
+                if (song != null) {
+                    song.setFilePath(file.getAbsolutePath());
+                } else {
+                    System.out.println("Could not match file to song: " + file.getName() + " in album " + album.getName());
+                }
+            }
+        }
+    }
+
+    private String normalize(String s) {
+        return s.toLowerCase().replaceAll("[^a-z0-9]", "");
     }
 }

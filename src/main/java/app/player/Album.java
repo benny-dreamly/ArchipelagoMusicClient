@@ -11,6 +11,8 @@ public class Album {
 
     private String folderPath; // path to album folder
 
+    private Map<String,String> filenameOverrides = new HashMap<>();
+
     public Album(String name, String type) {
         this.name = name;
         this.type = type;
@@ -44,4 +46,7 @@ public class Album {
 
     public String getFolderPath() { return folderPath; }
     public void setFolderPath(String folderPath) { this.folderPath = folderPath; }
+
+    public Map<String,String> getFilenameOverrides() { return filenameOverrides; }
+    public void setFilenameOverrides(Map<String,String> overrides) { this.filenameOverrides = overrides; }
 }
