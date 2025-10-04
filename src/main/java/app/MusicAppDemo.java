@@ -501,7 +501,7 @@ public class MusicAppDemo extends Application {
                     Song bestSong = null;
 
                     for (Song s : album.getSongs()) {
-                        String normalizedTitle = normalize(s.getTitle());
+                        String normalizedTitle = normalizeSongTitle(s.getTitle());
 
                         // Only consider titles that contain some part of the filename
                         if (!normalizedTitle.contains(normalizedFile) && !normalizedFile.contains(normalizedTitle)) continue;
@@ -526,11 +526,6 @@ public class MusicAppDemo extends Application {
                 }
             }
         }
-    }
-
-    // normalize: lowercase, remove punctuation and whitespace
-    private String normalize(String s) {
-        return s.toLowerCase().replaceAll("[^a-z0-9]+", "").trim();
     }
 
     // Levenshtein distance helper
@@ -571,5 +566,18 @@ public class MusicAppDemo extends Application {
         base = base.trim();
 
         return base;
+    }
+
+    private String normalizeSongTitle(String title) {
+        String normalized = title;
+
+        // Replace any extra underscores or spaces
+        normalized = normalized.replaceAll("_", " ");
+        normalized = normalized.replaceAll(" +", " ");
+
+        // Trim
+        normalized = normalized.trim();
+
+        return normalized;
     }
 }
