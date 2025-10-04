@@ -6,6 +6,8 @@ import app.archipelago.ItemListener;
 import app.player.*;
 import app.player.json.LibraryLoader;
 import app.player.json.SongJSON;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -14,9 +16,16 @@ import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.scene.media.MediaPlayer;
+import javafx.scene.media.Media;
 import javafx.stage.Stage;
 import javafx.concurrent.Task;
 
+import java.io.File;
+import java.io.FileReader;
+import java.io.Reader;
+import java.lang.reflect.Type;
+import java.nio.file.Paths;
 import java.util.*;
 
 public class MusicAppDemo extends Application {
@@ -31,6 +40,12 @@ public class MusicAppDemo extends Application {
     private Button connectButton;
     private Label statusLabel;
 
+    private Song currentSong;
+    private Label currentSongLabel;
+
+    private Queue<Song> playQueue = new LinkedList<>();
+    private MediaPlayer currentPlayer;
+
     public static void main(String[] args) {
         launch();
     }
@@ -38,6 +53,23 @@ public class MusicAppDemo extends Application {
     @Override
     public void start(Stage stage) {
         treeView = new TreeView<>();
+        currentSongLabel = new Label("No song");
+
+        treeView.getSelectionModel().selectedItemProperty().addListener((obs, oldSel, newSel) -> {
+            if (newSel == null) return;
+            String songTitle = newSel.getValue();
+
+            Album album = getAlbumForSong(songTitle);
+            if (album != null) {
+                Song song = getSongByTitle(songTitle);
+                if (song != null) {
+                    currentSong = song;
+                    playQueue.add(song); // add to queue
+                    currentSongLabel.setText("Queued: " + song.getTitle());
+                }
+            }
+        });
+
         refreshTree();
 
         // Bottom controls HBox
@@ -69,7 +101,12 @@ public class MusicAppDemo extends Application {
         HBox playerControls = new HBox(5);
         Button playButton = new Button("▶");
         Button pauseButton = new Button("⏸");
-        Label currentSongLabel = new Label("No song");
+
+        playButton.setOnAction(e -> {
+            if (currentSong != null) {
+                playSong(currentSong);
+            }
+        });
 
         playerControls.getChildren().addAll(playButton, pauseButton, currentSongLabel);
         playerControls.setAlignment(Pos.CENTER_RIGHT);
@@ -148,6 +185,42 @@ public class MusicAppDemo extends Application {
 
         loadTask.setOnSucceeded(e -> {
             albums.addAll(loadTask.getValue());
+
+            Map<String, String> albumFolders = new HashMap<>();
+
+            try (Reader reader = new FileReader("albumFolders.json")) {
+                Type type = new TypeToken<Map<String, String>>(){}.getType();
+                albumFolders = new Gson().fromJson(reader, type);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+
+            // assign folder paths to albums
+            for (Album album : albums) {
+                if (albumFolders.containsKey(album.getName())) {
+                    album.setFolderPath(albumFolders.get(album.getName()));
+                }
+            }
+
+            // After assigning folder paths in loadTask.setOnSucceeded
+            for (Album album : albums) {
+                if (album.getFolderPath() != null) {
+                    File folder = new File(album.getFolderPath());
+                    if (folder.exists() && folder.isDirectory()) {
+                        File[] files = folder.listFiles((dir, name) -> name.endsWith(".mp3") || name.endsWith(".m4a") || name.endsWith(".wav"));
+                        if (files != null) {
+                            for (File f : files) {
+                                // Try to match by filename to Song title
+                                String baseName = f.getName().replaceFirst("[.][^.]+$", ""); // removes extension
+                                Song song = getSongByTitle(baseName);
+                                if (song != null) {
+                                    song.setFilePath(f.getAbsolutePath());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
 //            // Temporarily unlock all songs
 //            for (Album album : albums) {
@@ -253,5 +326,51 @@ public class MusicAppDemo extends Application {
             if (album.getName().equals(name)) return album;
         }
         return null;
+    }
+
+    private Album getAlbumForSong(String songTitle) {
+        for (Album album : albums) {
+            for (Song song : album.getSongs()) {
+                if (song.getTitle().equals(songTitle)) return album;
+            }
+        }
+        return null;
+    }
+
+    private Song getSongByTitle(String songTitle) {
+        for (Album album : albums) {
+            for (Song song : album.getSongs()) {
+                if (song.getTitle().equals(songTitle)) return song;
+            }
+        }
+        return null;
+    }
+
+    private void playSong(Song song) {
+        if (song.getFilePath() == null) {
+            showError("File not found for " + song.getTitle());
+            return;
+        }
+
+        if (currentPlayer != null) {
+            currentPlayer.stop();
+        }
+
+        Media media = new Media(Paths.get(song.getFilePath()).toUri().toString());
+        currentPlayer = new MediaPlayer(media);
+
+        currentPlayer.setOnEndOfMedia(() -> {
+            if (client != null && client.isConnected()) {
+                client.sendCheck(song.getTitle());
+            }
+
+            // Play next song in queue
+            Song next = playQueue.poll();
+            if (next != null) playSong(next);
+            else currentSongLabel.setText("No song");
+        });
+
+        currentPlayer.play();
+        currentSongLabel.setText("Playing: " + song.getTitle());
     }
 }
