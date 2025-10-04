@@ -41,6 +41,7 @@ public class MusicAppDemo extends Application {
 
     private Song currentSong;
     private Label currentSongLabel;
+    private Label queuedSongLabel;    // shows what's next in queue
 
     private Queue<Song> playQueue = new LinkedList<>();
     private MediaPlayer currentPlayer;
@@ -52,7 +53,8 @@ public class MusicAppDemo extends Application {
     @Override
     public void start(Stage stage) {
         treeView = new TreeView<>();
-        currentSongLabel = new Label("No song");
+        currentSongLabel = new Label("Currently Playing: None");
+        queuedSongLabel = new Label("Queued: None");
 
         treeView.getSelectionModel().selectedItemProperty().addListener((obs, oldSel, newSel) -> {
             if (newSel == null) return;
@@ -63,7 +65,7 @@ public class MusicAppDemo extends Application {
             if (song != null) {
                 // Add to queue
                 playQueue.add(song);
-                currentSongLabel.setText("Queued: " + song.getTitle());
+                queuedSongLabel.setText("Queued: " + song.getTitle());
 
                 // If nothing is playing, start immediately
                 if (currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) {
@@ -135,8 +137,7 @@ public class MusicAppDemo extends Application {
             }
         });
 
-        playerControls.getChildren().addAll(playButton, pauseButton, currentSongLabel);
-        playerControls.setAlignment(Pos.CENTER_RIGHT);
+        playerControls.getChildren().addAll(playButton, pauseButton, currentSongLabel, queuedSongLabel);        playerControls.setAlignment(Pos.CENTER_RIGHT);
         HBox.setHgrow(playerControls, Priority.ALWAYS);
 
         // Add panels to bottom bar
@@ -378,11 +379,7 @@ public class MusicAppDemo extends Application {
             currentPlayer.stop();
         }
 
-        System.out.println("Attempting to play: " + song.getFilePath());
-        System.out.println("URI: " + Paths.get(song.getFilePath()).toUri().toString());
-
         Media media = new Media(Paths.get(song.getFilePath()).toUri().toString());
-        System.out.println("Media URI: " + Paths.get(song.getFilePath()).toUri());
         currentPlayer = new MediaPlayer(media);
 
         currentPlayer.setOnEndOfMedia(() -> {
@@ -393,7 +390,7 @@ public class MusicAppDemo extends Application {
         });
 
         currentPlayer.play();
-        currentSongLabel.setText("Playing: " + song.getTitle());
+        currentSongLabel.setText("Currently Playing: " + song.getTitle());
         highlightCurrentSong(song.getTitle());
     }
 
@@ -401,8 +398,14 @@ public class MusicAppDemo extends Application {
         Song next = playQueue.poll();
         if (next != null) {
             playSong(next);
+            if (playQueue.peek() != null) {
+                queuedSongLabel.setText("Queued: " + playQueue.peek().getTitle());
+            } else {
+                queuedSongLabel.setText("Queued: None");
+            }
         } else {
-            currentSongLabel.setText("No song");
+            currentSongLabel.setText("Currently Playing: None");
+            queuedSongLabel.setText("Queued: None");
             currentPlayer = null;
         }
     }
