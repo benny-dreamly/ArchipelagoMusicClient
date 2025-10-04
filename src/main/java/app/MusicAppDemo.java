@@ -496,7 +496,7 @@ public class MusicAppDemo extends Application {
 
                 // Fuzzy matching with threshold
                 if (matchedSong == null) {
-                    String normalizedFile = normalizeFileName(file.getName());
+                    String normalizedFile = normalizeFilename(file.getName());
                     int bestScore = Integer.MAX_VALUE;
                     Song bestSong = null;
 
@@ -550,25 +550,26 @@ public class MusicAppDemo extends Application {
         return costs[b.length()];
     }
 
-    private String normalizeFileName(String filename) {
-        // Remove extension
-        String name = filename.replaceFirst("[.][^.]+$", "");
+    private String normalizeFilename(String filename) {
+        // 1. Remove file extension
+        String base = filename.replaceFirst("[.][^.]+$", "");
 
-        // Remove track/CD prefixes like "01 - ", "2-05 ", "CD1 01 - "
-        name = name.replaceFirst("(?i)^(cd\\d+ )?\\d+[-. _]+", "");
+        // 2. Fix truncated "Taylor's Ver" -> "Taylor's Version"
+        base = base.replaceAll("(?i)Taylor's Ver(Tion)?", "Taylor's Version");
 
-        // Trim whitespace
-        name = name.trim();
+        // 3. Remove track/CD prefixes like "01 - ", "2-05 ", "CD1 01 - "
+        base = base.replaceFirst("(?i)^(cd\\d+ )?\\d+[-. _]+", "");
 
-        // Fix truncated parentheses: remove unmatched '(' at the end
-        if (name.endsWith("(")) {
-            name = name.substring(0, name.length() - 1).trim();
-        }
+        // 4. Remove broken parentheses at the end (but keep valid ones like "(feat. …)")
+        base = base.replaceAll("\\(\\s*$", "");
 
-        // Remove underscores, multiple spaces, special chars (except apostrophes and !)
-        name = name.replaceAll("[^a-zA-Z0-9'! ]+", " ").replaceAll(" +", " ").trim();
+        // 5. Remove extra underscores and multiple spaces
+        base = base.replaceAll("_", " ");
+        base = base.replaceAll(" +", " ");
 
-        // Convert to lowercase for comparison
-        return name.toLowerCase();
+        // 6. Trim leading/trailing spaces
+        base = base.trim();
+
+        return base;
     }
 }
