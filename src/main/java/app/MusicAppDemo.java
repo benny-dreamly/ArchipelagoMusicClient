@@ -110,7 +110,12 @@ public class MusicAppDemo extends Application {
         playButton.setOnAction(e -> {
             if (currentSong != null) {
                 if (currentSong.getFilePath() != null) {
-                    playSong(currentSong);
+                    if (currentPlayer != null && currentPlayer.getStatus() == MediaPlayer.Status.PAUSED) {
+                        currentPlayer.play(); // resume
+                        currentSongLabel.setText("Playing: " + currentSong.getTitle());
+                    } else {
+                        playSong(currentSong); // start new if not paused
+                    }
                 } else {
                     showError("File Not Found", "Cannot play song", "File not found for: " + currentSong.getTitle());
                 }
