@@ -457,7 +457,7 @@ public class MusicAppDemo extends Application {
             File folder = new File(folderPath);
             if (!folder.exists() || !folder.isDirectory()) continue;
 
-            Map<String, String> overrides = album.getFilenameOverrides(); // optional manual mapping
+            Map<String, String> overrides = album.getFilenameOverrides();
 
             File[] files = folder.listFiles((dir, name) ->
                     name.toLowerCase().endsWith(".mp3") ||
@@ -470,40 +470,40 @@ public class MusicAppDemo extends Application {
             for (File file : files) {
                 String baseName = file.getName().replaceFirst("[.][^.]+$", ""); // remove extension
 
-                // Strip track/CD prefixes like "01 - ", "1-01 ", "CD1 01 - "
+                // Strip track/CD prefixes like "01 - ", "2-05 ", "CD1 01 - "
                 baseName = baseName.replaceFirst("(?i)^(cd\\d+ )?\\d+[-. ]+", "");
 
-                // Remove common suffixes like "(Taylor's Version)", "(Taylor's V.)"
-                baseName = baseName.replaceAll("(?i)\\(taylor'?s.*\\)$", "").trim();
+                // Remove all parentheses and content inside
+                baseName = baseName.replaceAll("\\(.*?\\)", "").trim();
 
-                Song song = null;
+                Song matchedSong = null;
 
                 // Check overrides first
                 for (Map.Entry<String, String> entry : overrides.entrySet()) {
                     if (entry.getValue().equalsIgnoreCase(file.getName())) {
-                        song = getSongByTitle(entry.getKey());
+                        matchedSong = getSongByTitle(entry.getKey());
                         break;
                     }
                 }
 
-                // Fuzzy matching: normalize strings
-                if (song == null) {
+                // Fuzzy matching
+                if (matchedSong == null) {
                     String normalizedFile = normalize(baseName);
 
+                    // Try to find the best match using startsWith or contains
                     for (Song s : album.getSongs()) {
                         String normalizedTitle = normalize(s.getTitle());
 
-                        // Looser matching: allow truncated files to match titles
-                        if (normalizedTitle.startsWith(normalizedFile) || normalizedFile.startsWith(normalizedTitle)
-                                || normalizedTitle.contains(normalizedFile) || normalizedFile.contains(normalizedTitle)) {
-                            song = s;
+                        if (normalizedTitle.startsWith(normalizedFile) || normalizedTitle.contains(normalizedFile)
+                                || normalizedFile.contains(normalizedTitle)) {
+                            matchedSong = s;
                             break;
                         }
                     }
                 }
 
-                if (song != null) {
-                    song.setFilePath(file.getAbsolutePath());
+                if (matchedSong != null) {
+                    matchedSong.setFilePath(file.getAbsolutePath());
                 } else {
                     System.out.println("Could not match file to song: " + file.getName() + " in album " + album.getName());
                 }
@@ -511,15 +511,8 @@ public class MusicAppDemo extends Application {
         }
     }
 
-    /**
-     * Normalize a string for fuzzy matching:
-     * - lowercase
-     * - remove punctuation
-     * - remove multiple spaces
-     */
     private String normalize(String s) {
-        return s.toLowerCase()
-                .replaceAll("[^a-z0-9]+", "") // remove punctuation and spaces
-                .trim();
+        // lowercase, remove punctuation and whitespace
+        return s.toLowerCase().replaceAll("[^a-z0-9]+", "").trim();
     }
 }
