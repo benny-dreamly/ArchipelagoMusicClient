@@ -2,6 +2,7 @@ package app;
 
 import app.archipelago.APClient;
 import app.archipelago.ConnectionListener;
+import app.archipelago.ItemListener;
 import app.player.*;
 import app.player.json.LibraryLoader;
 import app.player.json.SongJSON;
@@ -24,6 +25,8 @@ public class MusicAppDemo extends Application {
     private final Set<String> unlockedSongs = new HashSet<>();
     private final Set<String> enabledSets = new HashSet<>();
 
+    private TreeView<String> treeView;
+
     private APClient client;
     private Button connectButton;
     private Label statusLabel;
@@ -34,7 +37,7 @@ public class MusicAppDemo extends Application {
 
     @Override
     public void start(Stage stage) {
-        TreeView<String> treeView = new TreeView<>();
+        treeView = new TreeView<>();
         refreshTree(treeView);
 
         // Bottom controls HBox
@@ -80,7 +83,7 @@ public class MusicAppDemo extends Application {
         stage.setTitle("MusicApp Demo");
         stage.show();
 
-        Task<List<Album>> loadTask = getLoadTask(treeView);
+        Task<List<Album>> loadTask = getLoadTask();
 
         new Thread(loadTask).start();
 
@@ -105,6 +108,7 @@ public class MusicAppDemo extends Application {
 
                 try {
                     client.getEventManager().registerListener(new ConnectionListener(statusLabel));
+                    client.getEventManager().registerListener(new ItemListener(this));
                     client.connect();
                     statusLabel.setText("Connected!");
                     connectButton.setText("Disconnect"); // toggle button text
@@ -131,7 +135,7 @@ public class MusicAppDemo extends Application {
         System.exit(0); // ensures all threads are killed
     }
 
-    private Task<List<Album>> getLoadTask(TreeView<String> treeView) {
+    private Task<List<Album>> getLoadTask() {
         Task<List<Album>> loadTask = new Task<>() {
             @Override
             protected List<Album> call() throws Exception {
@@ -157,7 +161,7 @@ public class MusicAppDemo extends Application {
             enabledSets.add("rerecording");
             enabledSets.add("vault"); // if you have vault songs
 
-            refreshTree(treeView); // populate TreeView after loading
+            refreshTree(); // populate TreeView after loading
         });
 
         loadTask.setOnFailed(e -> {
@@ -166,7 +170,7 @@ public class MusicAppDemo extends Application {
         return loadTask;
     }
 
-    private void refreshTree(TreeView<String> treeView) {
+    private void refreshTree() {
         // Custom album order
         List<String> albumOrder = List.of(
                 "Taylor Swift",
@@ -220,5 +224,23 @@ public class MusicAppDemo extends Application {
         alert.setHeaderText("Failed to connect to Archipelago server");
         alert.setContentText(content);
         alert.showAndWait();
+    }
+
+    public void unlockSong(String songTitle) {
+        if (!unlockedSongs.contains(songTitle)) {
+            unlockedSongs.add(songTitle);
+            refreshTree();
+        }
+    }
+
+    public void unlockAlbum(String albumName) {
+        for (Album album : albums) {
+            if (album.getName().equals(albumName)) {
+                for (Song song : album.getSongs()) {
+                    unlockSong(song.getTitle());
+                }
+                break;
+            }
+        }
     }
 }
