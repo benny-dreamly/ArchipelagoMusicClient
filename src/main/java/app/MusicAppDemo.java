@@ -470,12 +470,15 @@ public class MusicAppDemo extends Application {
             for (File file : files) {
                 String baseName = file.getName().replaceFirst("[.][^.]+$", ""); // remove extension
 
-                // Strip common track/CD prefixes: "01 - ", "1. ", "CD1 01 - "
+                // Strip track/CD prefixes like "01 - ", "1-01 ", "CD1 01 - "
                 baseName = baseName.replaceFirst("(?i)^(cd\\d+ )?\\d+[-. ]+", "");
+
+                // Remove common suffixes like "(Taylor's Version)", "(Taylor's V.)"
+                baseName = baseName.replaceAll("(?i)\\(taylor'?s.*\\)$", "").trim();
 
                 Song song = null;
 
-                // First try overrides
+                // Check overrides first
                 for (Map.Entry<String, String> entry : overrides.entrySet()) {
                     if (entry.getValue().equalsIgnoreCase(file.getName())) {
                         song = getSongByTitle(entry.getKey());
@@ -483,13 +486,16 @@ public class MusicAppDemo extends Application {
                     }
                 }
 
-                // Fuzzy matching: remove punctuation, normalize spaces, ignore case
+                // Fuzzy matching: normalize strings
                 if (song == null) {
                     String normalizedFile = normalize(baseName);
 
                     for (Song s : album.getSongs()) {
                         String normalizedTitle = normalize(s.getTitle());
-                        if (normalizedTitle.contains(normalizedFile) || normalizedFile.contains(normalizedTitle)) {
+
+                        // Looser matching: allow truncated files to match titles
+                        if (normalizedTitle.startsWith(normalizedFile) || normalizedFile.startsWith(normalizedTitle)
+                                || normalizedTitle.contains(normalizedFile) || normalizedFile.contains(normalizedTitle)) {
                             song = s;
                             break;
                         }
