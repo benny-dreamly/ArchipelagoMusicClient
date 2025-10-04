@@ -479,8 +479,6 @@ public class MusicAppDemo extends Application {
             File albumDirectory = new File(folderPath);
             if (!albumDirectory.exists() || !albumDirectory.isDirectory()) continue;
 
-            Map<String, String> overrides = album.getFilenameOverrides();
-
             File[] files = albumDirectory.listFiles((dir, name) ->
                     name.toLowerCase().endsWith(".mp3") ||
                             name.toLowerCase().endsWith(".m4a") ||
@@ -489,24 +487,36 @@ public class MusicAppDemo extends Application {
 
             if (files == null) continue;
 
-            for (File file : Objects.requireNonNull(albumDirectory.listFiles())) {
+            for (File file : files) {
                 String normalizedFile = normalizeFilename(file.getName());
                 Song matchedSong = null;
+                int bestDistance = Integer.MAX_VALUE;
 
                 for (Song song : album.getSongs()) {
                     String normalizedSong = normalizeSongTitle(song.getTitle());
 
-                    if (normalizedFile.equalsIgnoreCase(normalizedSong) || normalizedFile.contains(normalizedSong)) {
+                    // exact or substring match first
+                    if (normalizedFile.equalsIgnoreCase(normalizedSong) ||
+                            normalizedFile.contains(normalizedSong)) {
                         matchedSong = song;
                         break;
+                    }
+
+                    // fallback fuzzy match if close enough
+                    int dist = levenshteinDistance(normalizedFile.toLowerCase(), normalizedSong.toLowerCase());
+                    if (dist < 5 && dist < bestDistance) { // tweak threshold if needed
+                        matchedSong = song;
+                        bestDistance = dist;
                     }
                 }
 
                 if (matchedSong != null) {
                     matchedSong.setFilePath(file.getAbsolutePath());
-                    System.out.println("Matched: " + file.getName() + " -> " + matchedSong.getTitle() + " | path: " + matchedSong.getFilePath());
+                    System.out.println("Matched: " + file.getName() + " -> " +
+                            matchedSong.getTitle() + " | path: " + matchedSong.getFilePath());
                 } else {
-                    System.out.println("Could not match file to song: " + file.getName() + " in album " + album.getName());
+                    System.out.println("Could not match file to song: " +
+                            file.getName() + " in album " + album.getName());
                 }
             }
         }
@@ -530,26 +540,26 @@ public class MusicAppDemo extends Application {
     }
 
     private String normalizeFilename(String filename) {
-        // 1. Remove file extension
+        // 1. Remove extension
         String base = filename.replaceFirst("[.][^.]+$", "");
 
-        // 2. Fix truncated "Taylor's Ver" -> "Taylor's Version"
-        base = base.replaceAll("(?i)Taylor's Ver(Tion)?", "Taylor's Version");
+        // 2. Fix truncated "Taylor's Ver" → "Taylor's Version"
+        base = base.replaceAll("(?i)Taylor's Ver(\\b.*)?", "Taylor's Version");
 
-        // 3. Remove track/CD prefixes like "01 - ", "2-05 ", "CD1 01 - "
+        // 3. Remove leading track/CD numbers
         base = base.replaceFirst("(?i)^(cd\\d+ )?\\d+[-. _]+", "");
 
-        // 4. Remove broken parentheses at the end (but keep valid ones like "(feat. …)")
-        base = base.replaceAll("\\(\\s*$", "");
+        // 4. Normalize “feat.” variations
+        base = base.replaceAll("(?i)ft\\.?|feat\\.?","feat.");
 
-        // 5. Remove extra underscores and multiple spaces
+        // 5. Clean underscores/spaces
         base = base.replaceAll("_", " ");
         base = base.replaceAll(" +", " ");
 
-        // 6. Trim leading/trailing spaces
-        base = base.trim();
+        // 6. Trim broken parenthesis at the end
+        base = base.replaceAll("\\(\\s*$", "");
 
-        return base;
+        return base.trim();
     }
 
     private String normalizeSongTitle(String title) {
