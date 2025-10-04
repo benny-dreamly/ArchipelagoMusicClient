@@ -494,35 +494,21 @@ public class MusicAppDemo extends Application {
                     }
                 }
 
-                // Fuzzy matching using Levenshtein distance
+                // Fuzzy matching
                 if (matchedSong == null) {
                     String normalizedFile = normalize(baseName);
-                    int bestScore = Integer.MAX_VALUE;
-                    int maxDistance = 5; // tweak this if needed
 
+                    int bestScore = Integer.MAX_VALUE; // lower is better
                     for (Song s : album.getSongs()) {
                         String normalizedTitle = normalize(s.getTitle());
                         int score = levenshteinDistance(normalizedFile, normalizedTitle);
-                        if (score < bestScore && score <= maxDistance) {
+                        if (score < bestScore) {
                             bestScore = score;
                             matchedSong = s;
                         }
                     }
                 }
 
-                // Final fallback: check if normalized file contains normalized song title
-                if (matchedSong == null) {
-                    String normalizedFile = normalize(baseName);
-                    for (Song s : album.getSongs()) {
-                        if (normalizedFile.contains(normalize(s.getTitle())) ||
-                                normalize(s.getTitle()).contains(normalizedFile)) {
-                            matchedSong = s;
-                            break;
-                        }
-                    }
-                }
-
-                // Assign path if matched
                 if (matchedSong != null) {
                     matchedSong.setFilePath(file.getAbsolutePath());
                     System.out.println("Matched: " + file.getName() + " -> " + matchedSong.getTitle());
@@ -533,12 +519,9 @@ public class MusicAppDemo extends Application {
         }
     }
 
-    // Ensure normalize() is defined
+    // normalize: lowercase, remove punctuation and whitespace
     private String normalize(String s) {
-        return s.toLowerCase()
-                .replaceAll("[^a-z0-9 ]+", "") // letters, numbers, spaces only
-                .replaceAll("\\s+", " ")       // collapse multiple spaces
-                .trim();
+        return s.toLowerCase().replaceAll("[^a-z0-9]+", "").trim();
     }
 
     // Levenshtein distance helper
