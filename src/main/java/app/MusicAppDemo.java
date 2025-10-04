@@ -56,14 +56,21 @@ public class MusicAppDemo extends Application {
 
         treeView.getSelectionModel().selectedItemProperty().addListener((obs, oldSel, newSel) -> {
             if (newSel == null) return;
+
             String songTitle = newSel.getValue();
             Song song = getSongByTitle(songTitle);
+
             if (song != null) {
+                // Add to queue
                 playQueue.add(song);
                 currentSongLabel.setText("Queued: " + song.getTitle());
-                // Auto-play if nothing is currently playing
+
+                // If nothing is playing, start immediately
                 if (currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) {
-                    playSong(Objects.requireNonNull(playQueue.poll()));
+                    currentSong = playQueue.poll(); // dequeue first song
+                    if (currentSong != null) {
+                        playSong(currentSong);
+                    }
                 }
             }
         });
@@ -353,6 +360,8 @@ public class MusicAppDemo extends Application {
 
     private void playSong(Song song) {
         if (song == null) return;
+
+        this.currentSong = song;
 
         if (song.getFilePath() == null || !new File(song.getFilePath()).exists()) {
             showError("File Not Found", "Cannot play song", "File not found for: " + song.getTitle());
