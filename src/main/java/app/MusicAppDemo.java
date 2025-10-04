@@ -424,6 +424,7 @@ public class MusicAppDemo extends Application {
 
         if (currentPlayer != null) {
             currentPlayer.stop();
+            currentPlayer.dispose(); // release OS resources
         }
 
         Media media = new Media(Paths.get(song.getFilePath()).toUri().toString());
@@ -454,17 +455,26 @@ public class MusicAppDemo extends Application {
     }
 
     private void highlightCurrentSong(String songTitle) {
+        if (isUpdatingSelection) return; // FIX 2: skip if already running
+
         TreeItem<String> root = treeView.getRoot();
         if (root == null) return;
 
         isUpdatingSelection = true; // guard on
 
+        outerLoop:
         for (TreeItem<String> albumItem : root.getChildren()) {
             for (TreeItem<String> songItem : albumItem.getChildren()) {
                 if (songItem.getValue().equals(songTitle)) {
                     treeView.getSelectionModel().select(songItem);
-                    treeView.scrollTo(treeView.getSelectionModel().getSelectedIndex());
-                    break;
+
+                    // Optional Improvement 1: only scroll if not already visible
+                    int index = treeView.getSelectionModel().getSelectedIndex();
+                    if (index < treeView.getFixedCellSize() || index >= treeView.getHeight() / treeView.getFixedCellSize()) {
+                        treeView.scrollTo(index);
+                    }
+
+                    break outerLoop; // Optional Improvement 2: stop after first match
                 }
             }
         }
