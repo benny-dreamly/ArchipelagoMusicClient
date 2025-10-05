@@ -115,6 +115,11 @@ public class MusicAppDemo extends Application {
         TextField portField = new TextField("38281");
         TextField slotField = new TextField("Player1");
         TextField passwordField = new TextField();
+        Map<String, String> saved = loadConnectionSettings();
+        hostField.setText(saved.getOrDefault("host", "localhost"));
+        portField.setText(saved.getOrDefault("port", "38281"));
+        slotField.setText(saved.getOrDefault("slot", "Player1"));
+        passwordField.setText(saved.getOrDefault("password", ""));
         connectButton = new Button("Connect");
         statusLabel = new Label("Not connected");
 
@@ -218,6 +223,8 @@ public class MusicAppDemo extends Application {
                 int port = Integer.parseInt(portField.getText());
                 String slot = slotField.getText();
                 String password = passwordField.getText();
+
+                saveConnectionSettings(host, port, slot, password);
 
                 client = new APClient(host, port, slot, password);
 
@@ -659,5 +666,39 @@ public class MusicAppDemo extends Application {
         normalized = normalized.trim();
 
         return normalized;
+    }
+
+    private File getConnectionConfigFile() {
+        File configDir = getConfigFile().getParentFile();
+        return new File(configDir, "connection.json");
+    }
+
+    private void saveConnectionSettings(String host, int port, String slot, String password) {
+        Map<String, String> data = new HashMap<>();
+        data.put("host", host);
+        data.put("port", String.valueOf(port));
+        data.put("slot", slot);
+        data.put("password", password);
+
+        File file = getConnectionConfigFile();
+        try (Writer writer = new FileWriter(file)) {
+            new GsonBuilder().setPrettyPrinting().create().toJson(data, writer);
+            System.out.println("Saved connection settings to " + file.getAbsolutePath());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private Map<String, String> loadConnectionSettings() {
+        File file = getConnectionConfigFile();
+        if (!file.exists()) return new HashMap<>();
+
+        try (Reader reader = new FileReader(file)) {
+            Type type = new TypeToken<Map<String, String>>(){}.getType();
+            return new Gson().fromJson(reader, type);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return new HashMap<>();
+        }
     }
 }
