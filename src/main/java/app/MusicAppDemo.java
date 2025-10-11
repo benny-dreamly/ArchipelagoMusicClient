@@ -35,6 +35,8 @@ public class MusicAppDemo extends Application {
     private final Set<String> unlockedSongs = new HashSet<>();
     private final Set<String> enabledSets = new HashSet<>();
 
+    private List<String> albumOrderCache;
+
     private TreeView<String> treeView;
 
     private APClient client;
@@ -697,51 +699,55 @@ public class MusicAppDemo extends Application {
     }
 
     private List<String> getAlbumOrder() {
+        if (albumOrderCache != null) {
+            return albumOrderCache;
+        }
+
         File gameDir = APClient.getGameDataFolderStatic();
         File orderFile = new File(gameDir, "albumOrder.json");
 
-        // If file exists, load it
+        List<String> loadedOrder = null;
         if (orderFile.exists()) {
             try (Reader reader = new FileReader(orderFile)) {
                 Type listType = new TypeToken<List<String>>() {}.getType();
-                List<String> loaded = new Gson().fromJson(reader, listType);
-                if (loaded != null && !loaded.isEmpty()) {
+                loadedOrder = new Gson().fromJson(reader, listType);
+                if (loadedOrder != null && !loadedOrder.isEmpty()) {
                     System.out.println("Loaded album order from " + orderFile.getAbsolutePath());
-                    return loaded;
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
 
-        // Otherwise, create and return the default order
-        List<String> defaultOrder = List.of(
-                "Taylor Swift",
-                "Fearless",
-                "Fearless (Taylor's Version)",
-                "Speak Now",
-                "Speak Now (Taylor's Version)",
-                "Red",
-                "Red (Taylor's Version)",
-                "1989",
-                "1989 (Taylor's Version)",
-                "Reputation",
-                "Lover",
-                "Folklore",
-                "Evermore",
-                "Midnights",
-                "The Tortured Poets Department"
-        );
+        if (loadedOrder == null || loadedOrder.isEmpty()) {
+            loadedOrder = List.of(
+                    "Taylor Swift",
+                    "Fearless",
+                    "Fearless (Taylor's Version)",
+                    "Speak Now",
+                    "Speak Now (Taylor's Version)",
+                    "Red",
+                    "Red (Taylor's Version)",
+                    "1989",
+                    "1989 (Taylor's Version)",
+                    "Reputation",
+                    "Lover",
+                    "Folklore",
+                    "Evermore",
+                    "Midnights",
+                    "The Tortured Poets Department"
+            );
 
-        // Save default order if file missing (so users can edit it later)
-        try (Writer writer = new FileWriter(orderFile)) {
-            new GsonBuilder().setPrettyPrinting().create().toJson(defaultOrder, writer);
-            System.out.println("Generated default albumOrder.json at " + orderFile.getAbsolutePath());
-        } catch (IOException e) {
-            e.printStackTrace();
+            try (Writer writer = new FileWriter(orderFile)) {
+                new GsonBuilder().setPrettyPrinting().create().toJson(loadedOrder, writer);
+                System.out.println("Generated default albumOrder.json at " + orderFile.getAbsolutePath());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
 
-        return defaultOrder;
+        albumOrderCache = loadedOrder; // cache it
+        return albumOrderCache;
     }
 
     private void ensureGameDefaults(File gameFolder) {
