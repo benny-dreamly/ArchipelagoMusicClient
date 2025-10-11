@@ -111,6 +111,12 @@ public class MusicAppDemo extends Application {
 
         // Left: Archipelago connection panel
         VBox connectionPanel = new VBox(5);
+        TextField gameField = new TextField();
+        gameField.setPromptText("Game / Manual name");
+
+        // Load saved game name
+        String savedGameName = APClient.loadSavedGameNameStatic();
+        gameField.setText(savedGameName);
         TextField hostField = new TextField("localhost");
         TextField portField = new TextField("38281");
         TextField slotField = new TextField("Player1");
@@ -124,6 +130,7 @@ public class MusicAppDemo extends Application {
         statusLabel = new Label("Not connected");
 
         connectionPanel.getChildren().addAll(
+                new Label("Game:"), gameField,
                 new Label("Host:"), hostField,
                 new Label("Port:"), portField,
                 new Label("Slot:"), slotField,
@@ -226,7 +233,20 @@ public class MusicAppDemo extends Application {
 
                 saveConnectionSettings(host, port, slot, password);
 
+                String gameName = gameField.getText().trim();
+                APClient.saveGameNameStatic(gameName);
+
+                // Ensure the per-game folder exists
+                File gameFolder = APClient.getGameDataFolderStatic();
+                if (!gameFolder.exists()) {
+                    gameFolder.mkdirs();
+                    System.out.println("Created game data folder: " + gameFolder.getAbsolutePath());
+                }
+
                 client = new APClient(host, port, slot, password);
+                client.setGameName(gameName);
+
+                ensureGameDefaults(APClient.getGameDataFolderStatic());
 
                 client.setOnErrorCallback(ex -> {
                     statusLabel.setText("Connection failed");
@@ -271,7 +291,15 @@ public class MusicAppDemo extends Application {
             @Override
             protected List<Album> call() throws Exception {
                 LibraryLoader loader = new LibraryLoader();
-                List<SongJSON> rawSongs = loader.loadSongs("/locations.json");
+                File gameFolder = APClient.getGameDataFolderStatic();
+                File localLocations = new File(gameFolder, "locations.json");
+                List<SongJSON> rawSongs;
+
+                if (localLocations.exists()) {
+                    rawSongs = loader.loadSongs(localLocations.getAbsolutePath());
+                } else {
+                    rawSongs = loader.loadSongs("/locations.json"); // fallback to bundled
+                }
                 AlbumConverter converter = new AlbumConverter();
                 return converter.convert(rawSongs);
             }
@@ -317,24 +345,7 @@ public class MusicAppDemo extends Application {
 
     public void refreshTree() {
         // Custom album order
-        List<String> albumOrder = List.of(
-                "Taylor Swift",
-                "Fearless",
-                "Fearless (Taylor's Version)",
-                "Speak Now",
-                "Speak Now (Taylor's Version)",
-                "Red",
-                "Red (Taylor's Version)",
-                "1989",
-                "1989 (Taylor's Version)",
-                "Reputation",
-                "Lover",
-                "Folklore",
-                "Evermore",
-                "Midnights",
-                "The Tortured Poets Department"
-                // add more albums here if needed
-        );
+        List<String> albumOrder = getAlbumOrder();
 
         // Sort albums according to albumOrder
         albums.sort(Comparator.comparingInt(a -> {
@@ -513,29 +524,10 @@ public class MusicAppDemo extends Application {
         }
     }
 
-    // -------------------------------------------------------------------
-
     private File getConfigFile() {
-        String userHome = System.getProperty("user.home");
-        File configDir;
-
-        String os = System.getProperty("os.name").toLowerCase();
-        if (os.contains("win")) {
-            configDir = new File(userHome, "AppData\\Roaming\\MusicAppDemo");
-        } else if (os.contains("mac")) {
-            configDir = new File(userHome, "Library/Application Support/MusicAppDemo");
-        } else { // Linux / others
-            configDir = new File(userHome, ".config/MusicAppDemo");
-        }
-
-        // Ensure the directory exists
-        if (!configDir.exists()) {
-            if (!configDir.mkdirs()) {
-                System.err.println("Failed to create config directory: " + configDir.getAbsolutePath());
-            }
-        }
-
-        return new File(configDir, "albumFolders.json");
+        File gameDir = APClient.getGameDataFolderStatic();
+        if (!gameDir.exists()) gameDir.mkdirs();
+        return new File(gameDir, "albumFolders.json");
     }
 
     private void generateDefaultAlbumFolders(List<Album> albums) {
@@ -699,6 +691,82 @@ public class MusicAppDemo extends Application {
         } catch (IOException e) {
             e.printStackTrace();
             return new HashMap<>();
+        }
+    }
+
+    private List<String> getAlbumOrder() {
+        File gameDir = APClient.getGameDataFolderStatic();
+        File orderFile = new File(gameDir, "albumOrder.json");
+
+        // If file exists, load it
+        if (orderFile.exists()) {
+            try (Reader reader = new FileReader(orderFile)) {
+                Type listType = new TypeToken<List<String>>() {}.getType();
+                List<String> loaded = new Gson().fromJson(reader, listType);
+                if (loaded != null && !loaded.isEmpty()) {
+                    System.out.println("Loaded album order from " + orderFile.getAbsolutePath());
+                    return loaded;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        // Otherwise, create and return the default order
+        List<String> defaultOrder = List.of(
+                "Taylor Swift",
+                "Fearless",
+                "Fearless (Taylor's Version)",
+                "Speak Now",
+                "Speak Now (Taylor's Version)",
+                "Red",
+                "Red (Taylor's Version)",
+                "1989",
+                "1989 (Taylor's Version)",
+                "Reputation",
+                "Lover",
+                "Folklore",
+                "Evermore",
+                "Midnights",
+                "The Tortured Poets Department"
+        );
+
+        // Save default order if file missing (so users can edit it later)
+        try (Writer writer = new FileWriter(orderFile)) {
+            new GsonBuilder().setPrettyPrinting().create().toJson(defaultOrder, writer);
+            System.out.println("Generated default albumOrder.json at " + orderFile.getAbsolutePath());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return defaultOrder;
+    }
+
+    private void ensureGameDefaults(File gameFolder) {
+        if (!gameFolder.exists()) gameFolder.mkdirs();
+
+        File albumOrderFile = new File(gameFolder, "albumOrder.json");
+        if (!albumOrderFile.exists()) {
+            getAlbumOrder(); // this method already generates the default if missing
+        }
+
+        File foldersFile = new File(gameFolder, "albumFolders.json");
+        if (!foldersFile.exists()) {
+            generateDefaultAlbumFolders(albums); // creates default
+        }
+
+        // Optionally copy default locations.json
+        File localLocations = new File(gameFolder, "locations.json");
+        if (!localLocations.exists()) {
+            try (InputStream in = getClass().getResourceAsStream("/locations.json");
+                 FileOutputStream out = new FileOutputStream(localLocations)) {
+                if (in != null) {
+                    in.transferTo(out);
+                    System.out.println("Copied default locations.json to " + localLocations.getAbsolutePath());
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 }

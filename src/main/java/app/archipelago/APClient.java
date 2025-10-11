@@ -147,4 +147,61 @@ public class APClient extends Client {
         return new File(baseDir, gameName);
     }
 
+    public static String loadSavedGameNameStatic() {
+        File configFile = getGameConfigFileStatic();
+        if (configFile.exists()) {
+            try (Reader reader = new FileReader(configFile)) {
+                return new Gson().fromJson(reader, String.class);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return "Manual_TaylorSwiftDiscography_bennydreamly";
+    }
+
+    public static void saveGameNameStatic(String name) {
+        File configFile = getGameConfigFileStatic();
+        try (Writer writer = new FileWriter(configFile)) {
+            new GsonBuilder().setPrettyPrinting().create().toJson(name, writer);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static File getGameConfigFileStatic() {
+        String userHome = System.getProperty("user.home");
+        String os = System.getProperty("os.name").toLowerCase();
+        File baseDir;
+
+        if (os.contains("win"))
+            baseDir = new File(userHome, "AppData\\Roaming\\MusicAppDemo");
+        else if (os.contains("mac"))
+            baseDir = new File(userHome, "Library/Application Support/MusicAppDemo");
+        else
+            baseDir = new File(userHome, ".config/MusicAppDemo");
+
+        File configDir = new File(baseDir, "config");
+        if (!configDir.exists()) configDir.mkdirs();
+
+        return new File(configDir, "currentGame.json");
+    }
+
+    public static File getGameDataFolderStatic() {
+        String gameName = loadSavedGameNameStatic();
+        String userHome = System.getProperty("user.home");
+        String os = System.getProperty("os.name").toLowerCase();
+        File baseDir;
+
+        if (os.contains("win"))
+            baseDir = new File(userHome, "AppData\\Roaming\\MusicAppDemo");
+        else if (os.contains("mac"))
+            baseDir = new File(userHome, "Library/Application Support/MusicAppDemo");
+        else
+            baseDir = new File(userHome, ".config/MusicAppDemo");
+
+        File dir = new File(baseDir, gameName);
+        if (!dir.exists()) dir.mkdirs();
+        return dir;
+    }
+
 }
