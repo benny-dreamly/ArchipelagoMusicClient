@@ -225,6 +225,12 @@ public class MusicAppDemo extends Application {
 
         new Thread(loadTask).start();
 
+        // Disable the game field if connected
+        gameField.setDisable(client != null && client.isConnected());
+        gameField.setTooltip(client != null && client.isConnected()
+                ? new Tooltip("Cannot change game while connected")
+                : null);
+
         // Archipelago connection handler
         connectButton.setOnAction(e -> {
             if (client == null || !client.isConnected()) {
@@ -267,6 +273,10 @@ public class MusicAppDemo extends Application {
                     client.connect();
                     statusLabel.setText("Connected!");
                     connectButton.setText("Disconnect"); // toggle button text
+
+                    // --- Disable the game field after connecting ---
+                    gameField.setDisable(true);
+                    gameField.setTooltip(new Tooltip("Cannot change game while connected"));
                 } catch (Exception ex) {
                     statusLabel.setText("Connection failed");
                     showError("Connection Failed", "Failed to connect to Archipelago server", ex.getMessage());
@@ -277,6 +287,10 @@ public class MusicAppDemo extends Application {
                 client.disconnect();
                 statusLabel.setText("Disconnected");
                 connectButton.setText("Connect"); // toggle button text
+
+                // Re-enable game field
+                gameField.setDisable(false);
+                gameField.setTooltip(null);
             }
         });
     }
