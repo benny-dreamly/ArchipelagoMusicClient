@@ -35,7 +35,14 @@ public class LibraryLoader {
     }
 
     public List<SongJSON> loadSongsFromReader(Reader reader) throws IOException {
+        Gson gson = new GsonBuilder()
+                .registerTypeAdapter(
+                        new TypeToken<List<String>>(){}.getType(),
+                        new RequiresDeserializer()
+                )
+                .create();
+
         Type type = new TypeToken<List<SongJSON>>(){}.getType();
-        return new Gson().fromJson(reader, type);
+        return gson.fromJson(reader, type);
     }
 }
