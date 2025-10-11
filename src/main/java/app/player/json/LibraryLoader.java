@@ -4,8 +4,10 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.lang.reflect.Type;
 import java.util.List;
 
@@ -30,5 +32,10 @@ public class LibraryLoader {
         try (InputStreamReader reader = new InputStreamReader(is)) {
             return gson.fromJson(reader, listType);
         }
+    }
+
+    public List<SongJSON> loadSongsFromReader(Reader reader) throws IOException {
+        Type type = new TypeToken<List<SongJSON>>(){}.getType();
+        return new Gson().fromJson(reader, type);
     }
 }

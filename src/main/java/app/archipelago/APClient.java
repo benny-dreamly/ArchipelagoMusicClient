@@ -121,10 +121,9 @@ public class APClient extends Client {
             baseDir = new File(userHome, ".config/MusicAppDemo");
         }
 
-        File configDir = new File(baseDir, "config");
-        if (!configDir.exists()) configDir.mkdirs();
+        if (!baseDir.exists()) baseDir.mkdirs();
 
-        return new File(configDir, "currentGame.json");
+        return new File(baseDir, "currentGame.json"); // <-- removed config subfolder
     }
 
     private File getGameDataFolder() {
@@ -180,11 +179,11 @@ public class APClient extends Client {
         else
             baseDir = new File(userHome, ".config/MusicAppDemo");
 
-        File configDir = new File(baseDir, "config");
-        if (!configDir.exists()) configDir.mkdirs();
+        if (!baseDir.exists()) baseDir.mkdirs();
 
-        return new File(configDir, "currentGame.json");
+        return new File(baseDir, "currentGame.json"); // <-- removed config subfolder
     }
+
 
     public static File getGameDataFolderStatic() {
         String gameName = loadSavedGameNameStatic();

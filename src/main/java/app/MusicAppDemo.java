@@ -296,7 +296,9 @@ public class MusicAppDemo extends Application {
                 List<SongJSON> rawSongs;
 
                 if (localLocations.exists()) {
-                    rawSongs = loader.loadSongs(localLocations.getAbsolutePath());
+                    try (Reader reader = new FileReader(localLocations)) {
+                        rawSongs = loader.loadSongsFromReader(reader); // new method
+                    }
                 } else {
                     rawSongs = loader.loadSongs("/locations.json"); // fallback to bundled
                 }
