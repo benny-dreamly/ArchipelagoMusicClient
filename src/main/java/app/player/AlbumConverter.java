@@ -25,8 +25,8 @@ public class AlbumConverter {
             Album album = albums.computeIfAbsent(
                     raw.region,
                     name -> {
-                        boolean fullUnlock = albumMetadata.getOrDefault(name, new AlbumMetadata(false)).fullAlbumUnlock;
-                        new Album(name, detectAlbumType(raw.category));
+                        boolean fullUnlock = albumMetadata.getOrDefault(name, new AlbumMetadata(false)).isFullAlbumUnlock();
+                        return new Album(name, detectAlbumType(raw.category), fullUnlock);
                     }
             );
 
