@@ -413,6 +413,9 @@ public class MusicAppDemo extends Application {
     public void unlockAlbum(String albumName) {
         for (Album album : albums) {
             if (album.getName().equals(albumName)) {
+                // Enable this album’s type so songs will show
+                enabledSets.add(album.getType());
+
                 for (Song song : album.getSongs()) {
                     unlockSong(song.getTitle());
                 }
