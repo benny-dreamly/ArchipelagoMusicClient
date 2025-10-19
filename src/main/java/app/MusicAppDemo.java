@@ -466,7 +466,6 @@ public class MusicAppDemo extends Application {
 
         if (!unlockedSongs.contains(song.getTitle())) {
             showError("Locked Song", "Cannot play song", song.getTitle() + " is not unlocked yet!");
-            playNextInQueue();
             return;
         }
 
@@ -474,7 +473,6 @@ public class MusicAppDemo extends Application {
 
         if (song.getFilePath() == null || !new File(song.getFilePath()).exists()) {
             showError("File Not Found", "Cannot play song", "File not found for: " + song.getTitle());
-            playNextInQueue();
             return;
         }
 
