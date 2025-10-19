@@ -91,7 +91,7 @@ public class MusicAppDemo extends Application {
             String songTitle = newSel.getValue();
             Song song = getSongByTitle(songTitle);
 
-            if (song != null) {
+            if (song != null && unlockedSongs.contains(song.getTitle())) {
                 // Add to queue
                 playQueue.add(song);
                 updateQueueDisplay();
