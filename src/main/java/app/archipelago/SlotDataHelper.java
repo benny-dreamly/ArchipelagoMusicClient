@@ -11,13 +11,12 @@ import java.util.*;
 
 public class SlotDataHelper {
 
-    private static Map<String, SlotOption> slotOptions = null;
+    private static Map<String, SlotOption> slotOptions = Collections.emptyMap();
 
     public static void loadSlotOptions(File configDir) {
         File file = new File(configDir, "slot_data.json");
         if (!file.exists()) {
             System.err.println("No slot_data.json found in " + configDir.getAbsolutePath());
-            slotOptions = Collections.emptyMap();
             return;
         }
 
@@ -33,13 +32,18 @@ public class SlotDataHelper {
 
     public static Set<String> getEnabledAlbums(Map<String, Object> slotData) {
         Set<String> enabled = new HashSet<>();
-        if (slotOptions == null) return enabled;
+        if (slotOptions.isEmpty() || slotData == null) return enabled;
 
-        for (Map.Entry<String, SlotOption> entry : slotOptions.entrySet()) {
+        for (Map.Entry<String, Object> entry : slotData.entrySet()) {
             String key = entry.getKey();
-            SlotOption option = entry.getValue();
+            Object val = entry.getValue();
 
-            Object val = slotData.get(key);
+            // ignore unknown keys
+            if (!slotOptions.containsKey(key)) continue;
+
+            SlotOption option = slotOptions.get(key);
+            if (option == null) continue;
+
             if (val instanceof Number && ((Number) val).intValue() == 1) {
                 if ("album".equals(option.type)) {
                     enabled.add(option.display_name);
@@ -52,13 +56,18 @@ public class SlotDataHelper {
 
     public static Set<String> getEnabledCategories(Map<String, Object> slotData) {
         Set<String> enabled = new HashSet<>();
-        if (slotOptions == null) return enabled;
+        if (slotOptions.isEmpty() || slotData == null) return enabled;
 
-        for (Map.Entry<String, SlotOption> entry : slotOptions.entrySet()) {
+        for (Map.Entry<String, Object> entry : slotData.entrySet()) {
             String key = entry.getKey();
-            SlotOption option = entry.getValue();
+            Object val = entry.getValue();
 
-            Object val = slotData.get(key);
+            // ignore unknown keys
+            if (!slotOptions.containsKey(key)) continue;
+
+            SlotOption option = slotOptions.get(key);
+            if (option == null) continue;
+
             if (val instanceof Number && ((Number) val).intValue() == 1) {
                 if ("song_category".equals(option.type)) {
                     enabled.add(option.display_name);
