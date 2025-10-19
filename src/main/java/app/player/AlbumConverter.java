@@ -10,6 +10,11 @@ public class AlbumConverter {
         Map<String, Album> albums = new HashMap<>();
 
         for (SongJSON raw : rawSongs) {
+            // Skip bonus locations
+            if ("Bonus Locations".equalsIgnoreCase(raw.region)) {
+                continue;
+            }
+
             Album album = albums.computeIfAbsent(
                     raw.region,
                     name -> new Album(name, detectAlbumType(raw.category))
