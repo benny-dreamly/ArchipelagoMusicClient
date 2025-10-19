@@ -90,12 +90,13 @@ public class MusicAppDemo extends Application {
 
             String songTitle = newSel.getValue();
             Song song = getSongByTitle(songTitle);
+            Album album = getAlbumForSong(songTitle);
 
-            if (song != null) {
-
-                if (!unlockedSongs.contains(song.getTitle())) {
+            if (song != null && album != null) {
+                // Check if the song is unlocked AND the album is enabled
+                if (!unlockedSongs.contains(song.getTitle()) || !enabledSets.contains(album.getType())) {
                     // Feedback: user clicked a locked song
-                    showError("Locked Song", "Cannot queue song", song.getTitle() + " is not unlocked yet!");
+                    showError("Locked Song", "Cannot queue song", song.getTitle() + " requires album " + album.getName() + " to be unlocked!");
                     return; // do not queue
                 }
 
@@ -471,7 +472,23 @@ public class MusicAppDemo extends Application {
     private void playSong(Song song) {
         if (song == null) return;
 
-        if (!unlockedSongs.contains(song.getTitle())) {
+        Album album = getAlbumForSong(song.getTitle());
+
+        // Check album unlock / song unlock
+        boolean canPlay = false;
+
+        if (album != null) {
+            if (album.isFullAlbumUnlock()) {
+                canPlay = true; // entire album unlocked
+            } else if (unlockedSongs.contains(song.getTitle())) {
+                canPlay = true; // individual song unlocked
+            }
+        } else {
+            // Song not part of an album? probably allow if in unlockedSongs
+            canPlay = unlockedSongs.contains(song.getTitle());
+        }
+
+        if (!canPlay) {
             showError("Locked Song", "Cannot play song", song.getTitle() + " is not unlocked yet!");
             return;
         }
