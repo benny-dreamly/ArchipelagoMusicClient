@@ -254,7 +254,6 @@ public class MusicAppDemo extends Application {
 
 
                 // Ensure the per-game folder exists
-                File gameFolder = APClient.getGameDataFolderStatic();
                 if (!gameFolder.exists()) {
                     gameFolder.mkdirs();
                     System.out.println("Created game data folder: " + gameFolder.getAbsolutePath());
