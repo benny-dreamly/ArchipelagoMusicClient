@@ -91,7 +91,14 @@ public class MusicAppDemo extends Application {
             String songTitle = newSel.getValue();
             Song song = getSongByTitle(songTitle);
 
-            if (song != null && unlockedSongs.contains(song.getTitle())) {
+            if (song != null) {
+
+                if (!unlockedSongs.contains(song.getTitle())) {
+                    // Feedback: user clicked a locked song
+                    showError("Locked Song", "Cannot queue song", song.getTitle() + " is not unlocked yet!");
+                    return; // do not queue
+                }
+
                 // Add to queue
                 playQueue.add(song);
                 updateQueueDisplay();
