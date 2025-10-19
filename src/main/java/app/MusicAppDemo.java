@@ -134,7 +134,7 @@ public class MusicAppDemo extends Application {
 
         // Ensure the per-game folder exists
         File gameFolder = APClient.getGameDataFolderStatic();
-        if (!gameFolder.exists()) gameFolder.mkdirs();
+        checkIfGameFolderExists(gameFolder);
 
         // load slot_data.json to help with parsing the slot data, we already know the game
         SlotDataHelper.loadSlotOptions(gameFolder);
@@ -251,13 +251,6 @@ public class MusicAppDemo extends Application {
 
                 String gameName = gameField.getText().trim();
                 APClient.saveGameNameStatic(gameName);
-
-
-                // Ensure the per-game folder exists
-                if (!gameFolder.exists()) {
-                    gameFolder.mkdirs();
-                    System.out.println("Created game data folder: " + gameFolder.getAbsolutePath());
-                }
 
                 client = new APClient(host, port, slot, password);
 
@@ -820,5 +813,13 @@ public class MusicAppDemo extends Application {
         enabledSets.clear();
         unlockedSongs.clear();
         clearAlbumOrderCache();  // optional, if album order changes per game
+    }
+
+    private void checkIfGameFolderExists(File gameFolder){
+        // Ensure the per-game folder exists
+        if (!gameFolder.exists()) {
+            gameFolder.mkdirs();
+            System.out.println("Created game data folder: " + gameFolder.getAbsolutePath());
+        }
     }
 }
