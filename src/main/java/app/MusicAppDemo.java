@@ -3,6 +3,7 @@ package app;
 import app.archipelago.APClient;
 import app.archipelago.ConnectionListener;
 import app.archipelago.ItemListener;
+import app.archipelago.SlotDataHelper;
 import app.player.*;
 import app.player.json.LibraryLoader;
 import app.player.json.SongJSON;
@@ -130,6 +131,13 @@ public class MusicAppDemo extends Application {
         passwordField.setText(saved.getOrDefault("password", ""));
         connectButton = new Button("Connect");
         statusLabel = new Label("Not connected");
+
+        // Ensure the per-game folder exists
+        File gameFolder = APClient.getGameDataFolderStatic();
+        if (!gameFolder.exists()) gameFolder.mkdirs();
+
+        // load slot_data.json to help with parsing the slot data, we already know the game
+        SlotDataHelper.loadSlotOptions(gameFolder);
 
         connectionPanel.getChildren().addAll(
                 new Label("Game:"), gameField,
