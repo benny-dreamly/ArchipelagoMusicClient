@@ -5,6 +5,8 @@ import app.archipelago.ConnectionListener;
 import app.archipelago.ItemListener;
 import app.archipelago.SlotDataHelper;
 import app.player.*;
+import app.player.json.AlbumMetadata;
+import app.player.json.AlbumMetadataLoader;
 import app.player.json.LibraryLoader;
 import app.player.json.SongJSON;
 import com.google.gson.Gson;
@@ -321,7 +323,13 @@ public class MusicAppDemo extends Application {
                 } else {
                     rawSongs = loader.loadSongs("/locations.json"); // fallback to bundled
                 }
-                AlbumConverter converter = new AlbumConverter();
+                File configDir = new File(gameFolder, "config");
+                if (!configDir.exists()) {
+                    configDir.mkdirs();
+                    System.out.println("Created config folder: " + configDir.getAbsolutePath());
+                }
+                Map<String, AlbumMetadata> metadata = AlbumMetadataLoader.loadAlbumMetadata(configDir);
+                AlbumConverter converter = new AlbumConverter(metadata);
                 return converter.convert(rawSongs);
             }
         };
@@ -444,7 +452,7 @@ public class MusicAppDemo extends Application {
         return null;
     }
 
-    private Song getSongByTitle(String songTitle) {
+    public Song getSongByTitle(String songTitle) {
         for (Album album : albums) {
             for (Song song : album.getSongs()) {
                 if (song.getTitle().equals(songTitle)) return song;
@@ -455,6 +463,12 @@ public class MusicAppDemo extends Application {
 
     private void playSong(Song song) {
         if (song == null) return;
+
+        if (!unlockedSongs.contains(song.getTitle())) {
+            showError("Locked Song", "Cannot play song", song.getTitle() + " is not unlocked yet!");
+            playNextInQueue();
+            return;
+        }
 
         this.currentSong = song;
 
@@ -821,5 +835,9 @@ public class MusicAppDemo extends Application {
             gameFolder.mkdirs();
             System.out.println("Created game data folder: " + gameFolder.getAbsolutePath());
         }
+    }
+
+    public Set<String> getUnlockedSongs() {
+        return unlockedSongs;
     }
 }

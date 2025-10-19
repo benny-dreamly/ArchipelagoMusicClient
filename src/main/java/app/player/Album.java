@@ -13,10 +13,17 @@ public class Album {
 
     private Map<String,String> filenameOverrides = new HashMap<>();
 
+    private boolean fullAlbumUnlock = false; // <-- non Taylor Swift style flag
+
     public Album(String name, String type) {
         this.name = name;
         this.type = type;
         this.songs = new ArrayList<>();
+    }
+
+    public Album(String name, String type, boolean fullUnlock) {
+        this(name, type);
+        this.fullAlbumUnlock = fullUnlock;
     }
 
     public void addSong(Song song) {
@@ -49,4 +56,8 @@ public class Album {
 
     public Map<String,String> getFilenameOverrides() { return filenameOverrides; }
     public void setFilenameOverrides(Map<String,String> overrides) { this.filenameOverrides = overrides; }
+
+    // Flag for whether getting the album unlocks all songs
+    public boolean isFullAlbumUnlock() { return fullAlbumUnlock; }
+    public void setFullAlbumUnlock(boolean fullAlbumUnlock) { this.fullAlbumUnlock = fullAlbumUnlock; }
 }

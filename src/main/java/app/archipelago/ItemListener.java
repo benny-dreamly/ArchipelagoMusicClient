@@ -2,6 +2,7 @@ package app.archipelago;
 
 import app.MusicAppDemo;
 import app.player.Album;
+import app.player.Song;
 import io.github.archipelagomw.events.ArchipelagoEventListener;
 import io.github.archipelagomw.events.ReceiveItemEvent;
 import javafx.application.Platform;
@@ -39,11 +40,20 @@ public class ItemListener {
                 default:
                     Album album = app.getAlbumByName(itemName);
                     if (album != null) {
-                        // Unlock all songs in the album
-                        app.unlockAlbum(album.getName());
-
+                        if (album.isFullAlbumUnlock()) {
+                            // Taylor Swift style: unlock all songs
+                            for (Song song : album.getSongs()) {
+                                app.getUnlockedSongs().add(song.getTitle());
+                            }
+                        }
                         // Enable the set for this album type
                         app.getEnabledSets().add(album.getType());
+                    } else {
+                        // Item is likely a single song (Glass Animals style)
+                        Song song = app.getSongByTitle(itemName);
+                        if (song != null) {
+                            app.getUnlockedSongs().add(song.getTitle());
+                        }
                     }
                     break;
             }

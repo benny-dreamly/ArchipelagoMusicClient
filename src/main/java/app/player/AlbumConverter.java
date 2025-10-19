@@ -1,10 +1,17 @@
 package app.player;
 
+import app.player.json.AlbumMetadata;
 import app.player.json.SongJSON;
 
 import java.util.*;
 
 public class AlbumConverter {
+
+    private final Map<String, AlbumMetadata> albumMetadata;
+
+    public AlbumConverter(Map<String, AlbumMetadata> albumMetadata) {
+        this.albumMetadata = albumMetadata;
+    }
 
     public List<Album> convert(List<SongJSON> rawSongs) {
         Map<String, Album> albums = new HashMap<>();
@@ -17,7 +24,10 @@ public class AlbumConverter {
 
             Album album = albums.computeIfAbsent(
                     raw.region,
-                    name -> new Album(name, detectAlbumType(raw.category))
+                    name -> {
+                        boolean fullUnlock = albumMetadata.getOrDefault(name, new AlbumMetadata(false)).fullAlbumUnlock;
+                        new Album(name, detectAlbumType(raw.category));
+                    }
             );
 
             String songType = raw.category.contains("Re-recordings") ? "rerecording" : "standard";
