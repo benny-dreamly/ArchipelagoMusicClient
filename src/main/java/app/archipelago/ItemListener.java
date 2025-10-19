@@ -39,22 +39,28 @@ public class ItemListener {
                     break;
                 default:
                     Album album = app.getAlbumByName(itemName);
-                    if (album != null) {
-                        if (album.isFullAlbumUnlock()) {
-                            // Taylor Swift style: unlock all songs
-                            for (Song song : album.getSongs()) {
-                                app.getUnlockedSongs().add(song.getTitle());
+                    Song song = app.getSongByTitle(itemName);
+
+                    if (album != null && album.isFullAlbumUnlock()) {
+                        // Only unlock all songs if the item name matches the album name
+                        if (itemName.equals(album.getName())) {
+                            for (Song s : album.getSongs()) {
+                                app.getUnlockedSongs().add(s.getTitle());
                             }
                         }
-                        // Enable the set for this album type
+                        // Enable the album type so songs show
                         app.getEnabledSets().add(album.getType());
-                    } else {
-                        // Item is likely a single song (Glass Animals style)
-                        Song song = app.getSongByTitle(itemName);
-                        if (song != null) {
-                            app.getUnlockedSongs().add(song.getTitle());
+                    } else if (song != null) {
+                        // Single-song unlock (Glass Animals style)
+                        app.getUnlockedSongs().add(song.getTitle());
+
+                        // Ensure the album type is enabled for TreeView display
+                        Album parentAlbum = app.getAlbumForSong(song.getTitle());
+                        if (parentAlbum != null) {
+                            app.getEnabledSets().add(parentAlbum.getType());
                         }
                     }
+
                     break;
             }
 

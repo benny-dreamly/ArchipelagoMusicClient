@@ -443,7 +443,7 @@ public class MusicAppDemo extends Application {
         return null;
     }
 
-    private Album getAlbumForSong(String songTitle) {
+    public Album getAlbumForSong(String songTitle) {
         for (Album album : albums) {
             for (Song song : album.getSongs()) {
                 if (song.getTitle().equals(songTitle)) return album;
