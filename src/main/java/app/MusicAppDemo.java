@@ -243,8 +243,7 @@ public class MusicAppDemo extends Application {
 
                 String gameName = gameField.getText().trim();
                 APClient.saveGameNameStatic(gameName);
-                clearAlbumOrderCache();  // so next getAlbumOrder() reads the correct file
-                client.setGameName(gameName);
+
 
                 // Ensure the per-game folder exists
                 File gameFolder = APClient.getGameDataFolderStatic();
@@ -254,6 +253,8 @@ public class MusicAppDemo extends Application {
                 }
 
                 client = new APClient(host, port, slot, password);
+
+                resetGameState();
                 client.setGameName(gameName);
 
                 ensureGameDefaults(APClient.getGameDataFolderStatic());
@@ -797,5 +798,11 @@ public class MusicAppDemo extends Application {
     // Call this when switching games
     private void clearAlbumOrderCache() {
         albumOrderCache = null;
+    }
+
+    private void resetGameState() {
+        enabledSets.clear();
+        unlockedSongs.clear();
+        clearAlbumOrderCache();  // optional, if album order changes per game
     }
 }
