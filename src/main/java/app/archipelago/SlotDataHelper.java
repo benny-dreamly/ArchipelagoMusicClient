@@ -82,4 +82,8 @@ public class SlotDataHelper {
         public String type;
         public String display_name;
     }
+
+    public static Map<String, SlotOption> getSlotOptions() {
+        return slotOptions;
+    }
 }
