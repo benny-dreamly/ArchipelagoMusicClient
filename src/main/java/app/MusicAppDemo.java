@@ -90,27 +90,33 @@ public class MusicAppDemo extends Application {
 
             String songTitle = newSel.getValue();
             Song song = getSongByTitle(songTitle);
+
+            if (song == null) return; // nothing to do if song not found
+
             Album album = getAlbumForSong(songTitle);
+            boolean songUnlocked = unlockedSongs.contains(song.getTitle());
+            boolean albumUnlocked = album != null && enabledSets.contains(album.getType());
 
-            if (song != null && album != null) {
-                // Check if the song is unlocked AND the album is enabled
-                if (!unlockedSongs.contains(song.getTitle()) || !enabledSets.contains(album.getType())) {
-                    // Feedback: user clicked a locked song
+            // Check unlocking rules
+            if (!songUnlocked || !albumUnlocked) {
+                if (!songUnlocked) {
+                    showError("Locked Song", "Cannot play song", song.getTitle() + " is not unlocked yet!");
+                } else if (!albumUnlocked && album != null) {
                     showError("Locked Song", "Cannot queue song", song.getTitle() + " requires album " + album.getName() + " to be unlocked!");
-                    return; // do not queue
                 }
+                return; // do not queue
+            }
 
-                // Add to queue
-                playQueue.add(song);
+            // Add to queue, song has passed checks
+            playQueue.add(song);
+            updateQueueDisplay();
+
+            // If nothing is playing, start immediately
+            if (currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) {
+                Song next = playQueue.poll();
                 updateQueueDisplay();
-
-                // If nothing is playing, start immediately
-                if (currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) {
-                    Song next = playQueue.poll();
-                    updateQueueDisplay();
-                    if (next != null) {
-                        playSong(next);
-                    }
+                if (next != null) {
+                    playSong(next);
                 }
             }
         });
