@@ -33,6 +33,6 @@ Before running or building the client, make sure you have the following installe
     - Maven: `mvn clean install`
     - Gradle: `gradle build`
 
-    ## How the heck do I configure this?
+## How the heck do I configure this?
 
-    Well, you're in luck. If you go to the docs/ folder, you should be able to find a schema and detailed documentation about where the configuration folders are.
+Well, you're in luck. If you go to the docs/ folder, you should be able to find a schema and detailed documentation about where the configuration folders are.
