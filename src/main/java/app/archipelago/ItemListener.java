@@ -52,7 +52,7 @@ public class ItemListener {
                     // 1. Full-album unlocks (Taylor Swift style)
                     if (album != null && album.isFullAlbumUnlock()) {
                         // Full-album unlock: only if item name matches album
-                        if (normalizedItemName.equals(album.getName())) {
+                        if (normalizedItemName.equalsIgnoreCase(album.getName())) {
                             for (Song s : album.getSongs()) {
                                 app.getUnlockedSongs().add(s.getTitle());
                             }
