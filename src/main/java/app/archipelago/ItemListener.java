@@ -47,6 +47,7 @@ public class ItemListener {
                             for (Song s : album.getSongs()) {
                                 app.getUnlockedSongs().add(s.getTitle());
                             }
+                            app.getUnlockedAlbums().add(album.getName());
                         }
                         // Enable the album type so songs show
                         app.getEnabledSets().add(album.getType());
@@ -54,9 +55,10 @@ public class ItemListener {
                         // Single-song unlock (Glass Animals style)
                         app.getUnlockedSongs().add(song.getTitle());
 
-                        // Ensure the album type is enabled for TreeView display
+                        // Also mark the parent album as "unlocked" for play checks
                         Album parentAlbum = app.getAlbumForSong(song.getTitle());
                         if (parentAlbum != null) {
+                            app.getUnlockedAlbums().add(parentAlbum.getName());
                             app.getEnabledSets().add(parentAlbum.getType());
                         }
                     }
