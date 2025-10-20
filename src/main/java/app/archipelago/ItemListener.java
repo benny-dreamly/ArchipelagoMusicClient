@@ -41,15 +41,19 @@ public class ItemListener {
                     Album album = app.getAlbumByName(itemName);
                     Song song = app.getSongByTitle(itemName);
 
-                    if (album != null) {
+                    if (album != null && album.isFullAlbumUnlock()) {
                         // Full-album unlock: only if item name matches album
-                        if (album.isFullAlbumUnlock() && itemName.equals(album.getName())) {
+                        if (itemName.equals(album.getName())) {
                             for (Song s : album.getSongs()) {
                                 app.getUnlockedSongs().add(s.getTitle());
                             }
                             app.getUnlockedAlbums().add(album.getName());
                         }
                         // Enable the album type so songs show
+                        app.getEnabledSets().add(album.getType());
+                    } else if (album != null) {
+                        // Glass Animals–style album item received
+                        app.getUnlockedAlbums().add(album.getName()); // <— ADD THIS
                         app.getEnabledSets().add(album.getType());
                     } else if (song != null) {
                         // Single-song unlock (Glass Animals style)
