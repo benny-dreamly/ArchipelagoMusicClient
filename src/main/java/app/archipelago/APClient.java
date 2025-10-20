@@ -2,6 +2,7 @@ package app.archipelago;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
 import io.github.archipelagomw.Client;
 import io.github.archipelagomw.flags.ItemsHandling;
 import javafx.application.Platform;
@@ -16,6 +17,7 @@ public class APClient extends Client {
     private final String address;
     private Consumer<Exception> onErrorCallback;
     private String gameName;
+    private JsonElement slotData;
 
     public APClient(String host, int port, String slot, String password) {
         super();
@@ -201,6 +203,14 @@ public class APClient extends Client {
         File dir = new File(baseDir, gameName);
         if (!dir.exists()) dir.mkdirs();
         return dir;
+    }
+
+    public void setSlotData(JsonElement slotData) {
+        this.slotData = slotData;
+    }
+
+    public JsonElement getSlotData() {
+        return this.slotData;
     }
 
 }
