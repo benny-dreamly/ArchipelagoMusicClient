@@ -41,9 +41,9 @@ public class ItemListener {
                     Album album = app.getAlbumByName(itemName);
                     Song song = app.getSongByTitle(itemName);
 
-                    if (album != null && album.isFullAlbumUnlock()) {
-                        // Only unlock all songs if the item name matches the album name
-                        if (itemName.equals(album.getName())) {
+                    if (album != null) {
+                        // Full-album unlock: only if item name matches album
+                        if (album.isFullAlbumUnlock() && itemName.equals(album.getName())) {
                             for (Song s : album.getSongs()) {
                                 app.getUnlockedSongs().add(s.getTitle());
                             }

@@ -35,6 +35,7 @@ import java.util.*;
 public class MusicAppDemo extends Application {
 
     private final List<Album> albums = new ArrayList<>();
+    private final Set<String> unlockedAlbums = new HashSet<>();
     private final Set<String> unlockedSongs = new HashSet<>();
     private final Set<String> enabledSets = new HashSet<>();
 
@@ -480,8 +481,11 @@ public class MusicAppDemo extends Application {
 
         boolean canPlay = false;
         Album album = getAlbumForSong(song.getTitle());
+        boolean albumUnlocked = false;
 
         if (album != null) {
+            // Full album unlock or album item received
+            albumUnlocked = album.isFullAlbumUnlock() || unlockedAlbums.contains(album.getName());
             if (album.isFullAlbumUnlock()) {
                 // Taylor Swift style: any song in album can play
                 canPlay = true;
@@ -873,5 +877,9 @@ public class MusicAppDemo extends Application {
 
     public Set<String> getUnlockedSongs() {
         return unlockedSongs;
+    }
+
+    public Set<String> getUnlockedAlbums() {
+        return unlockedAlbums;
     }
 }
