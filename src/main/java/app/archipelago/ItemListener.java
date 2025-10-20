@@ -38,14 +38,18 @@ public class ItemListener {
                     // Unlock the rerecorded albums
                     break;
                 default:
+                    // Normalize for album lookup only
                     String normalizedItemName = itemName;
+                    boolean isAlbumItem = false;
                     if (itemName.endsWith("(Album)")) {
                         normalizedItemName = itemName.replace("(Album)", "").trim();
+                        isAlbumItem = true;
                     }
 
                     Album album = app.getAlbumByName(normalizedItemName);
                     Song song = app.getSongByTitle(normalizedItemName);
 
+                    // 1. Full-album unlocks (Taylor Swift style)
                     if (album != null && album.isFullAlbumUnlock()) {
                         // Full-album unlock: only if item name matches album
                         if (normalizedItemName.equals(album.getName())) {
@@ -56,11 +60,15 @@ public class ItemListener {
                         }
                         // Enable the album type so songs show
                         app.getEnabledSets().add(album.getType());
-                    } else if (album != null) {
+                    }
+                    // 2. Non-full album item (Glass Animals style)
+                    else if (album != null && isAlbumItem) {
                         // Glass Animals–style album item received
                         app.getUnlockedAlbums().add(album.getName()); // <— ADD THIS
                         app.getEnabledSets().add(album.getType());
-                    } else if (song != null) {
+                    }
+                    // 3. Song item (single-song unlock)
+                    else if (song != null) {
                         // Single-song unlock (Glass Animals style)
                         app.getUnlockedSongs().add(song.getTitle());
 
@@ -70,6 +78,10 @@ public class ItemListener {
                             app.getUnlockedAlbums().add(parentAlbum.getName());
                             app.getEnabledSets().add(parentAlbum.getType());
                         }
+                    } else if (album != null) {
+                        // Catch-all for album items that aren't full-album or song items
+                        app.getUnlockedAlbums().add(album.getName());
+                        app.getEnabledSets().add(album.getType());
                     }
 
                     break;
