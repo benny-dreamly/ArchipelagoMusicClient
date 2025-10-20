@@ -312,6 +312,14 @@ public class MusicAppDemo extends Application {
                 // Re-enable game field
                 gameField.setDisable(false);
                 gameField.setTooltip(null);
+
+                // CLEAR ALL UNLOCKED / ENABLED DATA
+                enabledSets.clear();
+                unlockedAlbums.clear();
+                unlockedSongs.clear();
+
+                // Refresh tree so nothing shows
+                refreshTree();
             }
         });
     }
