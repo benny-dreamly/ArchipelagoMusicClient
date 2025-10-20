@@ -30,7 +30,15 @@ public class AlbumConverter {
                     }
             );
 
-            String songType = raw.category.contains("Re-recordings") ? "rerecording" : "standard";
+            String songType;
+            if (raw.category.contains("Short Songs")) {
+                songType = "short";
+            } else if (raw.category.contains("Re-recordings")) {
+                songType = "rerecording";
+            } else {
+                songType = "standard";
+            }
+
             album.addSong(new Song(raw.name, songType));
         }
 

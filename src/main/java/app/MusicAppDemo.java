@@ -931,6 +931,48 @@ public class MusicAppDemo extends Application {
             }
         }
 
+        // --- Handle song categories (e.g. short songs, vault tracks) ---
+        boolean shortSongsEnabled = false;
+
+        // Safely check if include_short_songs exists and is true
+        if (slotMap.containsKey("include_short_songs")) {
+            Object val = slotMap.get("include_short_songs");
+            if (val instanceof Boolean) {
+                shortSongsEnabled = (Boolean) val;
+            } else if ("true".equalsIgnoreCase(val.toString())) {
+                shortSongsEnabled = true;
+            }
+        }
+
+        // Same idea for vault tracks if you want:
+        boolean vaultSongsEnabled = false;
+        if (slotMap.containsKey("include_vault_tracks")) {
+            Object val = slotMap.get("include_vault_tracks");
+            if (val instanceof Boolean) {
+                vaultSongsEnabled = (Boolean) val;
+            } else if ("true".equalsIgnoreCase(val.toString())) {
+                vaultSongsEnabled = true;
+            }
+        }
+
+        // Now remove any songs that should not be visible
+        for (Album album : albums) {
+            for (Song s : new ArrayList<>(album.getSongs())) { // avoid ConcurrentModification
+                String type = s.getType();
+
+                // Skip short songs if disabled
+                if (!shortSongsEnabled && "short".equalsIgnoreCase(type)) {
+                    unlockedSongs.remove(s.getTitle());
+                    continue;
+                }
+
+                // Skip vault tracks if disabled
+                if (!vaultSongsEnabled && "vault".equalsIgnoreCase(type)) {
+                    unlockedSongs.remove(s.getTitle());
+                }
+            }
+        }
+
         refreshTree(); // update the UI
     }
 
