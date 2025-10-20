@@ -478,18 +478,15 @@ public class MusicAppDemo extends Application {
     private void playSong(Song song) {
         if (song == null) return;
 
+        boolean canPlay = false;
         Album album = getAlbumForSong(song.getTitle());
 
-        // Check album unlock / song unlock
-        boolean canPlay = false;
-
         if (album != null) {
-            // If the album is fully unlocked (Taylor Swift style)
             if (album.isFullAlbumUnlock()) {
+                // Taylor Swift style: any song in album can play
                 canPlay = true;
-            }
-            // Otherwise, individual song must be unlocked
-            else if (unlockedSongs.contains(song.getTitle()) && enabledSets.contains(album.getType())) {
+            } else if (unlockedSongs.contains(song.getTitle()) && enabledSets.contains(album.getType())) {
+                // Individual song unlocked (Glass Animals style)
                 canPlay = true;
             }
         } else {
