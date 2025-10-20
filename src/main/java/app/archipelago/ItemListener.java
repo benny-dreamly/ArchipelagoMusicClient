@@ -41,7 +41,7 @@ public class ItemListener {
                     Album album = app.getAlbumByName(itemName);
                     Song song = app.getSongByTitle(itemName);
 
-                    if ("Dreamland (Album)".equals(itemName)) {
+                    if ("Dreamland (Album)".equalsIgnoreCase(itemName)) {
                         Album dreamlandAlbum = app.getAlbumByName("Dreamland");
                         if (dreamlandAlbum != null) {
                             app.getUnlockedAlbums().add(dreamlandAlbum.getName());
