@@ -13,9 +13,9 @@ import java.util.Map;
 public class AlbumMetadataLoader {
 
     public static Map<String, AlbumMetadata> loadAlbumMetadata(File configDir) {
-        File file = new File(configDir, "albums.json");
+        File file = new File(configDir, "album_metadata.json");
         if (!file.exists()) {
-            System.err.println("No albums.json found in " + configDir.getAbsolutePath());
+            System.err.println("No album_metadata.json found in " + configDir.getAbsolutePath());
             return Collections.emptyMap();
         }
 
