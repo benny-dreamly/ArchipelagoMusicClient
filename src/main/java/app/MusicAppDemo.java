@@ -484,18 +484,27 @@ public class MusicAppDemo extends Application {
         boolean canPlay = false;
 
         if (album != null) {
+            // If the album is fully unlocked (Taylor Swift style)
             if (album.isFullAlbumUnlock()) {
-                canPlay = true; // entire album unlocked
-            } else if (unlockedSongs.contains(song.getTitle())) {
-                canPlay = true; // individual song unlocked
+                canPlay = true;
+            }
+            // Otherwise, individual song must be unlocked
+            else if (unlockedSongs.contains(song.getTitle()) && enabledSets.contains(album.getType())) {
+                canPlay = true;
             }
         } else {
-            // Song not part of an album? probably allow if in unlockedSongs
+            // Song without an album: allow if individually unlocked
             canPlay = unlockedSongs.contains(song.getTitle());
         }
 
         if (!canPlay) {
-            showError("Locked Song", "Cannot play song", song.getTitle() + " is not unlocked yet!");
+            String msg;
+            if (album != null && !enabledSets.contains(album.getType())) {
+                msg = song.getTitle() + " requires album " + album.getName() + " to be unlocked!";
+            } else {
+                msg = song.getTitle() + " is not unlocked yet!";
+            }
+            showError("Locked Song", "Cannot play song", msg);
             return;
         }
 
