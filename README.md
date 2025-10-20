@@ -36,3 +36,28 @@ Before running or building the client, make sure you have the following installe
 ## How the heck do I configure this?
 
 Well, you're in luck. If you go to the docs/ folder, you should be able to find a schema and detailed documentation about where the configuration folders are.
+See the [Configuration & File Reference](#configuration--file-reference) section of the readme for this.
+
+# Configuration & File Reference
+
+This folder contains detailed information about how the Music Player for Archipelago handles its configuration and metadata files.
+
+If you’re setting up your own music manual (or modifying an existing one), you’ll find here:
+- File schemas describing each JSON config file.
+- Example configuration files.
+- File system locations on different operating systems.
+- Troubleshooting steps for common issues.
+
+## Configuration files overview
+
+| File | Purpose |
+|------|----------|
+| `albumFolders.json` | Maps album names to folder paths where your local music files are stored. |
+| `albumOrder.json` | Controls the display order of albums in the music library tree. |
+| `locations.json` | Defines all available songs, albums, and their relationships. |
+| `slot_data.json` | Describes what is unlocked or available to the player in randomizer/Archipelago mode. |
+| `albumMetadata.json` *(optional)* | Provides metadata such as album type, year, or “Taylor’s Version” flag. |
+
+All configuration files live inside your **per-game folder**, which is automatically created under your operating system’s application data directory.
+
+See [`config-locations.md`](./config-locations.md) for platform-specific paths.

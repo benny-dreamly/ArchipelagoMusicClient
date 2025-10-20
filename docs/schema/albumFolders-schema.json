@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "albumFolders.json Schema",
+  "description": "Maps album names to their respective folder paths on disk.",
+  "type": "object",
+  "additionalProperties": {
+    "type": "string",
+    "description": "Absolute or relative path to the album's folder containing audio files."
+  },
+  "examples": [
+    {
+      "Fearless (Taylor's Version)": "C:/Users/Ben/Music/TaylorSwift/FearlessTV",
+      "Midnights": "/Users/ben/Music/TaylorSwift/Midnights"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "album_metadata.json Schema",
+  "description": "Defines album-level metadata, such as unlock behavior and category type.",
+  "type": "object",
+  "additionalProperties": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "description": "The category of the album (e.g., 'standard', 're-recording', 'vault')."
+      },
+      "full_album_unlock": {
+        "type": "boolean",
+        "description": "If true, unlocking the album automatically unlocks all songs."
+      }
+    },
+    "required": ["type", "full_album_unlock"]
+  },
+  "examples": [
+    {
+      "Fearless (Taylor's Version)": {
+        "type": "re-recording",
+        "full_album_unlock": true
+      },
+      "Midnights": {
+        "type": "standard",
+        "full_album_unlock": false
+      }
+    }
+  ]
+}

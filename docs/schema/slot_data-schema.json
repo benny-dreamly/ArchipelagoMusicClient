@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "slot_data.json Schema",
+  "description": "Defines available slot data keys used to determine which albums, categories, or features are enabled.",
+  "type": "object",
+  "properties": {
+    "slot_data_keys": {
+      "type": "object",
+      "description": "Map of slot data keys to their configuration.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["album", "song_option"],
+            "description": "The type of unlock this represents (album or song option)."
+          },
+          "display_name": {
+            "type": "string",
+            "description": "The name displayed in the app or client."
+          }
+        },
+        "required": ["type", "display_name"]
+      }
+    }
+  },
+  "required": ["slot_data_keys"],
+  "examples": [
+    {
+      "slot_data_keys": {
+        "include_fearless": {
+          "type": "album",
+          "display_name": "Fearless (Taylor's Version)"
+        },
+        "include_vault_tracks": {
+          "type": "song_option",
+          "display_name": "Vault Tracks"
+        }
+      }
+    }
+  ]
+}

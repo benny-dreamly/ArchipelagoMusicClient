@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "albumOrder.json Schema",
+  "description": "Defines the order in which albums appear in the UI tree view.",
+  "type": "array",
+  "items": {
+    "type": "string",
+    "description": "Album name in display order."
+  },
+  "uniqueItems": true,
+  "examples": [
+    [
+      "Taylor Swift",
+      "Fearless (Taylor's Version)",
+      "Speak Now (Taylor's Version)",
+      "1989 (Taylor's Version)",
+      "Midnights",
+      "The Tortured Poets Department"
+    ]
+  ]
+}
