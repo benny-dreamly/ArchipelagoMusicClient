@@ -24,4 +24,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MusicPlayer-JAR
-          path: build/libs/ArchipelagoMusicClient-*.jar
+          path: build/libs/ArchipelagoMusicClient-*-all.jar
