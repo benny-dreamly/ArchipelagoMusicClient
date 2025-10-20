@@ -19,3 +19,9 @@ jobs:
 
       - name: Build Jar
         run: ./gradlew clean build
+      
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: MusicPlayer-JAR
+          path: build/libs/ArchipelagoMusicClient-*.jar
