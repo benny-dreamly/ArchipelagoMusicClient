@@ -11,6 +11,7 @@ import app.player.json.LibraryLoader;
 import app.player.json.SongJSON;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 import javafx.application.Application;
 import javafx.geometry.Insets;
@@ -295,6 +296,8 @@ public class MusicAppDemo extends Application {
                     // --- Disable the game field after connecting ---
                     gameField.setDisable(true);
                     gameField.setTooltip(new Tooltip("Cannot change game while connected"));
+
+                    applySlotData();
                 } catch (Exception ex) {
                     statusLabel.setText("Connection failed");
                     showError("Connection Failed", "Failed to connect to Archipelago server", ex.getMessage());
@@ -401,6 +404,9 @@ public class MusicAppDemo extends Application {
         rootItem.setExpanded(true);
 
         for (Album album : albums) {
+            // Skip albums not unlocked in slot data
+            if (!unlockedAlbums.contains(album.getName())) continue;
+
             TreeItem<String> albumItem = new TreeItem<>(album.getName());
             boolean hasSongs = false;
 
@@ -875,5 +881,28 @@ public class MusicAppDemo extends Application {
 
     public Set<String> getUnlockedAlbums() {
         return unlockedAlbums;
+    }
+
+    public void applySlotData() {
+        if (client == null || client.getSlotData() == null) return;
+
+        JsonElement json = client.getSlotData();
+        Map<String, Object> slotMap = new Gson().fromJson(json, new TypeToken<Map<String, Object>>() {}.getType());
+
+        // Get enabled albums dynamically from SlotDataHelper
+        Set<String> enabledAlbumsFromSlotData = SlotDataHelper.getEnabledAlbums(slotMap);
+
+        // Clear previously enabled sets
+        enabledSets.clear();
+
+        // Enable only the albums in slot data
+        for (Album album : albums) {
+            if (enabledAlbumsFromSlotData.contains(album.getName())) {
+                unlockedAlbums.add(album.getName());   // mark album as unlocked
+                enabledSets.add(album.getType());      // enable album type for tree filtering
+            }
+        }
+
+        refreshTree(); // update the UI
     }
 }
