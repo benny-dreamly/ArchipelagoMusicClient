@@ -313,6 +313,10 @@ public class MusicAppDemo extends Application {
                 gameField.setDisable(false);
                 gameField.setTooltip(null);
 
+                // stop playback
+                stopCurrentSong();
+                clearPlaybackState();
+
                 // CLEAR ALL UNLOCKED / ENABLED DATA
                 enabledSets.clear();
                 unlockedAlbums.clear();
@@ -908,5 +912,17 @@ public class MusicAppDemo extends Application {
         }
 
         refreshTree(); // update the UI
+    }
+
+    public void stopCurrentSong() {
+        if (currentPlayer != null) {
+            currentPlayer.stop();
+            currentPlayer = null;
+        }
+    }
+
+    public void clearPlaybackState() {
+        currentSongLabel.setText("");
+        // any other UI cleanup (like resetting progress bar, etc.)
     }
 }
