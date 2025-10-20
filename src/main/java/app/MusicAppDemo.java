@@ -349,12 +349,8 @@ public class MusicAppDemo extends Application {
                 } else {
                     rawSongs = loader.loadSongs("/locations.json"); // fallback to bundled
                 }
-                File configDir = new File(gameFolder, "config");
-                if (!configDir.exists()) {
-                    configDir.mkdirs();
-                    System.out.println("Created config folder: " + configDir.getAbsolutePath());
-                }
-                Map<String, AlbumMetadata> metadata = AlbumMetadataLoader.loadAlbumMetadata(configDir);
+
+                Map<String, AlbumMetadata> metadata = AlbumMetadataLoader.loadAlbumMetadata(gameFolder);
                 AlbumConverter converter = new AlbumConverter(metadata);
                 return converter.convert(rawSongs);
             }
