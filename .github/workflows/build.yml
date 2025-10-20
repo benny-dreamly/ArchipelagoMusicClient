@@ -3,7 +3,7 @@ name: Build Music Player
 on:
   push:
     tags:
-      - 'v*'  # triggers on any tag starting with "v", e.g., v1.0, v2.3.1
+      - '*v'  # triggers on any tag starting with "v", e.g., v1.0, v2.3.1
 
 jobs:
   build-mac:
