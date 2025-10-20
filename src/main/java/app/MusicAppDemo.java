@@ -485,17 +485,10 @@ public class MusicAppDemo extends Application {
         boolean songUnlocked = unlockedSongs.contains(song.getTitle());
 
         if (album != null) {
-            // Full album unlock or album item received
-            albumUnlocked = album.isFullAlbumUnlock() || unlockedAlbums.contains(album.getName());
-            if (album.isFullAlbumUnlock()) {
-                // Taylor Swift style: any song in album can play
-                canPlay = true;
-            } else if (songUnlocked && albumUnlocked) {
-                // Individual song unlocked (Glass Animals style)
-                canPlay = true;
-            }
+            // For songs in an album: must either be full-album unlocked OR both the song and album unlocked
+            canPlay = album.isFullAlbumUnlock() || (songUnlocked && albumUnlocked);
         } else {
-            // Song without an album: allow if individually unlocked
+            // Song not in an album: just check if the song is unlocked
             canPlay = songUnlocked;
         }
 
