@@ -908,6 +908,26 @@ public class MusicAppDemo extends Application {
             if (enabledAlbumsFromSlotData.contains(album.getName())) {
                 unlockedAlbums.add(album.getName());   // mark album as unlocked
                 enabledSets.add(album.getType());      // enable album type for tree filtering
+
+                // Full-album unlock (Taylor style): unlock all songs
+                if (album.isFullAlbumUnlock()) {
+                    for (Song s : album.getSongs()) {
+                        unlockedSongs.add(s.getTitle());
+                    }
+                }
+            }
+        }
+
+        // 2. Unlock albums by type if the corresponding slot is enabled
+        if (enabledAlbumsFromSlotData.contains("Re-recordings")) {
+            for (Album album : albums) {
+                if ("re-recording".equalsIgnoreCase(album.getType())) {
+                    unlockedAlbums.add(album.getName());
+                    enabledSets.add(album.getType());
+                    for (Song s : album.getSongs()) {
+                        unlockedSongs.add(s.getTitle());
+                    }
+                }
             }
         }
 
