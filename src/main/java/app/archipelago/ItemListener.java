@@ -38,40 +38,37 @@ public class ItemListener {
                     // Unlock the rerecorded albums
                     break;
                 default:
-                    Album album = app.getAlbumByName(itemName);
-                    Song song = app.getSongByTitle(itemName);
+                    String normalizedItemName = itemName;
+                    if (itemName.endsWith("(Album)")) {
+                        normalizedItemName = itemName.replace("(Album)", "").trim();
+                    }
 
-                    if ("Dreamland (Album)".equalsIgnoreCase(itemName)) {
-                        Album dreamlandAlbum = app.getAlbumByName("Dreamland");
-                        if (dreamlandAlbum != null) {
-                            app.getUnlockedAlbums().add(dreamlandAlbum.getName());
-                            app.getEnabledSets().add(dreamlandAlbum.getType());
+                    Album album = app.getAlbumByName(normalizedItemName);
+                    Song song = app.getSongByTitle(normalizedItemName);
+
+                    if (album != null && album.isFullAlbumUnlock()) {
+                        // Full-album unlock: only if item name matches album
+                        if (normalizedItemName.equals(album.getName())) {
+                            for (Song s : album.getSongs()) {
+                                app.getUnlockedSongs().add(s.getTitle());
+                            }
+                            app.getUnlockedAlbums().add(album.getName());
                         }
-                    } else {
-                        if (album != null && album.isFullAlbumUnlock()) {
-                            // Full-album unlock: only if item name matches album
-                            if (itemName.equals(album.getName())) {
-                                for (Song s : album.getSongs()) {
-                                    app.getUnlockedSongs().add(s.getTitle());
-                                }
-                                app.getUnlockedAlbums().add(album.getName());
-                            }
-                            // Enable the album type so songs show
-                            app.getEnabledSets().add(album.getType());
-                        } else if (album != null) {
-                            // Glass Animals–style album item received
-                            app.getUnlockedAlbums().add(album.getName()); // <— ADD THIS
-                            app.getEnabledSets().add(album.getType());
-                        } else if (song != null) {
-                            // Single-song unlock (Glass Animals style)
-                            app.getUnlockedSongs().add(song.getTitle());
+                        // Enable the album type so songs show
+                        app.getEnabledSets().add(album.getType());
+                    } else if (album != null) {
+                        // Glass Animals–style album item received
+                        app.getUnlockedAlbums().add(album.getName()); // <— ADD THIS
+                        app.getEnabledSets().add(album.getType());
+                    } else if (song != null) {
+                        // Single-song unlock (Glass Animals style)
+                        app.getUnlockedSongs().add(song.getTitle());
 
-                            // Also mark the parent album as "unlocked" for play checks
-                            Album parentAlbum = app.getAlbumForSong(song.getTitle());
-                            if (parentAlbum != null) {
-                                app.getUnlockedAlbums().add(parentAlbum.getName());
-                                app.getEnabledSets().add(parentAlbum.getType());
-                            }
+                        // Also mark the parent album as "unlocked" for play checks
+                        Album parentAlbum = app.getAlbumForSong(song.getTitle());
+                        if (parentAlbum != null) {
+                            app.getUnlockedAlbums().add(parentAlbum.getName());
+                            app.getEnabledSets().add(parentAlbum.getType());
                         }
                     }
 
