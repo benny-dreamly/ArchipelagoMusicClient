@@ -10,8 +10,8 @@ Maps each album name to the path where your audio files are stored.
 
 ```json
 {
-  "Fearless (Taylor's Version)": "C:/Users/Ben/Music/TaylorSwift/FearlessTV",
-  "Midnights": "/Users/ben/Music/TaylorSwift/Midnights"
+  "Fearless (Taylor's Version)": "C:/Users/ExampleUser/Music/TaylorSwift/FearlessTV",
+  "Midnights": "/Users/example_user/Music/TaylorSwift/Midnights"
 }
 ```
 
