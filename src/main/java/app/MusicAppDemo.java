@@ -14,6 +14,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 import javafx.application.Application;
+import javafx.beans.value.ChangeListener;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -27,6 +28,7 @@ import javafx.scene.media.MediaPlayer;
 import javafx.scene.media.Media;
 import javafx.stage.Stage;
 import javafx.concurrent.Task;
+import javafx.util.Duration;
 
 import java.io.*;
 import java.lang.reflect.Type;
@@ -57,6 +59,12 @@ public class MusicAppDemo extends Application {
     private ListView<String> queueListView;   // visual queue (titles)
     private MediaPlayer currentPlayer;
 
+    private Slider progressSlider;
+    private Label elapsedLabel;
+    private Label durationLabel;
+
+    private boolean seekEnabled;
+
     private boolean isUpdatingSelection = false;
 
     public static void main(String[] args) {
@@ -69,6 +77,23 @@ public class MusicAppDemo extends Application {
 
         treeView = new TreeView<>();
         currentSongLabel = new Label("Currently Playing: None");
+
+        CheckBox enableSeekCheck = new CheckBox("Enable Seek Slider");
+        enableSeekCheck.setSelected(false); // default off
+
+        progressSlider = new Slider();
+        progressSlider.setMin(0);
+        progressSlider.setMax(1); // normalized
+        progressSlider.setValue(0);
+        progressSlider.setPrefWidth(400);
+        progressSlider.setDisable(true);
+
+        elapsedLabel = new Label("0:00");
+        durationLabel = new Label("0:00");
+
+        HBox progressBox = new HBox(5, elapsedLabel, progressSlider, durationLabel);
+        progressBox.setAlignment(Pos.CENTER);
+
         queueListView = new ListView<>();
         queueListView.setPrefHeight(120);
 
@@ -187,7 +212,7 @@ public class MusicAppDemo extends Application {
         Button clearQueueBtn = new Button("Clear Queue");
         queueButtons.getChildren().addAll(removeSelectedBtn, clearQueueBtn);
 
-        queueBox.getChildren().addAll(currentSongLabel, playerButtons, new Label("Queue:"), queueScrollPane, queueButtons);
+        queueBox.getChildren().addAll(currentSongLabel, enableSeekCheck ,progressBox, playerButtons, new Label("Queue:"), queueScrollPane, queueButtons);
         queueBox.setAlignment(Pos.CENTER_RIGHT);
         HBox.setHgrow(queueBox, Priority.ALWAYS);
 
@@ -240,6 +265,16 @@ public class MusicAppDemo extends Application {
         clearQueueBtn.setOnAction(e -> {
             playQueue.clear();
             updateQueueDisplay();
+        });
+
+        enableSeekCheck.selectedProperty().addListener((obs, wasSelected, isSelected) -> {
+            progressSlider.setDisable(!isSelected);  // disable slider when checkbox off
+
+            if (isSelected) {
+                progressSlider.valueChangingProperty().addListener(seekListener);
+            } else {
+                progressSlider.valueChangingProperty().removeListener(seekListener);
+            }
         });
 
         // Add panels to bottom bar
@@ -551,8 +586,31 @@ public class MusicAppDemo extends Application {
             currentPlayer.dispose(); // release OS resources
         }
 
+        // Reset progress slider and labels
+        progressSlider.setValue(0);
+        elapsedLabel.setText("0:00");
+        durationLabel.setText("0:00");
+
         Media media = new Media(Paths.get(song.getFilePath()).toUri().toString());
         currentPlayer = new MediaPlayer(media);
+
+        currentPlayer.currentTimeProperty().addListener((obs, oldTime, newTime) -> {
+            if (!progressSlider.isValueChanging()) {
+                Duration total = currentPlayer.getTotalDuration();
+                if (total != null && total.greaterThan(Duration.ZERO)) {
+                    progressSlider.setValue(newTime.toMillis() / total.toMillis());
+                    elapsedLabel.setText(formatTime(newTime));
+                }
+            }
+        });
+
+        // Set duration label once media is ready
+        currentPlayer.setOnReady(() -> {
+            Duration total = currentPlayer.getTotalDuration();
+            if (total != null) {
+                durationLabel.setText(formatTime(total));
+            }
+        });
 
         currentPlayer.setOnEndOfMedia(() -> {
             if (client != null && client.isConnected()) {
@@ -1009,4 +1067,20 @@ public class MusicAppDemo extends Application {
         currentSongLabel.setText("");
         // any other UI cleanup (like resetting progress bar, etc.)
     }
+
+    private String formatTime(Duration duration) {
+        int totalSeconds = (int) duration.toSeconds();
+        int minutes = totalSeconds / 60;
+        int seconds = totalSeconds % 60;
+        return String.format("%d:%02d", minutes, seconds);
+    }
+
+    private final ChangeListener<Boolean> seekListener = (obs, wasChanging, isChanging) -> {
+        if (!isChanging && currentPlayer != null) {
+            Duration total = currentPlayer.getTotalDuration();
+            if (total != null) {
+                currentPlayer.seek(total.multiply(progressSlider.getValue()));
+            }
+        }
+    };
 }
