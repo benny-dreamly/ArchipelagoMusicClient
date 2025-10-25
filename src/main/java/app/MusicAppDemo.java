@@ -32,6 +32,7 @@ import java.io.*;
 import java.lang.reflect.Type;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class MusicAppDemo extends Application {
 
@@ -64,6 +65,8 @@ public class MusicAppDemo extends Application {
 
     @Override
     public void start(Stage stage) {
+        AtomicReference<File> gameFolder = new AtomicReference<>();
+
         treeView = new TreeView<>();
         currentSongLabel = new Label("Currently Playing: None");
         queueListView = new ListView<>();
@@ -151,11 +154,11 @@ public class MusicAppDemo extends Application {
         statusLabel = new Label("Not connected");
 
         // Ensure the per-game folder exists
-        File gameFolder = APClient.getGameDataFolderStatic();
-        checkIfGameFolderExists(gameFolder);
+        gameFolder.set(APClient.getGameDataFolderStatic());
+        checkIfGameFolderExists(gameFolder.get());
 
         // load slot_data.json to help with parsing the slot data, we already know the game
-        SlotDataHelper.loadSlotOptions(gameFolder);
+        SlotDataHelper.loadSlotOptions(gameFolder.get());
 
         connectionPanel.getChildren().addAll(
                 new Label("Game:"), gameField,
@@ -275,7 +278,14 @@ public class MusicAppDemo extends Application {
                 resetGameState();
                 client.setGameName(gameName);
 
-                ensureGameDefaults(APClient.getGameDataFolderStatic());
+                gameFolder.set(APClient.getGameDataFolderStatic());
+                checkIfGameFolderExists(gameFolder.get());
+
+                // ✅ reload slot options after game changes
+                SlotDataHelper.loadSlotOptions(gameFolder.get());
+
+                ensureGameDefaults(gameFolder.get());
+                reloadGameLibrary(gameFolder.get());
 
                 client.setOnErrorCallback(ex -> {
                     statusLabel.setText("Connection failed");
@@ -396,6 +406,18 @@ public class MusicAppDemo extends Application {
             loadTask.getException().printStackTrace();
         });
         return loadTask;
+    }
+
+    private void reloadGameLibrary(File gameFolder) {
+        // clear old state before reloading
+        albums.clear();
+        unlockedAlbums.clear();
+        unlockedSongs.clear();
+        enabledSets.clear();
+        clearAlbumOrderCache();
+
+        Task<List<Album>> loadTask = getLoadTask();
+        new Thread(loadTask).start();
     }
 
     public void refreshTree() {
