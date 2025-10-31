@@ -329,6 +329,10 @@ public class MusicAppDemo extends Application {
                     alert.setHeaderText("Failed to connect to Archipelago server");
                     alert.setContentText("Reason: " + ex.getMessage());
                     alert.showAndWait();
+
+                    // Reset button and fields so user can try again
+                    connectButton.setText("Connect");
+                    gameField.setDisable(false);
                 });
 
                 try {
