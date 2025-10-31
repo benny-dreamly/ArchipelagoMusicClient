@@ -324,11 +324,9 @@ public class MusicAppDemo extends Application {
 
                 client.setOnErrorCallback(ex -> {
                     statusLabel.setText("Connection failed");
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setTitle("Connection Failed");
-                    alert.setHeaderText("Failed to connect to Archipelago server");
-                    alert.setContentText("Reason: " + ex.getMessage());
-                    alert.showAndWait();
+                    showError("Connection Failed",
+                            "Failed to connect to Archipelago server",
+                            "Reason: " + ex.getMessage());
 
                     // Reset button and fields so user can try again
                     connectButton.setText("Connect");
