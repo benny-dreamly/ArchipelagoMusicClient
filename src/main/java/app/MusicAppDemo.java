@@ -493,7 +493,7 @@ public class MusicAppDemo extends Application {
         treeView.setRoot(rootItem);
     }
 
-    private void showError(String title, String header, String content) {
+    public void showError(String title, String header, String content) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(title);
         alert.setHeaderText(header);
