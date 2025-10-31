@@ -1094,4 +1094,12 @@ public class MusicAppDemo extends Application {
         elapsedLabel.setText("0:00");
         durationLabel.setText("0:00");
     }
+
+    public void setConnectButtonText(String text) {
+        connectButton.setText(text);
+    }
+
+    public void setGameFieldDisabled(boolean disabled) {
+        gameField.setDisable(disabled);
+    }
 }
