@@ -67,7 +67,25 @@ public class MusicAppDemo extends Application {
 
     private boolean isUpdatingSelection = false;
 
+    // various fields and stuff for the UI (the others are above or locally defined)
     private TextField gameField;
+    private HBox queueButtons;
+    private Button removeSelectedBtn;
+    private Button clearQueueBtn;
+    private Button pauseButton;
+    private Button playButton;
+    private HBox playerButtons;
+    private VBox queueBox;
+    private TextField hostField;
+    private TextField portField;
+    private TextField slotField;
+    private TextField passwordField;
+    private VBox connectionPanel;
+    private HBox bottomBar;
+    private ScrollPane queueScrollPane;
+    private HBox progressBox;
+    private CheckBox enableSeekCheck;
+    private VBox root;
 
     public static void main(String[] args) {
         launch();
@@ -80,7 +98,7 @@ public class MusicAppDemo extends Application {
         treeView = new TreeView<>();
         currentSongLabel = new Label("Currently Playing: None");
 
-        CheckBox enableSeekCheck = new CheckBox("Enable Seek Slider");
+        enableSeekCheck = new CheckBox("Enable Seek Slider");
         enableSeekCheck.setSelected(false); // default off
 
         progressSlider = new Slider();
@@ -93,13 +111,13 @@ public class MusicAppDemo extends Application {
         elapsedLabel = new Label("0:00");
         durationLabel = new Label("0:00");
 
-        HBox progressBox = new HBox(5, elapsedLabel, progressSlider, durationLabel);
+        progressBox = new HBox(5, elapsedLabel, progressSlider, durationLabel);
         progressBox.setAlignment(Pos.CENTER);
 
         queueListView = new ListView<>();
         queueListView.setPrefHeight(120);
 
-        ScrollPane queueScrollPane = new ScrollPane(queueListView);
+        queueScrollPane = new ScrollPane(queueListView);
         queueScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.ALWAYS);
         queueScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
 
@@ -156,22 +174,22 @@ public class MusicAppDemo extends Application {
         refreshTree();
 
         // Bottom controls HBox
-        HBox bottomBar = new HBox(20);
+        bottomBar = new HBox(20);
         bottomBar.setPadding(new Insets(10));
         bottomBar.setAlignment(Pos.CENTER);
 
         // Left: Archipelago connection panel
-        VBox connectionPanel = new VBox(5);
+        connectionPanel = new VBox(5);
         gameField = new TextField();
         gameField.setPromptText("Game / Manual name");
 
         // Load saved game name
         String savedGameName = APClient.loadSavedGameNameStatic();
         gameField.setText(savedGameName);
-        TextField hostField = new TextField("localhost");
-        TextField portField = new TextField("38281");
-        TextField slotField = new TextField("Player1");
-        TextField passwordField = new TextField();
+        hostField = new TextField("localhost");
+        portField = new TextField("38281");
+        slotField = new TextField("Player1");
+        passwordField = new TextField();
         Map<String, String> saved = loadConnectionSettings();
         hostField.setText(saved.getOrDefault("host", "localhost"));
         portField.setText(saved.getOrDefault("port", "38281"));
@@ -200,21 +218,21 @@ public class MusicAppDemo extends Application {
         HBox.setHgrow(connectionPanel, Priority.ALWAYS);
 
         // Right: Music player panel (with queue ListView and queue controls)
-        VBox queueBox = new VBox(6);
+        queueBox = new VBox(6);
         queueBox.setAlignment(Pos.CENTER_RIGHT);
 
-        HBox playerButtons = new HBox(6);
-        Button playButton = new Button("▶");
-        Button pauseButton = new Button("⏸");
+        playerButtons = new HBox(6);
+        playButton = new Button("▶");
+        pauseButton = new Button("⏸");
         playerButtons.getChildren().addAll(playButton, pauseButton);
 
         // Queue control buttons
-        HBox queueButtons = new HBox(6);
-        Button removeSelectedBtn = new Button("Remove Selected");
-        Button clearQueueBtn = new Button("Clear Queue");
+        queueButtons = new HBox(6);
+        removeSelectedBtn = new Button("Remove Selected");
+        clearQueueBtn = new Button("Clear Queue");
         queueButtons.getChildren().addAll(removeSelectedBtn, clearQueueBtn);
 
-        queueBox.getChildren().addAll(currentSongLabel, enableSeekCheck ,progressBox, playerButtons, new Label("Queue:"), queueScrollPane, queueButtons);
+        queueBox.getChildren().addAll(currentSongLabel, enableSeekCheck , progressBox, playerButtons, new Label("Queue:"), queueScrollPane, queueButtons);
         queueBox.setAlignment(Pos.CENTER_RIGHT);
         HBox.setHgrow(queueBox, Priority.ALWAYS);
 
@@ -282,7 +300,7 @@ public class MusicAppDemo extends Application {
         // Add panels to bottom bar
         bottomBar.getChildren().addAll(connectionPanel, queueBox);
 
-        VBox root = new VBox(10, treeView, bottomBar);
+        root = new VBox(10, treeView, bottomBar);
         stage.setScene(new Scene(root, 800, 600));
         stage.setTitle("MusicApp Demo");
         stage.show();
