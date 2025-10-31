@@ -67,6 +67,8 @@ public class MusicAppDemo extends Application {
 
     private boolean isUpdatingSelection = false;
 
+    private TextField gameField;
+
     public static void main(String[] args) {
         launch();
     }
@@ -160,7 +162,7 @@ public class MusicAppDemo extends Application {
 
         // Left: Archipelago connection panel
         VBox connectionPanel = new VBox(5);
-        TextField gameField = new TextField();
+        gameField = new TextField();
         gameField.setPromptText("Game / Manual name");
 
         // Load saved game name
