@@ -336,7 +336,7 @@ public class MusicAppDemo extends Application {
                 });
 
                 try {
-                    client.getEventManager().registerListener(new ConnectionListener(statusLabel, client));
+                    client.getEventManager().registerListener(new ConnectionListener(statusLabel, client, this));
                     client.getEventManager().registerListener(new ItemListener(this));
                     client.connect();
                     statusLabel.setText("Connected!");
