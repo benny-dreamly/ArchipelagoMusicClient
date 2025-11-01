@@ -22,6 +22,7 @@ public class ConnectionListener {
         this.app = app;
     }
 
+    @SuppressWarnings("unused")
     @ArchipelagoEventListener
     public void onConnectionResult(ConnectionResultEvent event) {
         Platform.runLater(() -> {

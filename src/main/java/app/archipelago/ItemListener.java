@@ -24,6 +24,7 @@ public class ItemListener {
         this.app = app;
     }
 
+    @SuppressWarnings("unused")
     @ArchipelagoEventListener
     public void onReceiveItem(ReceiveItemEvent event) {
         String itemName = event.getItemName();

@@ -19,6 +19,7 @@ public class PrintJsonListener {
         this.outputArea = outputArea;
     }
 
+    @SuppressWarnings("unused")
     @ArchipelagoEventListener
     public void onPrintJson(PrintJSONEvent event) {
         // The type of message
