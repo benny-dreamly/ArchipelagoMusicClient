@@ -27,6 +27,7 @@ public class AlbumMetadataLoader {
             logger.info("Loaded album metadata for {} albums.", metadata.size());
             return metadata;
         } catch (IOException e) {
+            //noinspection CallToPrintStackTrace
             e.printStackTrace();
             return Collections.emptyMap();
         }

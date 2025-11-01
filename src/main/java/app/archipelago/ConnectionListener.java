@@ -9,6 +9,7 @@ import javafx.application.Platform;
 import javafx.scene.control.Label;
 
 
+@SuppressWarnings("ClassCanBeRecord")
 public class ConnectionListener {
 
     private final Label statusLabel;

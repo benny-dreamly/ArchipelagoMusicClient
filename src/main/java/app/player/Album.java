@@ -42,6 +42,7 @@ public class Album {
         return type;
     }
 
+    @SuppressWarnings("unused")
     public Song getSong(String title) {
         for (Song song : songs) {
             if (song.getTitle().equalsIgnoreCase(title)) {
@@ -54,10 +55,13 @@ public class Album {
     public String getFolderPath() { return folderPath; }
     public void setFolderPath(String folderPath) { this.folderPath = folderPath; }
 
+    @SuppressWarnings("unused")
     public Map<String,String> getFilenameOverrides() { return filenameOverrides; }
+    @SuppressWarnings("unused")
     public void setFilenameOverrides(Map<String,String> overrides) { this.filenameOverrides = overrides; }
 
     // Flag for whether getting the album unlocks all songs
     public boolean isFullAlbumUnlock() { return fullAlbumUnlock; }
+    @SuppressWarnings("unused")
     public void setFullAlbumUnlock(boolean fullAlbumUnlock) { this.fullAlbumUnlock = fullAlbumUnlock; }
 }

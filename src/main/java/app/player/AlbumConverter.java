@@ -5,6 +5,7 @@ import app.player.json.SongJSON;
 
 import java.util.*;
 
+@SuppressWarnings("ClassCanBeRecord")
 public class AlbumConverter {
 
     private final Map<String, AlbumMetadata> albumMetadata;
