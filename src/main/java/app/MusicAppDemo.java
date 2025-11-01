@@ -69,32 +69,43 @@ public class MusicAppDemo extends Application {
     private Label elapsedLabel;
     private Label durationLabel;
 
-    private boolean seekEnabled;
-
     private boolean isUpdatingSelection = false;
 
     // various fields and stuff for the UI (the others are above or locally defined)
     private TextField gameField;
+    @SuppressWarnings("FieldCanBeLocal")
     private HBox queueButtons;
+    @SuppressWarnings("FieldCanBeLocal")
     private Button removeSelectedBtn;
+    @SuppressWarnings("FieldCanBeLocal")
     private Button clearQueueBtn;
+    @SuppressWarnings("FieldCanBeLocal")
     private Button pauseButton;
+    @SuppressWarnings("FieldCanBeLocal")
     private Button playButton;
+    @SuppressWarnings("FieldCanBeLocal")
     private HBox playerButtons;
+    @SuppressWarnings("FieldCanBeLocal")
     private VBox queueBox;
     private TextField hostField;
     private TextField portField;
     private TextField slotField;
     private TextField passwordField;
+    @SuppressWarnings("FieldCanBeLocal")
     private VBox connectionPanel;
+    @SuppressWarnings("FieldCanBeLocal")
     private HBox bottomBar;
     private ScrollPane queueScrollPane;
+    @SuppressWarnings("FieldCanBeLocal")
     private HBox progressBox;
+    @SuppressWarnings("FieldCanBeLocal")
     private CheckBox enableSeekCheck;
+    @SuppressWarnings("FieldCanBeLocal")
     private VBox root;
 
+    @SuppressWarnings("FieldCanBeLocal")
     private Button showTextClientBtn;
-    private VBox middleSection;
+    @SuppressWarnings("FieldCanBeLocal")
     private HBox connectButtonsBox;
     private TextArea outputArea = new TextArea();
 
