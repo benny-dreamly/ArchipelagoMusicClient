@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'  # triggers on any tag starting with "v", e.g., v1.0, v2.3.1
+  workflow_call:  # Add this line to allow other workflows to call it
 
 jobs:
   build:
