@@ -323,7 +323,7 @@ public class MusicAppDemo extends Application {
 
         root = new VBox(10, treeView, bottomBar);
         stage.setScene(new Scene(root, 800, 600));
-        stage.setTitle("MusicApp Demo");
+        stage.setTitle("Archipelago Music Client");
         stage.show();
 
         Task<List<Album>> loadTask = getLoadTask();
