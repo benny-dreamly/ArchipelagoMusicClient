@@ -744,7 +744,10 @@ public class MusicAppDemo extends Application {
 
     private File getConfigFile() {
         File gameDir = APClient.getGameDataFolderStatic();
-        if (!gameDir.exists()) gameDir.mkdirs();
+        if (!gameDir.exists()) {
+            //noinspection ResultOfMethodCallIgnored
+            gameDir.mkdirs();
+        }
         return new File(gameDir, "albumFolders.json");
     }
 
@@ -760,6 +763,7 @@ public class MusicAppDemo extends Application {
         }
 
         try {
+            //noinspection ResultOfMethodCallIgnored
             configFile.createNewFile(); // make sure the file exists
             Gson gson = new GsonBuilder()
                     .setPrettyPrinting()
@@ -967,7 +971,10 @@ public class MusicAppDemo extends Application {
     }
 
     private void ensureGameDefaults(File gameFolder) {
-        if (!gameFolder.exists()) gameFolder.mkdirs();
+        if (!gameFolder.exists()) {
+            //noinspection ResultOfMethodCallIgnored
+            gameFolder.mkdirs();
+        }
 
         File albumOrderFile = new File(gameFolder, "albumOrder.json");
         if (!albumOrderFile.exists()) {
@@ -1007,6 +1014,7 @@ public class MusicAppDemo extends Application {
     private void checkIfGameFolderExists(File gameFolder){
         // Ensure the per-game folder exists
         if (!gameFolder.exists()) {
+            //noinspection ResultOfMethodCallIgnored
             gameFolder.mkdirs();
             logger.info("Created game data folder: {}", gameFolder.getAbsolutePath());        }
     }
