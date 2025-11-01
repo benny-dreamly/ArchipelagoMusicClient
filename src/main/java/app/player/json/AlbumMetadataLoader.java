@@ -10,6 +10,8 @@ import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.Map;
 
+import static app.MusicAppDemo.logger;
+
 public class AlbumMetadataLoader {
 
     public static Map<String, AlbumMetadata> loadAlbumMetadata(File configDir) {
@@ -22,7 +24,7 @@ public class AlbumMetadataLoader {
         try (FileReader reader = new FileReader(file)) {
             Type type = new TypeToken<Map<String, AlbumMetadata>>() {}.getType();
             Map<String, AlbumMetadata> metadata = new Gson().fromJson(reader, type);
-            System.out.println("Loaded album metadata for " + metadata.size() + " albums.");
+            logger.info("Loaded album metadata for {} albums.", metadata.size());
             return metadata;
         } catch (IOException e) {
             e.printStackTrace();

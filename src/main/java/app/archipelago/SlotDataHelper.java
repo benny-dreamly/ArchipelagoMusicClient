@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.*;
 
+import static app.MusicAppDemo.logger;
+
 public class SlotDataHelper {
 
     private static Map<String, SlotOption> slotOptions = Collections.emptyMap();
@@ -23,8 +25,7 @@ public class SlotDataHelper {
         try (FileReader reader = new FileReader(file)) {
             Type type = new TypeToken<Map<String, SlotOption>>() {}.getType();
             slotOptions = new Gson().fromJson(reader, type);
-            System.out.println("Loaded slot_data.json with " + slotOptions.size() + " keys.");
-        } catch (IOException e) {
+            logger.info("Loaded slot_data.json with {} keys.", slotOptions.size());        } catch (IOException e) {
             e.printStackTrace();
             slotOptions = Collections.emptyMap();
         }

@@ -14,7 +14,7 @@ repositories {
 
 application {
     applicationDefaultJvmArgs = listOf(
-        "--enable-native-access=javafx.graphics"
+        "--enable-native-access=javafx.graphics",
     )
     // fully qualified name of your main Application class
     mainClass.set("app.MusicAppDemo")
@@ -30,6 +30,10 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     implementation("io.github.archipelagomw:Java-Client:0.2.0")
+
+    // Add SLF4J Simple Logger
+    implementation("org.slf4j:slf4j-api:2.0.9")
+    implementation("org.slf4j:slf4j-simple:2.0.9")
 }
 
 tasks.test {

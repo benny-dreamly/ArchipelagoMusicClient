@@ -12,6 +12,8 @@ import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import static app.MusicAppDemo.logger;
+
 public class APClient extends Client {
 
     private final String address;
@@ -65,7 +67,7 @@ public class APClient extends Client {
         if (locationID != null) {
             checkLocation(locationID);
         } else {
-            System.out.println("No location ID found for location: " + locationName);
+            logger.warn("No location ID found for location: {}", locationName);
         }
     }
 
@@ -79,7 +81,7 @@ public class APClient extends Client {
         File gameDir = getGameDataFolder();
         if (!gameDir.exists()) {
             if (gameDir.mkdirs()) {
-                System.out.println("Created new game folder: " + gameDir.getAbsolutePath());
+                logger.info("Created new game folder: {}", gameDir.getAbsolutePath());
             }
         }
     }

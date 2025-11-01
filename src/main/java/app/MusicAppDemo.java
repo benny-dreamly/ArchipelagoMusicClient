@@ -36,7 +36,12 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class MusicAppDemo extends Application {
+
+    public static final Logger logger = LoggerFactory.getLogger(MusicAppDemo.class);
 
     private final List<Album> albums = new ArrayList<>();
     private final Set<String> unlockedAlbums = new HashSet<>();
@@ -456,7 +461,7 @@ public class MusicAppDemo extends Application {
                     ex.printStackTrace();
                 }
             } else {
-                System.out.println("No config file found at " + configFile.getAbsolutePath() + ", skipping album folder assignment");
+                logger.info("No config file found at {}, skipping album folder assignment", configFile.getAbsolutePath());
             }
 
             // assign folder paths to albums
@@ -748,7 +753,7 @@ public class MusicAppDemo extends Application {
             try (Writer writer = new FileWriter(configFile)) {
                 gson.toJson(defaultFolders, writer);
             }
-            System.out.println("Generated default albumFolders.json at " + configFile.getAbsolutePath());
+            logger.info("Generated default albumFolders.json at {}", configFile.getAbsolutePath());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -795,11 +800,9 @@ public class MusicAppDemo extends Application {
 
                 if (matchedSong != null) {
                     matchedSong.setFilePath(file.getAbsolutePath());
-                    System.out.println("Matched: " + file.getName() + " -> " +
-                            matchedSong.getTitle() + " | path: " + matchedSong.getFilePath());
+                    logger.info("Matched: {} -> {} | path: {}", file.getName(), matchedSong.getTitle(), matchedSong.getFilePath());
                 } else {
-                    System.out.println("Could not match file to song: " +
-                            file.getName() + " in album " + album.getName());
+                    logger.warn("Could not match file to song: {} in album {}", file.getName(), album.getName());
                 }
             }
         }
@@ -873,7 +876,7 @@ public class MusicAppDemo extends Application {
         File file = getConnectionConfigFile();
         try (Writer writer = new FileWriter(file)) {
             new GsonBuilder().setPrettyPrinting().create().toJson(data, writer);
-            System.out.println("Saved connection settings to " + file.getAbsolutePath());
+            logger.info("Saved connection settings to {}", file.getAbsolutePath());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -906,8 +909,7 @@ public class MusicAppDemo extends Application {
                 Type listType = new TypeToken<List<String>>() {}.getType();
                 loadedOrder = new Gson().fromJson(reader, listType);
                 if (loadedOrder != null && !loadedOrder.isEmpty()) {
-                    System.out.println("Loaded album order from " + orderFile.getAbsolutePath());
-                }
+                    logger.info("Loaded album order from {}", orderFile.getAbsolutePath());                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -940,8 +942,7 @@ public class MusicAppDemo extends Application {
 
             try (Writer writer = new FileWriter(orderFile)) {
                 new GsonBuilder().setPrettyPrinting().create().toJson(loadedOrder, writer);
-                System.out.println("Generated default albumOrder.json at " + orderFile.getAbsolutePath());
-            } catch (IOException e) {
+                logger.info("Generated default albumOrder.json at {}", orderFile.getAbsolutePath());            } catch (IOException e) {
                 e.printStackTrace();
             }
         }
@@ -970,8 +971,7 @@ public class MusicAppDemo extends Application {
                  FileOutputStream out = new FileOutputStream(localLocations)) {
                 if (in != null) {
                     in.transferTo(out);
-                    System.out.println("Copied default locations.json to " + localLocations.getAbsolutePath());
-                }
+                    logger.info("Copied default locations.json to {}", localLocations.getAbsolutePath());                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -993,8 +993,7 @@ public class MusicAppDemo extends Application {
         // Ensure the per-game folder exists
         if (!gameFolder.exists()) {
             gameFolder.mkdirs();
-            System.out.println("Created game data folder: " + gameFolder.getAbsolutePath());
-        }
+            logger.info("Created game data folder: {}", gameFolder.getAbsolutePath());        }
     }
 
     public Set<String> getUnlockedSongs() {

@@ -10,6 +10,8 @@ import javafx.application.Platform;
 import java.util.HashSet;
 import java.util.Set;
 
+import static app.MusicAppDemo.logger;
+
 public class ItemListener {
 
     private final MusicAppDemo app;
@@ -89,7 +91,7 @@ public class ItemListener {
 
             app.refreshTree();
 
-            System.out.println("Received item: " + itemName + " from " + locationName);
+            logger.info("Received item: {} from {}", itemName, locationName);
         });
     }
 
