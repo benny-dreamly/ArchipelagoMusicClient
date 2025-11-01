@@ -1144,7 +1144,11 @@ public class MusicAppDemo extends Application {
         VBox root = new VBox(10);
         root.setPadding(new Insets(10));
 
+        // Make root VBox grow with the stage
+        VBox.setVgrow(root, Priority.ALWAYS);
+
         outputArea.setEditable(false); // for displaying messages
+        VBox.setVgrow(outputArea, Priority.ALWAYS); // <-- This makes it expand vertically
 
         TextField inputField = new TextField();
         inputField.setPromptText("Type command here");
