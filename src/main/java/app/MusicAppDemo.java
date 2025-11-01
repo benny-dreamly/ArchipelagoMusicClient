@@ -87,6 +87,10 @@ public class MusicAppDemo extends Application {
     private CheckBox enableSeekCheck;
     private VBox root;
 
+    private Button showTextClientBtn;
+    private VBox middleSection;
+    private HBox connectButtonsBox;
+
     public static void main(String[] args) {
         launch();
     }
@@ -205,13 +209,22 @@ public class MusicAppDemo extends Application {
         // load slot_data.json to help with parsing the slot data, we already know the game
         SlotDataHelper.loadSlotOptions(gameFolder.get());
 
+
+        showTextClientBtn = new Button("Show Text Client");
+        showTextClientBtn.setOnAction(e -> openTextClientWindow());
+
+        // Create a horizontal container for connect button and text client button
+        connectButtonsBox = new HBox(10);
+        connectButtonsBox.setAlignment(Pos.CENTER_LEFT);
+        connectButtonsBox.getChildren().addAll(connectButton, showTextClientBtn);
+
         connectionPanel.getChildren().addAll(
                 new Label("Game:"), gameField,
                 new Label("Host:"), hostField,
                 new Label("Port:"), portField,
                 new Label("Slot:"), slotField,
                 new Label("Password:"), passwordField,
-                connectButton,
+                connectButtonsBox,
                 statusLabel
         );
         connectionPanel.setAlignment(Pos.CENTER_LEFT);
@@ -1119,5 +1132,35 @@ public class MusicAppDemo extends Application {
 
     public void setGameFieldDisabled(boolean disabled) {
         gameField.setDisable(disabled);
+    }
+
+    private void openTextClientWindow() {
+        Stage textStage = new Stage();
+        textStage.setTitle("Text Client");
+
+        VBox root = new VBox(10);
+        root.setPadding(new Insets(10));
+
+        TextArea outputArea = new TextArea();
+        outputArea.setEditable(false); // for displaying messages
+
+        TextField inputField = new TextField();
+        inputField.setPromptText("Type command here");
+
+        Button sendBtn = new Button("Send");
+        sendBtn.setOnAction(ev -> {
+            String msg = inputField.getText();
+            if (!msg.isEmpty()) {
+                // handle the text input here, e.g., send to server
+                outputArea.appendText("You: " + msg + "\n");
+                inputField.clear();
+            }
+        });
+
+        root.getChildren().addAll(outputArea, inputField, sendBtn);
+
+        Scene scene = new Scene(root, 400, 300);
+        textStage.setScene(scene);
+        textStage.show();
     }
 }
