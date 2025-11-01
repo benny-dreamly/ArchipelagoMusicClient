@@ -107,7 +107,7 @@ public class MusicAppDemo extends Application {
     private Button showTextClientBtn;
     @SuppressWarnings("FieldCanBeLocal")
     private HBox connectButtonsBox;
-    private TextArea outputArea = new TextArea();
+    private final TextArea outputArea = new TextArea();
 
     public static void main(String[] args) {
         launch();
