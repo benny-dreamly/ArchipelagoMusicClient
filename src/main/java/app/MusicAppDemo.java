@@ -3,6 +3,7 @@ package app;
 import app.archipelago.APClient;
 import app.archipelago.ConnectionListener;
 import app.archipelago.ItemListener;
+import app.archipelago.PrintJsonListener;
 import app.archipelago.SlotDataHelper;
 import app.player.*;
 import app.player.json.AlbumMetadata;
@@ -13,6 +14,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
+import io.github.archipelagomw.network.client.SayPacket;
 import javafx.application.Application;
 import javafx.beans.value.ChangeListener;
 import javafx.geometry.Insets;
@@ -95,6 +97,7 @@ public class MusicAppDemo extends Application {
     private Button showTextClientBtn;
     private VBox middleSection;
     private HBox connectButtonsBox;
+    private TextArea outputArea = new TextArea();
 
     public static void main(String[] args) {
         launch();
@@ -374,6 +377,7 @@ public class MusicAppDemo extends Application {
                 try {
                     client.getEventManager().registerListener(new ConnectionListener(statusLabel, client, this));
                     client.getEventManager().registerListener(new ItemListener(this));
+                    client.getEventManager().registerListener(new PrintJsonListener(client, this, outputArea));
                     client.connect();
                     statusLabel.setText("Connected!");
                     connectButton.setText("Disconnect"); // toggle button text
@@ -1140,21 +1144,30 @@ public class MusicAppDemo extends Application {
         VBox root = new VBox(10);
         root.setPadding(new Insets(10));
 
-        TextArea outputArea = new TextArea();
         outputArea.setEditable(false); // for displaying messages
 
         TextField inputField = new TextField();
         inputField.setPromptText("Type command here");
 
-        Button sendBtn = new Button("Send");
-        sendBtn.setOnAction(ev -> {
+
+        // Define the sending logic as a Runnable
+        Runnable sendMessage = () -> {
             String msg = inputField.getText();
             if (!msg.isEmpty()) {
                 // handle the text input here, e.g., send to server
-                outputArea.appendText("You: " + msg + "\n");
+                client.sendChat(msg);
+                // SayPacket sayPacket = new SayPacket(msg);
+                // APResult<Void> result = client.sendPackets(Collections.singletonList(sayPacket));
+                // outputArea.appendText("You: " + msg + "\n");
                 inputField.clear();
             }
-        });
+        };
+
+        Button sendBtn = new Button("Send");
+        sendBtn.setOnAction(ev -> sendMessage.run());
+
+        // Press Enter to send
+        inputField.setOnAction(ev -> sendMessage.run());
 
         root.getChildren().addAll(outputArea, inputField, sendBtn);
 
