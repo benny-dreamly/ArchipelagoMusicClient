@@ -95,6 +95,7 @@ public class APClient extends Client {
         try (Writer writer = new FileWriter(configFile)) {
             new GsonBuilder().setPrettyPrinting().create().toJson(name, writer);
         } catch (IOException e) {
+            //noinspection CallToPrintStackTrace
             e.printStackTrace();
         }
     }
@@ -105,6 +106,7 @@ public class APClient extends Client {
             try (Reader reader = new FileReader(configFile)) {
                 return new Gson().fromJson(reader, String.class);
             } catch (IOException e) {
+                //noinspection CallToPrintStackTrace
                 e.printStackTrace();
             }
         }
@@ -160,6 +162,7 @@ public class APClient extends Client {
             try (Reader reader = new FileReader(configFile)) {
                 return new Gson().fromJson(reader, String.class);
             } catch (IOException e) {
+                //noinspection CallToPrintStackTrace
                 e.printStackTrace();
             }
         }
@@ -171,6 +174,7 @@ public class APClient extends Client {
         try (Writer writer = new FileWriter(configFile)) {
             new GsonBuilder().setPrettyPrinting().create().toJson(name, writer);
         } catch (IOException e) {
+            //noinspection CallToPrintStackTrace
             e.printStackTrace();
         }
     }
