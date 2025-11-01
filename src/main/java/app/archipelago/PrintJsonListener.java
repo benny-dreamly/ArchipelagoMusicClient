@@ -7,8 +7,11 @@ import io.github.archipelagomw.Print.*;
 import javafx.application.Platform;
 import javafx.scene.control.TextArea;
 
+@SuppressWarnings("ClassCanBeRecord")
 public class PrintJsonListener {
+    @SuppressWarnings({"unused", "FieldCanBeLocal"})
     private final APClient client;
+    @SuppressWarnings({"unused", "FieldCanBeLocal"})
     private final MusicAppDemo app;
     private final TextArea outputArea; // <-- add this
 
