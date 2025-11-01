@@ -158,7 +158,7 @@ public class MusicAppDemo extends Application {
         });
 
         // When a tree item (song) is selected, add to queue
-        treeView.getSelectionModel().selectedItemProperty().addListener((obs, oldSel, newSel) -> {
+        treeView.getSelectionModel().selectedItemProperty().addListener((_, _, newSel) -> {
             if (newSel == null) return;
 
             String songTitle = newSel.getValue();
@@ -230,7 +230,7 @@ public class MusicAppDemo extends Application {
 
 
         showTextClientBtn = new Button("Show Text Client");
-        showTextClientBtn.setOnAction(e -> openTextClientWindow());
+        showTextClientBtn.setOnAction(_ -> openTextClientWindow());
 
         // Create a horizontal container for connect button and text client button
         connectButtonsBox = new HBox(10);
@@ -269,7 +269,7 @@ public class MusicAppDemo extends Application {
         HBox.setHgrow(queueBox, Priority.ALWAYS);
 
         // Play button behaviour
-        playButton.setOnAction(e -> {
+        playButton.setOnAction(_ -> {
             // If paused, resume. If nothing playing but queue has items, start next.
             if (currentPlayer != null && currentPlayer.getStatus() == MediaPlayer.Status.PAUSED) {
                 currentPlayer.play();
@@ -291,7 +291,7 @@ public class MusicAppDemo extends Application {
             }
         });
 
-        pauseButton.setOnAction(e -> {
+        pauseButton.setOnAction(_ -> {
             if (currentPlayer != null) {
                 MediaPlayer.Status status = currentPlayer.getStatus();
                 if (status == MediaPlayer.Status.PLAYING) {
@@ -305,7 +305,7 @@ public class MusicAppDemo extends Application {
         });
 
         // Remove selected from the queue (both ListView and underlying queue)
-        removeSelectedBtn.setOnAction(e -> {
+        removeSelectedBtn.setOnAction(_ -> {
             String sel = queueListView.getSelectionModel().getSelectedItem();
             if (sel != null) {
                 removeFromQueue(sel);
@@ -314,12 +314,12 @@ public class MusicAppDemo extends Application {
         });
 
         // Clear queue
-        clearQueueBtn.setOnAction(e -> {
+        clearQueueBtn.setOnAction(_ -> {
             playQueue.clear();
             updateQueueDisplay();
         });
 
-        enableSeekCheck.selectedProperty().addListener((obs, wasSelected, isSelected) -> {
+        enableSeekCheck.selectedProperty().addListener((_, _, isSelected) -> {
             progressSlider.setDisable(!isSelected);  // disable slider when checkbox off
 
             if (isSelected) {
@@ -348,7 +348,7 @@ public class MusicAppDemo extends Application {
                 : null);
 
         // Archipelago connection handler
-        connectButton.setOnAction(e -> {
+        connectButton.setOnAction(_ -> {
             if (client == null || !client.isConnected()) {
                 String host = hostField.getText();
                 int port = Integer.parseInt(portField.getText());
@@ -460,7 +460,7 @@ public class MusicAppDemo extends Application {
             }
         };
 
-        loadTask.setOnSucceeded(e -> {
+        loadTask.setOnSucceeded(_ -> {
             albums.addAll(loadTask.getValue());
 
             generateDefaultAlbumFolders(albums);
@@ -492,7 +492,7 @@ public class MusicAppDemo extends Application {
             refreshTree(); // populate TreeView after loading
         });
 
-        loadTask.setOnFailed(e -> {
+        loadTask.setOnFailed(_ -> {
             loadTask.getException().printStackTrace();
         });
         return loadTask;
@@ -647,7 +647,7 @@ public class MusicAppDemo extends Application {
         Media media = new Media(Paths.get(song.getFilePath()).toUri().toString());
         currentPlayer = new MediaPlayer(media);
 
-        currentPlayer.currentTimeProperty().addListener((obs, oldTime, newTime) -> {
+        currentPlayer.currentTimeProperty().addListener((_, _, newTime) -> {
             if (!progressSlider.isValueChanging()) {
                 Duration total = currentPlayer.getTotalDuration();
                 if (total != null && total.greaterThan(Duration.ZERO)) {
@@ -782,7 +782,7 @@ public class MusicAppDemo extends Application {
             File albumDirectory = new File(folderPath);
             if (!albumDirectory.exists() || !albumDirectory.isDirectory()) continue;
 
-            File[] files = albumDirectory.listFiles((dir, name) ->
+            File[] files = albumDirectory.listFiles((_, name) ->
                     name.toLowerCase().endsWith(".mp3") ||
                             name.toLowerCase().endsWith(".m4a") ||
                             name.toLowerCase().endsWith(".wav")
@@ -1125,7 +1125,7 @@ public class MusicAppDemo extends Application {
         return String.format("%d:%02d", minutes, seconds);
     }
 
-    private final ChangeListener<Boolean> seekListener = (obs, wasChanging, isChanging) -> {
+    private final ChangeListener<Boolean> seekListener = (_, _, isChanging) -> {
         if (!isChanging && currentPlayer != null) {
             Duration total = currentPlayer.getTotalDuration();
             if (total != null) {
@@ -1179,10 +1179,10 @@ public class MusicAppDemo extends Application {
         };
 
         Button sendBtn = new Button("Send");
-        sendBtn.setOnAction(ev -> sendMessage.run());
+        sendBtn.setOnAction(_ -> sendMessage.run());
 
         // Press Enter to send
-        inputField.setOnAction(ev -> sendMessage.run());
+        inputField.setOnAction(_ -> sendMessage.run());
 
         root.getChildren().addAll(outputArea, inputField, sendBtn);
 
