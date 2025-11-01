@@ -85,6 +85,7 @@ public class APClient extends Client {
         }
     }
 
+    @SuppressWarnings("unused")
     public String getGameName() {
         return this.gameName;
     }
@@ -124,7 +125,11 @@ public class APClient extends Client {
             baseDir = new File(userHome, ".config/MusicAppDemo");
         }
 
-        if (!baseDir.exists()) baseDir.mkdirs();
+
+        if (!baseDir.exists()) {
+            //noinspection ResultOfMethodCallIgnored
+            baseDir.mkdirs();
+        }
 
         return new File(baseDir, "currentGame.json"); // <-- removed config subfolder
     }
@@ -182,7 +187,10 @@ public class APClient extends Client {
         else
             baseDir = new File(userHome, ".config/MusicAppDemo");
 
-        if (!baseDir.exists()) baseDir.mkdirs();
+        if (!baseDir.exists()) {
+            //noinspection ResultOfMethodCallIgnored
+            baseDir.mkdirs();
+        }
 
         return new File(baseDir, "currentGame.json"); // <-- removed config subfolder
     }
@@ -202,7 +210,10 @@ public class APClient extends Client {
             baseDir = new File(userHome, ".config/MusicAppDemo");
 
         File dir = new File(baseDir, gameName);
-        if (!dir.exists()) dir.mkdirs();
+        if (!dir.exists()) {
+            //noinspection ResultOfMethodCallIgnored
+            dir.mkdirs();
+        }
         return dir;
     }
 
