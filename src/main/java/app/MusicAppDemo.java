@@ -40,6 +40,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings("CommentedOutCode")
 public class MusicAppDemo extends Application {
 
     public static final Logger logger = LoggerFactory.getLogger(MusicAppDemo.class);
@@ -500,6 +501,7 @@ public class MusicAppDemo extends Application {
         return loadTask;
     }
 
+    @SuppressWarnings("unused")
     private void reloadGameLibrary(File gameFolder) {
         // clear old state before reloading
         albums.clear();
