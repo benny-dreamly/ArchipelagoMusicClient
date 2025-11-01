@@ -9,7 +9,6 @@ import javafx.application.Platform;
 
 import java.io.*;
 import java.net.URISyntaxException;
-import java.util.Map;
 import java.util.function.Consumer;
 
 import static app.MusicAppDemo.logger;

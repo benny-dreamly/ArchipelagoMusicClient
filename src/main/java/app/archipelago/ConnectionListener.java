@@ -6,10 +6,8 @@ import io.github.archipelagomw.events.ConnectionResultEvent;
 import io.github.archipelagomw.events.ArchipelagoEventListener;
 import io.github.archipelagomw.network.ConnectionResult;
 import javafx.application.Platform;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
 
-import java.util.HashMap;
 
 public class ConnectionListener {
 

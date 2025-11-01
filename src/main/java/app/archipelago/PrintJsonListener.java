@@ -6,8 +6,6 @@ import io.github.archipelagomw.events.PrintJSONEvent;
 import io.github.archipelagomw.Print.*;
 import javafx.application.Platform;
 import javafx.scene.control.TextArea;
-import org.w3c.dom.Text;
-
 
 public class PrintJsonListener {
     private final APClient client;
