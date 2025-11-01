@@ -96,6 +96,7 @@ public class ItemListener {
         });
     }
 
+        @SuppressWarnings("unused")
         private void checkVaultAlbums(String albumName) {
             // Only unlock Vault album songs if you got the Vault Tracks item for it
             if (receivedVaultTracks.contains(albumName)) {
@@ -103,6 +104,7 @@ public class ItemListener {
             }
         }
 
+        @SuppressWarnings("unused")
         private void checkRerecordedAlbums(String albumName) {
             // Only unlock the rerecorded album once you have all the required items
             if (receivedRerecordings.contains(albumName)) {
