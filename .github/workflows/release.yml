@@ -23,7 +23,7 @@ jobs:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: jar-artifact
+          name: MusicPlayer-JAR
           path: ./artifacts
 
       - name: Create draft release
