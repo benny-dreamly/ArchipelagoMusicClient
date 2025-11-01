@@ -109,6 +109,7 @@ public class MusicAppDemo extends Application {
     private HBox connectButtonsBox;
     private final TextArea outputArea = new TextArea();
 
+    @SuppressWarnings("unused")
     public static void main(String[] args) {
         launch();
     }
