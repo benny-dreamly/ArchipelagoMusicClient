@@ -121,14 +121,7 @@ public class MusicAppDemo extends Application {
 
         initUIComponents();
 
-        // Map vertical scroll to horizontal scroll
-        queueScrollPane.addEventFilter(ScrollEvent.SCROLL, event -> {
-            if (event.getDeltaY() != 0) {
-                double h = queueScrollPane.getHvalue() - event.getDeltaY() * 0.005; // smoother scaling
-                queueScrollPane.setHvalue(Math.min(Math.max(h, 0), 1));
-                event.consume();
-            }
-        });
+        setupQueueScroll();
 
         // When a tree item (song) is selected, add to queue
         treeView.getSelectionModel().selectedItemProperty().addListener((_, _, newSel) -> {
@@ -397,6 +390,17 @@ public class MusicAppDemo extends Application {
 
                 // Refresh tree so nothing shows
                 refreshTree();
+            }
+        });
+    }
+
+    private void setupQueueScroll() {
+        // Map vertical scroll to horizontal scroll
+        queueScrollPane.addEventFilter(ScrollEvent.SCROLL, event -> {
+            if (event.getDeltaY() != 0) {
+                double h = queueScrollPane.getHvalue() - event.getDeltaY() * 0.005; // smoother scaling
+                queueScrollPane.setHvalue(Math.min(Math.max(h, 0), 1));
+                event.consume();
             }
         });
     }
