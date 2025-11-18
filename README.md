@@ -60,4 +60,4 @@ If you’re setting up your own music manual (or modifying an existing one), you
 
 All configuration files live inside your **per-game folder**, which is automatically created under your operating system’s application data directory.
 
-See [`config-locations.md`](./config-locations.md) for platform-specific paths.
+See [`config-locations.md`](docs/config-locations.md) for platform-specific paths.
