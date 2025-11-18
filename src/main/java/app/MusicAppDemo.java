@@ -10,6 +10,8 @@ import app.player.json.AlbumMetadata;
 import app.player.json.AlbumMetadataLoader;
 import app.player.json.LibraryLoader;
 import app.player.json.SongJSON;
+import app.player.ui.ConnectionPanel;
+import app.util.ConfigPaths;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
@@ -40,6 +42,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static app.util.ConfigPaths.checkIfGameFolderExists;
+import static app.util.ConfigPaths.getConnectionConfigFile;
+
 @SuppressWarnings("CommentedOutCode")
 public class MusicAppDemo extends Application {
 
@@ -55,8 +60,6 @@ public class MusicAppDemo extends Application {
     private TreeView<String> treeView;
 
     private APClient client;
-    private Button connectButton;
-    private Label statusLabel;
 
     private Song currentSong;
     private Label currentSongLabel;
@@ -73,7 +76,6 @@ public class MusicAppDemo extends Application {
     private boolean isUpdatingSelection = false;
 
     // various fields and stuff for the UI (the others are above or locally defined)
-    private TextField gameField;
     @SuppressWarnings("FieldCanBeLocal")
     private HBox queueButtons;
     @SuppressWarnings("FieldCanBeLocal")
@@ -88,12 +90,8 @@ public class MusicAppDemo extends Application {
     private HBox playerButtons;
     @SuppressWarnings("FieldCanBeLocal")
     private VBox queueBox;
-    private TextField hostField;
-    private TextField portField;
-    private TextField slotField;
-    private TextField passwordField;
     @SuppressWarnings("FieldCanBeLocal")
-    private VBox connectionPanel;
+    private ConnectionPanel connectionPanel;
     @SuppressWarnings("FieldCanBeLocal")
     private HBox bottomBar;
     private ScrollPane queueScrollPane;
@@ -104,10 +102,6 @@ public class MusicAppDemo extends Application {
     @SuppressWarnings("FieldCanBeLocal")
     private VBox root;
 
-    @SuppressWarnings("FieldCanBeLocal")
-    private Button showTextClientBtn;
-    @SuppressWarnings("FieldCanBeLocal")
-    private HBox connectButtonsBox;
     private final TextArea outputArea = new TextArea();
 
     @SuppressWarnings("unused")
@@ -132,7 +126,7 @@ public class MusicAppDemo extends Application {
 
         createBottomBar();
 
-        createConnectionPanel(gameFolder);
+        connectionPanel = new ConnectionPanel(gameFolder, () -> client);
 
         createQueueBox();
 
@@ -149,13 +143,13 @@ public class MusicAppDemo extends Application {
         new Thread(loadTask).start();
 
         // Disable the game field if connected
-        gameField.setDisable(client != null && client.isConnected());
-        gameField.setTooltip(client != null && client.isConnected()
-                ? new Tooltip("Cannot change game while connected")
+        connectionPanel.disableGameField(client != null && client.isConnected());
+        connectionPanel.setGameFieldTooltip(client != null && client.isConnected()
+                ? "Cannot change game while connected"
                 : null);
 
         // Archipelago connection handler
-        connectButton.setOnAction(_ -> {
+        connectionPanel.getConnectButton().setOnAction(_ -> {
             if (client == null || !client.isConnected()) {
                 connectToServer(gameFolder);
             } else {
@@ -482,7 +476,7 @@ public class MusicAppDemo extends Application {
         }
     }
 
-    private File getConfigFile() {
+    public File getConfigFile() {
         File gameDir = APClient.getGameDataFolderStatic();
         if (!gameDir.exists()) {
             //noinspection ResultOfMethodCallIgnored
@@ -621,11 +615,6 @@ public class MusicAppDemo extends Application {
         return normalized;
     }
 
-    private File getConnectionConfigFile() {
-        File configDir = getConfigFile().getParentFile();
-        return new File(configDir, "connection.json");
-    }
-
     private void saveConnectionSettings(String host, int port, String slot, String password) {
         Map<String, String> data = new HashMap<>();
         data.put("host", host);
@@ -640,20 +629,6 @@ public class MusicAppDemo extends Application {
         } catch (IOException e) {
             //noinspection CallToPrintStackTrace
             e.printStackTrace();
-        }
-    }
-
-    private Map<String, String> loadConnectionSettings() {
-        File file = getConnectionConfigFile();
-        if (!file.exists()) return new HashMap<>();
-
-        try (Reader reader = new FileReader(file)) {
-            Type type = new TypeToken<Map<String, String>>(){}.getType();
-            return new Gson().fromJson(reader, type);
-        } catch (IOException e) {
-            //noinspection CallToPrintStackTrace
-            e.printStackTrace();
-            return new HashMap<>();
         }
     }
 
@@ -757,13 +732,13 @@ public class MusicAppDemo extends Application {
         clearAlbumOrderCache();  // optional, if album order changes per game
     }
 
-    private void checkIfGameFolderExists(File gameFolder){
-        // Ensure the per-game folder exists
-        if (!gameFolder.exists()) {
-            //noinspection ResultOfMethodCallIgnored
-            gameFolder.mkdirs();
-            logger.info("Created game data folder: {}", gameFolder.getAbsolutePath());        }
-    }
+//    private void checkIfGameFolderExists(File gameFolder){
+//        // Ensure the per-game folder exists
+//        if (!gameFolder.exists()) {
+//            //noinspection ResultOfMethodCallIgnored
+//            gameFolder.mkdirs();
+//            logger.info("Created game data folder: {}", gameFolder.getAbsolutePath());        }
+//    }
 
     public Set<String> getUnlockedSongs() {
         return unlockedSongs;
@@ -895,69 +870,26 @@ public class MusicAppDemo extends Application {
     }
 
     public void setConnectButtonText(String text) {
-        connectButton.setText(text);
+        connectionPanel.setConnectButtonText(text);
     }
 
     public void setGameFieldDisabled(boolean disabled) {
-        gameField.setDisable(disabled);
+        connectionPanel.disableGameField(disabled);
     }
 
     public void addTextToOutputArea(String text) {
         outputArea.appendText(text);
     }
 
-    private void openTextClientWindow() {
-        Stage textStage = new Stage();
-        textStage.setTitle("Text Client");
-
-        VBox root = new VBox(10);
-        root.setPadding(new Insets(10));
-
-        // Make root VBox grow with the stage
-        VBox.setVgrow(root, Priority.ALWAYS);
-
-        outputArea.setEditable(false); // for displaying messages
-        VBox.setVgrow(outputArea, Priority.ALWAYS); // <-- This makes it expand vertically
-
-        TextField inputField = new TextField();
-        inputField.setPromptText("Type command here");
-
-
-        // Define the sending logic as a Runnable
-        Runnable sendMessage = () -> {
-            String msg = inputField.getText();
-            if (!msg.isEmpty()) {
-                // handle the text input here, e.g., send to server
-                client.sendChat(msg);
-                // SayPacket sayPacket = new SayPacket(msg);
-                // APResult<Void> result = client.sendPackets(Collections.singletonList(sayPacket));
-                // outputArea.appendText("You: " + msg + "\n");
-                inputField.clear();
-            }
-        };
-
-        Button sendBtn = new Button("Send");
-        sendBtn.setOnAction(_ -> sendMessage.run());
-
-        // Press Enter to send
-        inputField.setOnAction(_ -> sendMessage.run());
-
-        root.getChildren().addAll(outputArea, inputField, sendBtn);
-
-        Scene scene = new Scene(root, 400, 300);
-        textStage.setScene(scene);
-        textStage.show();
-    }
-
     private void disconnectFromServer() {
         // DISCONNECT
         client.disconnect();
-        statusLabel.setText("Disconnected");
-        connectButton.setText("Connect"); // toggle button text
+        connectionPanel.setStatus("Disconnected");
+        connectionPanel.setConnectButtonText("Connect"); // toggle button text
 
         // Re-enable game field
-        gameField.setDisable(false);
-        gameField.setTooltip(null);
+        connectionPanel.disableGameField(false);
+        connectionPanel.setGameFieldTooltip(null);
 
         // stop playback
         stopCurrentSong();
@@ -973,14 +905,14 @@ public class MusicAppDemo extends Application {
     }
 
     private void connectToServer(AtomicReference<File> gameFolder) {
-        String host = hostField.getText();
-        int port = Integer.parseInt(portField.getText());
-        String slot = slotField.getText();
-        String password = passwordField.getText();
+        String host = connectionPanel.getHost();
+        int port = connectionPanel.getPort();
+        String slot = connectionPanel.getSlot();
+        String password = connectionPanel.getPassword();
 
         saveConnectionSettings(host, port, slot, password);
 
-        String gameName = gameField.getText().trim();
+        String gameName = connectionPanel.getGameName();
         APClient.saveGameNameStatic(gameName);
 
         client = new APClient(host, port, slot, password);
@@ -989,7 +921,7 @@ public class MusicAppDemo extends Application {
         client.setGameName(gameName);
 
         gameFolder.set(APClient.getGameDataFolderStatic());
-        checkIfGameFolderExists(gameFolder.get());
+        checkIfGameFolderExists(gameFolder.get(), logger);
 
         // ✅ reload slot options after game changes
         SlotDataHelper.loadSlotOptions(gameFolder.get());
@@ -998,33 +930,33 @@ public class MusicAppDemo extends Application {
         reloadGameLibrary(gameFolder.get());
 
         client.setOnErrorCallback(ex -> {
-            statusLabel.setText("Connection failed");
+            connectionPanel.setStatus("Connection failed");
             showError("Connection Failed",
                     "Failed to connect to Archipelago server",
                     "Reason: " + ex.getMessage());
 
             // Reset button and fields so user can try again
-            connectButton.setText("Connect");
-            gameField.setDisable(false);
+            connectionPanel.setConnectButtonText("Connect");
+            connectionPanel.disableGameField(false);
         });
 
         try {
-            client.getEventManager().registerListener(new ConnectionListener(statusLabel, client, this));
+            client.getEventManager().registerListener(new ConnectionListener(connectionPanel.getStatusLabel(), client, this));
             client.getEventManager().registerListener(new ItemListener(this));
             client.getEventManager().registerListener(new PrintJsonListener(client, this, outputArea));
             client.connect();
-            statusLabel.setText("Connected!");
-            connectButton.setText("Disconnect"); // toggle button text
+            connectionPanel.setStatus("Connected!");
+            connectionPanel.setConnectButtonText("Disconnect"); // toggle button text
 
             // --- Disable the game field after connecting ---
-            gameField.setDisable(true);
-            gameField.setTooltip(new Tooltip("Cannot change game while connected"));
+            connectionPanel.disableGameField(true);
+            connectionPanel.setGameFieldTooltip("Cannot change game while connected");
 
             applySlotData();
         } catch (Exception ex) {
-            statusLabel.setText("Connection failed");
+            connectionPanel.setStatus("Connection failed");
             showError("Connection Failed", "Failed to connect to Archipelago server", ex.getMessage());
-            connectButton.setText("Connect");
+            connectionPanel.setConnectButtonText("Connect");
         }
     }
 
@@ -1117,56 +1049,6 @@ public class MusicAppDemo extends Application {
         });
     }
 
-    private void createConnectionPanel(AtomicReference<File> gameFolder) {
-        // Left: Archipelago connection panel
-        connectionPanel = new VBox(5);
-        gameField = new TextField();
-        gameField.setPromptText("Game / Manual name");
-
-        // Load saved game name
-        String savedGameName = APClient.loadSavedGameNameStatic();
-        gameField.setText(savedGameName);
-        hostField = new TextField("localhost");
-        portField = new TextField("38281");
-        slotField = new TextField("Player1");
-        passwordField = new TextField();
-        Map<String, String> saved = loadConnectionSettings();
-        hostField.setText(saved.getOrDefault("host", "localhost"));
-        portField.setText(saved.getOrDefault("port", "38281"));
-        slotField.setText(saved.getOrDefault("slot", "Player1"));
-        passwordField.setText(saved.getOrDefault("password", ""));
-        connectButton = new Button("Connect");
-        statusLabel = new Label("Not connected");
-
-        // Ensure the per-game folder exists
-        gameFolder.set(APClient.getGameDataFolderStatic());
-        checkIfGameFolderExists(gameFolder.get());
-
-        // load slot_data.json to help with parsing the slot data, we already know the game
-        SlotDataHelper.loadSlotOptions(gameFolder.get());
-
-
-        showTextClientBtn = new Button("Show Text Client");
-        showTextClientBtn.setOnAction(_ -> openTextClientWindow());
-
-        // Create a horizontal container for connect button and text client button
-        connectButtonsBox = new HBox(10);
-        connectButtonsBox.setAlignment(Pos.CENTER_LEFT);
-        connectButtonsBox.getChildren().addAll(connectButton, showTextClientBtn);
-
-        connectionPanel.getChildren().addAll(
-                new Label("Game:"), gameField,
-                new Label("Host:"), hostField,
-                new Label("Port:"), portField,
-                new Label("Slot:"), slotField,
-                new Label("Password:"), passwordField,
-                connectButtonsBox,
-                statusLabel
-        );
-        connectionPanel.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(connectionPanel, Priority.ALWAYS);
-    }
-
     private void handleTreeSelection(TreeItem<String> newSel) {
         if (newSel == null) return;
 
@@ -1244,5 +1126,9 @@ public class MusicAppDemo extends Application {
         // Fit the ListView nicely inside the ScrollPane
         queueScrollPane.setFitToHeight(true);
         queueListView.setMinWidth(Region.USE_PREF_SIZE);
+    }
+
+    public APClient getClient() {
+        return client;
     }
 }
