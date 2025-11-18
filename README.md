@@ -50,13 +50,13 @@ If you’re setting up your own music manual (or modifying an existing one), you
 
 ## Configuration files overview
 
-| File | Purpose |
-|------|----------|
-| `albumFolders.json` | Maps album names to folder paths where your local music files are stored. |
-| `albumOrder.json` | Controls the display order of albums in the music library tree. |
-| `locations.json` | Defines all available songs, albums, and their relationships. |
-| `slot_data.json` | Describes what is unlocked or available to the player in randomizer/Archipelago mode. |
-| `albumMetadata.json` *(optional)* | Provides metadata such as album type, year, or “Taylor’s Version” flag. |
+| File                               | Purpose                                                                               |
+|------------------------------------|---------------------------------------------------------------------------------------|
+| `albumFolders.json`                | Maps album names to folder paths where your local music files are stored.             |
+| `albumOrder.json`                  | Controls the display order of albums in the music library tree.                       |
+| `locations.json`                   | Defines all available songs, albums, and their relationships.                         |
+| `slot_data.json`                   | Describes what is unlocked or available to the player in randomizer/Archipelago mode. |
+| `album_metadata.json` *(optional)* | Provides metadata such as album type, year, or “Taylor’s Version” flag.               |
 
 All configuration files live inside your **per-game folder**, which is automatically created under your operating system’s application data directory.
 
