@@ -1166,6 +1166,10 @@ public class MusicAppDemo extends Application {
         gameField.setDisable(disabled);
     }
 
+    public void addTextToOutputArea(String text) {
+        outputArea.appendText(text);
+    }
+
     private void openTextClientWindow() {
         Stage textStage = new Stage();
         textStage.setTitle("Text Client");
