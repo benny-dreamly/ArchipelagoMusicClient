@@ -4,11 +4,11 @@ The Music Player automatically creates a configuration directory per manual/game
 
 ## Default folder paths
 
-| Platform | Path |
-|-----------|------|
-| **Windows** | `C:\Users\<USERNAME>\AppData\Roaming\MusicAppDemo\<ManualName>` |
-| **macOS** | `/Users/<USERNAME>/Library/Application Support/MusicAppDemo/<ManualName>` |
-| **Linux** | `/home/<USERNAME>/.local/share/MusicAppDemo/<ManualName>` |
+| Platform    | Path                                                                      |
+|-------------|---------------------------------------------------------------------------|
+| **Windows** | `C:\Users\<USERNAME>\AppData\Roaming\MusicAppDemo\<ManualName>`           |
+| **macOS**   | `/Users/<USERNAME>/Library/Application Support/MusicAppDemo/<ManualName>` |
+| **Linux**   | `/home/<USERNAME>/.local/share/MusicAppDemo/<ManualName>`                 |
 
 Each manual folder contains:
 
