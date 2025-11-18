@@ -31,6 +31,8 @@ public class ConnectionListener {
 
             if (result == io.github.archipelagomw.network.ConnectionResult.Success) {
                 JsonElement slotData = event.getSlotData(JsonElement.class);
+                //app.addTextToOutputArea(slotData.getAsString() + "\n");
+                //System.out.println(slotData);
                 client.setSlotData(slotData);
                 statusLabel.setText("Connected!");
             } else {
