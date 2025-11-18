@@ -877,10 +877,6 @@ public class MusicAppDemo extends Application {
         connectionPanel.disableGameField(disabled);
     }
 
-    public void addTextToOutputArea(String text) {
-        outputArea.appendText(text);
-    }
-
     private void disconnectFromServer() {
         // DISCONNECT
         client.disconnect();
@@ -943,7 +939,7 @@ public class MusicAppDemo extends Application {
         try {
             client.getEventManager().registerListener(new ConnectionListener(connectionPanel.getStatusLabel(), client, this));
             client.getEventManager().registerListener(new ItemListener(this));
-            client.getEventManager().registerListener(new PrintJsonListener(client, this, outputArea));
+            client.getEventManager().registerListener(new PrintJsonListener(client, this, connectionPanel.getTextClientWindow().getOutputArea()));
             client.connect();
             connectionPanel.setStatus("Connected!");
             connectionPanel.setConnectButtonText("Disconnect"); // toggle button text

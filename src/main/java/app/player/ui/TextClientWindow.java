@@ -10,13 +10,16 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
+import java.util.function.Supplier;
+
 public class TextClientWindow {
 
-    private final APClient client;
+    private final Supplier<APClient> clientSupplier;
+
     private final TextArea outputArea = new TextArea();
 
-    public TextClientWindow(APClient client) {
-        this.client = client;
+    public TextClientWindow(Supplier<APClient> clientSupplier) {
+        this.clientSupplier = clientSupplier;
     }
 
     public void show() {
@@ -39,6 +42,7 @@ public class TextClientWindow {
         // Define the sending logic as a Runnable
         Runnable sendMessage = () -> {
             String msg = inputField.getText();
+            APClient client = clientSupplier.get();
             if (!msg.isEmpty()) {
                 // handle the text input here, e.g., send to server
                 client.sendChat(msg);
@@ -64,5 +68,9 @@ public class TextClientWindow {
 
     public void appendOutput(String text) {
         outputArea.appendText(text);
+    }
+
+    public TextArea getOutputArea() {
+        return outputArea;
     }
 }

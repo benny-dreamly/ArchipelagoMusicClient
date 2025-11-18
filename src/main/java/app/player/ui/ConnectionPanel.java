@@ -39,6 +39,7 @@ public class ConnectionPanel extends VBox {
     private final Label statusLabel;
     private final Button showTextClientBtn;
     private final HBox connectButtonsBox;
+    private TextClientWindow textClientWindow;
 
     private static final Logger logger = LoggerFactory.getLogger(ConnectionPanel.class);
 
@@ -75,10 +76,8 @@ public class ConnectionPanel extends VBox {
         SlotDataHelper.loadSlotOptions(gameFolder.get());
 
         showTextClientBtn = new Button("Show Text Client");
-        showTextClientBtn.setOnAction(_ -> {
-            TextClientWindow window = new TextClientWindow(clientSupplier.get());
-            window.show();
-        });
+        textClientWindow = new TextClientWindow(clientSupplier);
+        showTextClientBtn.setOnAction(_ -> textClientWindow.show());
 
         // Create a horizontal container for connect button and text client button
         connectButtonsBox = new HBox(10);
@@ -158,6 +157,10 @@ public class ConnectionPanel extends VBox {
             e.printStackTrace();
             return new HashMap<>();
         }
+    }
+
+    public TextClientWindow getTextClientWindow() {
+        return textClientWindow;
     }
 
 }
