@@ -119,35 +119,7 @@ public class MusicAppDemo extends Application {
     public void start(Stage stage) {
         AtomicReference<File> gameFolder = new AtomicReference<>();
 
-        treeView = new TreeView<>();
-        currentSongLabel = new Label("Currently Playing: None");
-
-        enableSeekCheck = new CheckBox("Enable Seek Slider");
-        enableSeekCheck.setSelected(false); // default off
-
-        progressSlider = new Slider();
-        progressSlider.setMin(0);
-        progressSlider.setMax(1); // normalized
-        progressSlider.setValue(0);
-        progressSlider.setPrefWidth(400);
-        progressSlider.setDisable(true);
-
-        elapsedLabel = new Label("0:00");
-        durationLabel = new Label("0:00");
-
-        progressBox = new HBox(5, elapsedLabel, progressSlider, durationLabel);
-        progressBox.setAlignment(Pos.CENTER);
-
-        queueListView = new ListView<>();
-        queueListView.setPrefHeight(120);
-
-        queueScrollPane = new ScrollPane(queueListView);
-        queueScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.ALWAYS);
-        queueScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-
-        // Fit the ListView nicely inside the ScrollPane
-        queueScrollPane.setFitToHeight(true);
-        queueListView.setMinWidth(Region.USE_PREF_SIZE);
+        initUIComponents();
 
         // Map vertical scroll to horizontal scroll
         queueScrollPane.addEventFilter(ScrollEvent.SCROLL, event -> {
@@ -427,6 +399,38 @@ public class MusicAppDemo extends Application {
                 refreshTree();
             }
         });
+    }
+
+    private void initUIComponents() {
+        treeView = new TreeView<>();
+        currentSongLabel = new Label("Currently Playing: None");
+
+        enableSeekCheck = new CheckBox("Enable Seek Slider");
+        enableSeekCheck.setSelected(false); // default off
+
+        progressSlider = new Slider();
+        progressSlider.setMin(0);
+        progressSlider.setMax(1); // normalized
+        progressSlider.setValue(0);
+        progressSlider.setPrefWidth(400);
+        progressSlider.setDisable(true);
+
+        elapsedLabel = new Label("0:00");
+        durationLabel = new Label("0:00");
+
+        progressBox = new HBox(5, elapsedLabel, progressSlider, durationLabel);
+        progressBox.setAlignment(Pos.CENTER);
+
+        queueListView = new ListView<>();
+        queueListView.setPrefHeight(120);
+
+        queueScrollPane = new ScrollPane(queueListView);
+        queueScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.ALWAYS);
+        queueScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+
+        // Fit the ListView nicely inside the ScrollPane
+        queueScrollPane.setFitToHeight(true);
+        queueListView.setMinWidth(Region.USE_PREF_SIZE);
     }
 
     @Override
