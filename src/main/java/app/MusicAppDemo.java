@@ -130,10 +130,7 @@ public class MusicAppDemo extends Application {
 
         refreshTree();
 
-        // Bottom controls HBox
-        bottomBar = new HBox(20);
-        bottomBar.setPadding(new Insets(10));
-        bottomBar.setAlignment(Pos.CENTER);
+        createBottomBar();
 
         createConnectionPanel(gameFolder);
 
@@ -236,6 +233,13 @@ public class MusicAppDemo extends Application {
                 refreshTree();
             }
         });
+    }
+
+    private void createBottomBar() {
+        // Bottom controls HBox
+        bottomBar = new HBox(20);
+        bottomBar.setPadding(new Insets(10));
+        bottomBar.setAlignment(Pos.CENTER);
     }
 
     private void createQueueBox() {
