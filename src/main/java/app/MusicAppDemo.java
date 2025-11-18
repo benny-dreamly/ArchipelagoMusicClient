@@ -135,53 +135,7 @@ public class MusicAppDemo extends Application {
         bottomBar.setPadding(new Insets(10));
         bottomBar.setAlignment(Pos.CENTER);
 
-        // Left: Archipelago connection panel
-        connectionPanel = new VBox(5);
-        gameField = new TextField();
-        gameField.setPromptText("Game / Manual name");
-
-        // Load saved game name
-        String savedGameName = APClient.loadSavedGameNameStatic();
-        gameField.setText(savedGameName);
-        hostField = new TextField("localhost");
-        portField = new TextField("38281");
-        slotField = new TextField("Player1");
-        passwordField = new TextField();
-        Map<String, String> saved = loadConnectionSettings();
-        hostField.setText(saved.getOrDefault("host", "localhost"));
-        portField.setText(saved.getOrDefault("port", "38281"));
-        slotField.setText(saved.getOrDefault("slot", "Player1"));
-        passwordField.setText(saved.getOrDefault("password", ""));
-        connectButton = new Button("Connect");
-        statusLabel = new Label("Not connected");
-
-        // Ensure the per-game folder exists
-        gameFolder.set(APClient.getGameDataFolderStatic());
-        checkIfGameFolderExists(gameFolder.get());
-
-        // load slot_data.json to help with parsing the slot data, we already know the game
-        SlotDataHelper.loadSlotOptions(gameFolder.get());
-
-
-        showTextClientBtn = new Button("Show Text Client");
-        showTextClientBtn.setOnAction(_ -> openTextClientWindow());
-
-        // Create a horizontal container for connect button and text client button
-        connectButtonsBox = new HBox(10);
-        connectButtonsBox.setAlignment(Pos.CENTER_LEFT);
-        connectButtonsBox.getChildren().addAll(connectButton, showTextClientBtn);
-
-        connectionPanel.getChildren().addAll(
-                new Label("Game:"), gameField,
-                new Label("Host:"), hostField,
-                new Label("Port:"), portField,
-                new Label("Slot:"), slotField,
-                new Label("Password:"), passwordField,
-                connectButtonsBox,
-                statusLabel
-        );
-        connectionPanel.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(connectionPanel, Priority.ALWAYS);
+        createConnectionPanel(gameFolder);
 
         // Right: Music player panel (with queue ListView and queue controls)
         queueBox = new VBox(6);
@@ -360,6 +314,56 @@ public class MusicAppDemo extends Application {
                 refreshTree();
             }
         });
+    }
+
+    private void createConnectionPanel(AtomicReference<File> gameFolder) {
+        // Left: Archipelago connection panel
+        connectionPanel = new VBox(5);
+        gameField = new TextField();
+        gameField.setPromptText("Game / Manual name");
+
+        // Load saved game name
+        String savedGameName = APClient.loadSavedGameNameStatic();
+        gameField.setText(savedGameName);
+        hostField = new TextField("localhost");
+        portField = new TextField("38281");
+        slotField = new TextField("Player1");
+        passwordField = new TextField();
+        Map<String, String> saved = loadConnectionSettings();
+        hostField.setText(saved.getOrDefault("host", "localhost"));
+        portField.setText(saved.getOrDefault("port", "38281"));
+        slotField.setText(saved.getOrDefault("slot", "Player1"));
+        passwordField.setText(saved.getOrDefault("password", ""));
+        connectButton = new Button("Connect");
+        statusLabel = new Label("Not connected");
+
+        // Ensure the per-game folder exists
+        gameFolder.set(APClient.getGameDataFolderStatic());
+        checkIfGameFolderExists(gameFolder.get());
+
+        // load slot_data.json to help with parsing the slot data, we already know the game
+        SlotDataHelper.loadSlotOptions(gameFolder.get());
+
+
+        showTextClientBtn = new Button("Show Text Client");
+        showTextClientBtn.setOnAction(_ -> openTextClientWindow());
+
+        // Create a horizontal container for connect button and text client button
+        connectButtonsBox = new HBox(10);
+        connectButtonsBox.setAlignment(Pos.CENTER_LEFT);
+        connectButtonsBox.getChildren().addAll(connectButton, showTextClientBtn);
+
+        connectionPanel.getChildren().addAll(
+                new Label("Game:"), gameField,
+                new Label("Host:"), hostField,
+                new Label("Port:"), portField,
+                new Label("Slot:"), slotField,
+                new Label("Password:"), passwordField,
+                connectButtonsBox,
+                statusLabel
+        );
+        connectionPanel.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(connectionPanel, Priority.ALWAYS);
     }
 
     private void handleTreeSelection(TreeItem<String> newSel) {
