@@ -124,41 +124,9 @@ public class MusicAppDemo extends Application {
         setupQueueScroll();
 
         // When a tree item (song) is selected, add to queue
-        treeView.getSelectionModel().selectedItemProperty().addListener((_, _, newSel) -> {
-            if (newSel == null) return;
-
-            String songTitle = newSel.getValue();
-            Song song = getSongByTitle(songTitle);
-
-            if (song == null) return; // nothing to do if song not found
-
-            Album album = getAlbumForSong(songTitle);
-            boolean songUnlocked = unlockedSongs.contains(song.getTitle());
-            boolean albumUnlocked = album != null && enabledSets.contains(album.getType());
-
-            // Check unlocking rules
-            if (!songUnlocked || !albumUnlocked) {
-                if (!songUnlocked) {
-                    showError("Locked Song", "Cannot play song", song.getTitle() + " is not unlocked yet!");
-                } else if (!albumUnlocked && album != null) {
-                    showError("Locked Song", "Cannot queue song", song.getTitle() + " requires album " + album.getName() + " to be unlocked!");
-                }
-                return; // do not queue
-            }
-
-            // Add to queue, song has passed checks
-            playQueue.add(song);
-            updateQueueDisplay();
-
-            // If nothing is playing, start immediately
-            if (currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) {
-                Song next = playQueue.poll();
-                updateQueueDisplay();
-                if (next != null) {
-                    playSong(next);
-                }
-            }
-        });
+        treeView.getSelectionModel().selectedItemProperty().addListener((_, _, newSel) ->
+            handleTreeSelection(newSel)
+        );
 
         refreshTree();
 
@@ -392,6 +360,42 @@ public class MusicAppDemo extends Application {
                 refreshTree();
             }
         });
+    }
+
+    private void handleTreeSelection(TreeItem<String> newSel) {
+        if (newSel == null) return;
+
+        String songTitle = newSel.getValue();
+        Song song = getSongByTitle(songTitle);
+
+        if (song == null) return;
+
+        Album album = getAlbumForSong(songTitle);
+        boolean songUnlocked = unlockedSongs.contains(song.getTitle());
+        boolean albumUnlocked = album != null && enabledSets.contains(album.getType());
+
+        // Check unlocking rules
+        if (!songUnlocked || !albumUnlocked) {
+            if (!songUnlocked) {
+                showError("Locked Song", "Cannot play song", song.getTitle() + " is not unlocked yet!");
+            } else if (!albumUnlocked && album != null) {
+                showError("Locked Song", "Cannot queue song", song.getTitle() + " requires album " + album.getName() + " to be unlocked!");
+            }
+            return;
+        }
+
+        // Add to queue, song has passed checks
+        playQueue.add(song);
+        updateQueueDisplay();
+
+        // If nothing is playing, start immediately
+        if (currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) {
+            Song next = playQueue.poll();
+            updateQueueDisplay();
+            if (next != null) {
+                playSong(next);
+            }
+        }
     }
 
     private void setupQueueScroll() {
