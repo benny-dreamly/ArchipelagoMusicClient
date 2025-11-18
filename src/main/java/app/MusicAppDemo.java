@@ -157,82 +157,90 @@ public class MusicAppDemo extends Application {
         // Archipelago connection handler
         connectButton.setOnAction(_ -> {
             if (client == null || !client.isConnected()) {
-                String host = hostField.getText();
-                int port = Integer.parseInt(portField.getText());
-                String slot = slotField.getText();
-                String password = passwordField.getText();
-
-                saveConnectionSettings(host, port, slot, password);
-
-                String gameName = gameField.getText().trim();
-                APClient.saveGameNameStatic(gameName);
-
-                client = new APClient(host, port, slot, password);
-
-                resetGameState();
-                client.setGameName(gameName);
-
-                gameFolder.set(APClient.getGameDataFolderStatic());
-                checkIfGameFolderExists(gameFolder.get());
-
-                // ✅ reload slot options after game changes
-                SlotDataHelper.loadSlotOptions(gameFolder.get());
-
-                ensureGameDefaults(gameFolder.get());
-                reloadGameLibrary(gameFolder.get());
-
-                client.setOnErrorCallback(ex -> {
-                    statusLabel.setText("Connection failed");
-                    showError("Connection Failed",
-                            "Failed to connect to Archipelago server",
-                            "Reason: " + ex.getMessage());
-
-                    // Reset button and fields so user can try again
-                    connectButton.setText("Connect");
-                    gameField.setDisable(false);
-                });
-
-                try {
-                    client.getEventManager().registerListener(new ConnectionListener(statusLabel, client, this));
-                    client.getEventManager().registerListener(new ItemListener(this));
-                    client.getEventManager().registerListener(new PrintJsonListener(client, this, outputArea));
-                    client.connect();
-                    statusLabel.setText("Connected!");
-                    connectButton.setText("Disconnect"); // toggle button text
-
-                    // --- Disable the game field after connecting ---
-                    gameField.setDisable(true);
-                    gameField.setTooltip(new Tooltip("Cannot change game while connected"));
-
-                    applySlotData();
-                } catch (Exception ex) {
-                    statusLabel.setText("Connection failed");
-                    showError("Connection Failed", "Failed to connect to Archipelago server", ex.getMessage());
-                    connectButton.setText("Connect");
-                }
+                connectToServer(gameFolder);
             } else {
-                // DISCONNECT
-                client.disconnect();
-                statusLabel.setText("Disconnected");
-                connectButton.setText("Connect"); // toggle button text
-
-                // Re-enable game field
-                gameField.setDisable(false);
-                gameField.setTooltip(null);
-
-                // stop playback
-                stopCurrentSong();
-                clearPlaybackState();
-
-                // CLEAR ALL UNLOCKED / ENABLED DATA
-                enabledSets.clear();
-                unlockedAlbums.clear();
-                unlockedSongs.clear();
-
-                // Refresh tree so nothing shows
-                refreshTree();
+                disconnectFromServer();
             }
         });
+    }
+
+    private void disconnectFromServer() {
+        // DISCONNECT
+        client.disconnect();
+        statusLabel.setText("Disconnected");
+        connectButton.setText("Connect"); // toggle button text
+
+        // Re-enable game field
+        gameField.setDisable(false);
+        gameField.setTooltip(null);
+
+        // stop playback
+        stopCurrentSong();
+        clearPlaybackState();
+
+        // CLEAR ALL UNLOCKED / ENABLED DATA
+        enabledSets.clear();
+        unlockedAlbums.clear();
+        unlockedSongs.clear();
+
+        // Refresh tree so nothing shows
+        refreshTree();
+    }
+
+    private void connectToServer(AtomicReference<File> gameFolder) {
+        String host = hostField.getText();
+        int port = Integer.parseInt(portField.getText());
+        String slot = slotField.getText();
+        String password = passwordField.getText();
+
+        saveConnectionSettings(host, port, slot, password);
+
+        String gameName = gameField.getText().trim();
+        APClient.saveGameNameStatic(gameName);
+
+        client = new APClient(host, port, slot, password);
+
+        resetGameState();
+        client.setGameName(gameName);
+
+        gameFolder.set(APClient.getGameDataFolderStatic());
+        checkIfGameFolderExists(gameFolder.get());
+
+        // ✅ reload slot options after game changes
+        SlotDataHelper.loadSlotOptions(gameFolder.get());
+
+        ensureGameDefaults(gameFolder.get());
+        reloadGameLibrary(gameFolder.get());
+
+        client.setOnErrorCallback(ex -> {
+            statusLabel.setText("Connection failed");
+            showError("Connection Failed",
+                    "Failed to connect to Archipelago server",
+                    "Reason: " + ex.getMessage());
+
+            // Reset button and fields so user can try again
+            connectButton.setText("Connect");
+            gameField.setDisable(false);
+        });
+
+        try {
+            client.getEventManager().registerListener(new ConnectionListener(statusLabel, client, this));
+            client.getEventManager().registerListener(new ItemListener(this));
+            client.getEventManager().registerListener(new PrintJsonListener(client, this, outputArea));
+            client.connect();
+            statusLabel.setText("Connected!");
+            connectButton.setText("Disconnect"); // toggle button text
+
+            // --- Disable the game field after connecting ---
+            gameField.setDisable(true);
+            gameField.setTooltip(new Tooltip("Cannot change game while connected"));
+
+            applySlotData();
+        } catch (Exception ex) {
+            statusLabel.setText("Connection failed");
+            showError("Connection Failed", "Failed to connect to Archipelago server", ex.getMessage());
+            connectButton.setText("Connect");
+        }
     }
 
     private void createBottomBar() {
