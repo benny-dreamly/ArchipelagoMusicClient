@@ -164,302 +164,6 @@ public class MusicAppDemo extends Application {
         });
     }
 
-    private void disconnectFromServer() {
-        // DISCONNECT
-        client.disconnect();
-        statusLabel.setText("Disconnected");
-        connectButton.setText("Connect"); // toggle button text
-
-        // Re-enable game field
-        gameField.setDisable(false);
-        gameField.setTooltip(null);
-
-        // stop playback
-        stopCurrentSong();
-        clearPlaybackState();
-
-        // CLEAR ALL UNLOCKED / ENABLED DATA
-        enabledSets.clear();
-        unlockedAlbums.clear();
-        unlockedSongs.clear();
-
-        // Refresh tree so nothing shows
-        refreshTree();
-    }
-
-    private void connectToServer(AtomicReference<File> gameFolder) {
-        String host = hostField.getText();
-        int port = Integer.parseInt(portField.getText());
-        String slot = slotField.getText();
-        String password = passwordField.getText();
-
-        saveConnectionSettings(host, port, slot, password);
-
-        String gameName = gameField.getText().trim();
-        APClient.saveGameNameStatic(gameName);
-
-        client = new APClient(host, port, slot, password);
-
-        resetGameState();
-        client.setGameName(gameName);
-
-        gameFolder.set(APClient.getGameDataFolderStatic());
-        checkIfGameFolderExists(gameFolder.get());
-
-        // ✅ reload slot options after game changes
-        SlotDataHelper.loadSlotOptions(gameFolder.get());
-
-        ensureGameDefaults(gameFolder.get());
-        reloadGameLibrary(gameFolder.get());
-
-        client.setOnErrorCallback(ex -> {
-            statusLabel.setText("Connection failed");
-            showError("Connection Failed",
-                    "Failed to connect to Archipelago server",
-                    "Reason: " + ex.getMessage());
-
-            // Reset button and fields so user can try again
-            connectButton.setText("Connect");
-            gameField.setDisable(false);
-        });
-
-        try {
-            client.getEventManager().registerListener(new ConnectionListener(statusLabel, client, this));
-            client.getEventManager().registerListener(new ItemListener(this));
-            client.getEventManager().registerListener(new PrintJsonListener(client, this, outputArea));
-            client.connect();
-            statusLabel.setText("Connected!");
-            connectButton.setText("Disconnect"); // toggle button text
-
-            // --- Disable the game field after connecting ---
-            gameField.setDisable(true);
-            gameField.setTooltip(new Tooltip("Cannot change game while connected"));
-
-            applySlotData();
-        } catch (Exception ex) {
-            statusLabel.setText("Connection failed");
-            showError("Connection Failed", "Failed to connect to Archipelago server", ex.getMessage());
-            connectButton.setText("Connect");
-        }
-    }
-
-    private void createBottomBar() {
-        // Bottom controls HBox
-        bottomBar = new HBox(20);
-        bottomBar.setPadding(new Insets(10));
-        bottomBar.setAlignment(Pos.CENTER);
-    }
-
-    private void createQueueBox() {
-        // Right: Music player panel (with queue ListView and queue controls)
-        queueBox = new VBox(6);
-        queueBox.setAlignment(Pos.CENTER_RIGHT);
-
-        playerButtons = new HBox(6);
-        playButton = new Button("▶");
-        pauseButton = new Button("⏸");
-        playerButtons.getChildren().addAll(playButton, pauseButton);
-
-        // Queue control buttons
-        queueButtons = new HBox(6);
-        removeSelectedBtn = new Button("Remove Selected");
-        clearQueueBtn = new Button("Clear Queue");
-        queueButtons.getChildren().addAll(removeSelectedBtn, clearQueueBtn);
-
-        queueBox.getChildren().addAll(currentSongLabel, enableSeekCheck , progressBox, playerButtons, new Label("Queue:"), queueScrollPane, queueButtons);
-        queueBox.setAlignment(Pos.CENTER_RIGHT);
-        HBox.setHgrow(queueBox, Priority.ALWAYS);
-
-        // Play button behaviour
-        playButton.setOnAction(_ -> {
-            // If paused, resume. If nothing playing but queue has items, start next.
-            if (currentPlayer != null && currentPlayer.getStatus() == MediaPlayer.Status.PAUSED) {
-                currentPlayer.play();
-                if (currentSong != null) currentSongLabel.setText("Currently Playing: " + currentSong.getTitle());
-                return;
-            }
-
-            if (currentSong != null && (currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING)) {
-                // start current (if file exists)
-                if (currentSong.getFilePath() != null) {
-                    playSong(currentSong);
-                } else {
-                    showError("File Not Found", "Cannot play song", "File not found for: " + currentSong.getTitle());
-                }
-            } else if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) && !playQueue.isEmpty()) {
-                Song next = playQueue.poll();
-                updateQueueDisplay();
-                if (next != null) playSong(next);
-            }
-        });
-
-        pauseButton.setOnAction(_ -> {
-            if (currentPlayer != null) {
-                MediaPlayer.Status status = currentPlayer.getStatus();
-                if (status == MediaPlayer.Status.PLAYING) {
-                    currentPlayer.pause();
-                    if (currentSong != null) currentSongLabel.setText("Paused: " + currentSong.getTitle());
-                } else if (status == MediaPlayer.Status.PAUSED) {
-                    currentPlayer.play();
-                    if (currentSong != null) currentSongLabel.setText("Currently Playing: " + currentSong.getTitle());
-                }
-            }
-        });
-
-        // Remove selected from the queue (both ListView and underlying queue)
-        removeSelectedBtn.setOnAction(_ -> {
-            String sel = queueListView.getSelectionModel().getSelectedItem();
-            if (sel != null) {
-                removeFromQueue(sel);
-                updateQueueDisplay();
-            }
-        });
-
-        // Clear queue
-        clearQueueBtn.setOnAction(_ -> {
-            playQueue.clear();
-            updateQueueDisplay();
-        });
-
-        enableSeekCheck.selectedProperty().addListener((_, _, isSelected) -> {
-            progressSlider.setDisable(!isSelected);  // disable slider when checkbox off
-
-            if (isSelected) {
-                progressSlider.valueChangingProperty().addListener(seekListener);
-            } else {
-                progressSlider.valueChangingProperty().removeListener(seekListener);
-            }
-        });
-    }
-
-    private void createConnectionPanel(AtomicReference<File> gameFolder) {
-        // Left: Archipelago connection panel
-        connectionPanel = new VBox(5);
-        gameField = new TextField();
-        gameField.setPromptText("Game / Manual name");
-
-        // Load saved game name
-        String savedGameName = APClient.loadSavedGameNameStatic();
-        gameField.setText(savedGameName);
-        hostField = new TextField("localhost");
-        portField = new TextField("38281");
-        slotField = new TextField("Player1");
-        passwordField = new TextField();
-        Map<String, String> saved = loadConnectionSettings();
-        hostField.setText(saved.getOrDefault("host", "localhost"));
-        portField.setText(saved.getOrDefault("port", "38281"));
-        slotField.setText(saved.getOrDefault("slot", "Player1"));
-        passwordField.setText(saved.getOrDefault("password", ""));
-        connectButton = new Button("Connect");
-        statusLabel = new Label("Not connected");
-
-        // Ensure the per-game folder exists
-        gameFolder.set(APClient.getGameDataFolderStatic());
-        checkIfGameFolderExists(gameFolder.get());
-
-        // load slot_data.json to help with parsing the slot data, we already know the game
-        SlotDataHelper.loadSlotOptions(gameFolder.get());
-
-
-        showTextClientBtn = new Button("Show Text Client");
-        showTextClientBtn.setOnAction(_ -> openTextClientWindow());
-
-        // Create a horizontal container for connect button and text client button
-        connectButtonsBox = new HBox(10);
-        connectButtonsBox.setAlignment(Pos.CENTER_LEFT);
-        connectButtonsBox.getChildren().addAll(connectButton, showTextClientBtn);
-
-        connectionPanel.getChildren().addAll(
-                new Label("Game:"), gameField,
-                new Label("Host:"), hostField,
-                new Label("Port:"), portField,
-                new Label("Slot:"), slotField,
-                new Label("Password:"), passwordField,
-                connectButtonsBox,
-                statusLabel
-        );
-        connectionPanel.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(connectionPanel, Priority.ALWAYS);
-    }
-
-    private void handleTreeSelection(TreeItem<String> newSel) {
-        if (newSel == null) return;
-
-        String songTitle = newSel.getValue();
-        Song song = getSongByTitle(songTitle);
-
-        if (song == null) return;
-
-        Album album = getAlbumForSong(songTitle);
-        boolean songUnlocked = unlockedSongs.contains(song.getTitle());
-        boolean albumUnlocked = album != null && enabledSets.contains(album.getType());
-
-        // Check unlocking rules
-        if (!songUnlocked || !albumUnlocked) {
-            if (!songUnlocked) {
-                showError("Locked Song", "Cannot play song", song.getTitle() + " is not unlocked yet!");
-            } else if (!albumUnlocked && album != null) {
-                showError("Locked Song", "Cannot queue song", song.getTitle() + " requires album " + album.getName() + " to be unlocked!");
-            }
-            return;
-        }
-
-        // Add to queue, song has passed checks
-        playQueue.add(song);
-        updateQueueDisplay();
-
-        // If nothing is playing, start immediately
-        if (currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) {
-            Song next = playQueue.poll();
-            updateQueueDisplay();
-            if (next != null) {
-                playSong(next);
-            }
-        }
-    }
-
-    private void setupQueueScroll() {
-        // Map vertical scroll to horizontal scroll
-        queueScrollPane.addEventFilter(ScrollEvent.SCROLL, event -> {
-            if (event.getDeltaY() != 0) {
-                double h = queueScrollPane.getHvalue() - event.getDeltaY() * 0.005; // smoother scaling
-                queueScrollPane.setHvalue(Math.min(Math.max(h, 0), 1));
-                event.consume();
-            }
-        });
-    }
-
-    private void initUIComponents() {
-        treeView = new TreeView<>();
-        currentSongLabel = new Label("Currently Playing: None");
-
-        enableSeekCheck = new CheckBox("Enable Seek Slider");
-        enableSeekCheck.setSelected(false); // default off
-
-        progressSlider = new Slider();
-        progressSlider.setMin(0);
-        progressSlider.setMax(1); // normalized
-        progressSlider.setValue(0);
-        progressSlider.setPrefWidth(400);
-        progressSlider.setDisable(true);
-
-        elapsedLabel = new Label("0:00");
-        durationLabel = new Label("0:00");
-
-        progressBox = new HBox(5, elapsedLabel, progressSlider, durationLabel);
-        progressBox.setAlignment(Pos.CENTER);
-
-        queueListView = new ListView<>();
-        queueListView.setPrefHeight(120);
-
-        queueScrollPane = new ScrollPane(queueListView);
-        queueScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.ALWAYS);
-        queueScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-
-        // Fit the ListView nicely inside the ScrollPane
-        queueScrollPane.setFitToHeight(true);
-        queueListView.setMinWidth(Region.USE_PREF_SIZE);
-    }
 
     @Override
     public void stop() throws Exception {
@@ -1243,5 +947,302 @@ public class MusicAppDemo extends Application {
         Scene scene = new Scene(root, 400, 300);
         textStage.setScene(scene);
         textStage.show();
+    }
+
+    private void disconnectFromServer() {
+        // DISCONNECT
+        client.disconnect();
+        statusLabel.setText("Disconnected");
+        connectButton.setText("Connect"); // toggle button text
+
+        // Re-enable game field
+        gameField.setDisable(false);
+        gameField.setTooltip(null);
+
+        // stop playback
+        stopCurrentSong();
+        clearPlaybackState();
+
+        // CLEAR ALL UNLOCKED / ENABLED DATA
+        enabledSets.clear();
+        unlockedAlbums.clear();
+        unlockedSongs.clear();
+
+        // Refresh tree so nothing shows
+        refreshTree();
+    }
+
+    private void connectToServer(AtomicReference<File> gameFolder) {
+        String host = hostField.getText();
+        int port = Integer.parseInt(portField.getText());
+        String slot = slotField.getText();
+        String password = passwordField.getText();
+
+        saveConnectionSettings(host, port, slot, password);
+
+        String gameName = gameField.getText().trim();
+        APClient.saveGameNameStatic(gameName);
+
+        client = new APClient(host, port, slot, password);
+
+        resetGameState();
+        client.setGameName(gameName);
+
+        gameFolder.set(APClient.getGameDataFolderStatic());
+        checkIfGameFolderExists(gameFolder.get());
+
+        // ✅ reload slot options after game changes
+        SlotDataHelper.loadSlotOptions(gameFolder.get());
+
+        ensureGameDefaults(gameFolder.get());
+        reloadGameLibrary(gameFolder.get());
+
+        client.setOnErrorCallback(ex -> {
+            statusLabel.setText("Connection failed");
+            showError("Connection Failed",
+                    "Failed to connect to Archipelago server",
+                    "Reason: " + ex.getMessage());
+
+            // Reset button and fields so user can try again
+            connectButton.setText("Connect");
+            gameField.setDisable(false);
+        });
+
+        try {
+            client.getEventManager().registerListener(new ConnectionListener(statusLabel, client, this));
+            client.getEventManager().registerListener(new ItemListener(this));
+            client.getEventManager().registerListener(new PrintJsonListener(client, this, outputArea));
+            client.connect();
+            statusLabel.setText("Connected!");
+            connectButton.setText("Disconnect"); // toggle button text
+
+            // --- Disable the game field after connecting ---
+            gameField.setDisable(true);
+            gameField.setTooltip(new Tooltip("Cannot change game while connected"));
+
+            applySlotData();
+        } catch (Exception ex) {
+            statusLabel.setText("Connection failed");
+            showError("Connection Failed", "Failed to connect to Archipelago server", ex.getMessage());
+            connectButton.setText("Connect");
+        }
+    }
+
+    private void createBottomBar() {
+        // Bottom controls HBox
+        bottomBar = new HBox(20);
+        bottomBar.setPadding(new Insets(10));
+        bottomBar.setAlignment(Pos.CENTER);
+    }
+
+    private void createQueueBox() {
+        // Right: Music player panel (with queue ListView and queue controls)
+        queueBox = new VBox(6);
+        queueBox.setAlignment(Pos.CENTER_RIGHT);
+
+        playerButtons = new HBox(6);
+        playButton = new Button("▶");
+        pauseButton = new Button("⏸");
+        playerButtons.getChildren().addAll(playButton, pauseButton);
+
+        // Queue control buttons
+        queueButtons = new HBox(6);
+        removeSelectedBtn = new Button("Remove Selected");
+        clearQueueBtn = new Button("Clear Queue");
+        queueButtons.getChildren().addAll(removeSelectedBtn, clearQueueBtn);
+
+        queueBox.getChildren().addAll(currentSongLabel, enableSeekCheck , progressBox, playerButtons, new Label("Queue:"), queueScrollPane, queueButtons);
+        queueBox.setAlignment(Pos.CENTER_RIGHT);
+        HBox.setHgrow(queueBox, Priority.ALWAYS);
+
+        // Play button behaviour
+        playButton.setOnAction(_ -> {
+            // If paused, resume. If nothing playing but queue has items, start next.
+            if (currentPlayer != null && currentPlayer.getStatus() == MediaPlayer.Status.PAUSED) {
+                currentPlayer.play();
+                if (currentSong != null) currentSongLabel.setText("Currently Playing: " + currentSong.getTitle());
+                return;
+            }
+
+            if (currentSong != null && (currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING)) {
+                // start current (if file exists)
+                if (currentSong.getFilePath() != null) {
+                    playSong(currentSong);
+                } else {
+                    showError("File Not Found", "Cannot play song", "File not found for: " + currentSong.getTitle());
+                }
+            } else if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) && !playQueue.isEmpty()) {
+                Song next = playQueue.poll();
+                updateQueueDisplay();
+                if (next != null) playSong(next);
+            }
+        });
+
+        pauseButton.setOnAction(_ -> {
+            if (currentPlayer != null) {
+                MediaPlayer.Status status = currentPlayer.getStatus();
+                if (status == MediaPlayer.Status.PLAYING) {
+                    currentPlayer.pause();
+                    if (currentSong != null) currentSongLabel.setText("Paused: " + currentSong.getTitle());
+                } else if (status == MediaPlayer.Status.PAUSED) {
+                    currentPlayer.play();
+                    if (currentSong != null) currentSongLabel.setText("Currently Playing: " + currentSong.getTitle());
+                }
+            }
+        });
+
+        // Remove selected from the queue (both ListView and underlying queue)
+        removeSelectedBtn.setOnAction(_ -> {
+            String sel = queueListView.getSelectionModel().getSelectedItem();
+            if (sel != null) {
+                removeFromQueue(sel);
+                updateQueueDisplay();
+            }
+        });
+
+        // Clear queue
+        clearQueueBtn.setOnAction(_ -> {
+            playQueue.clear();
+            updateQueueDisplay();
+        });
+
+        enableSeekCheck.selectedProperty().addListener((_, _, isSelected) -> {
+            progressSlider.setDisable(!isSelected);  // disable slider when checkbox off
+
+            if (isSelected) {
+                progressSlider.valueChangingProperty().addListener(seekListener);
+            } else {
+                progressSlider.valueChangingProperty().removeListener(seekListener);
+            }
+        });
+    }
+
+    private void createConnectionPanel(AtomicReference<File> gameFolder) {
+        // Left: Archipelago connection panel
+        connectionPanel = new VBox(5);
+        gameField = new TextField();
+        gameField.setPromptText("Game / Manual name");
+
+        // Load saved game name
+        String savedGameName = APClient.loadSavedGameNameStatic();
+        gameField.setText(savedGameName);
+        hostField = new TextField("localhost");
+        portField = new TextField("38281");
+        slotField = new TextField("Player1");
+        passwordField = new TextField();
+        Map<String, String> saved = loadConnectionSettings();
+        hostField.setText(saved.getOrDefault("host", "localhost"));
+        portField.setText(saved.getOrDefault("port", "38281"));
+        slotField.setText(saved.getOrDefault("slot", "Player1"));
+        passwordField.setText(saved.getOrDefault("password", ""));
+        connectButton = new Button("Connect");
+        statusLabel = new Label("Not connected");
+
+        // Ensure the per-game folder exists
+        gameFolder.set(APClient.getGameDataFolderStatic());
+        checkIfGameFolderExists(gameFolder.get());
+
+        // load slot_data.json to help with parsing the slot data, we already know the game
+        SlotDataHelper.loadSlotOptions(gameFolder.get());
+
+
+        showTextClientBtn = new Button("Show Text Client");
+        showTextClientBtn.setOnAction(_ -> openTextClientWindow());
+
+        // Create a horizontal container for connect button and text client button
+        connectButtonsBox = new HBox(10);
+        connectButtonsBox.setAlignment(Pos.CENTER_LEFT);
+        connectButtonsBox.getChildren().addAll(connectButton, showTextClientBtn);
+
+        connectionPanel.getChildren().addAll(
+                new Label("Game:"), gameField,
+                new Label("Host:"), hostField,
+                new Label("Port:"), portField,
+                new Label("Slot:"), slotField,
+                new Label("Password:"), passwordField,
+                connectButtonsBox,
+                statusLabel
+        );
+        connectionPanel.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(connectionPanel, Priority.ALWAYS);
+    }
+
+    private void handleTreeSelection(TreeItem<String> newSel) {
+        if (newSel == null) return;
+
+        String songTitle = newSel.getValue();
+        Song song = getSongByTitle(songTitle);
+
+        if (song == null) return;
+
+        Album album = getAlbumForSong(songTitle);
+        boolean songUnlocked = unlockedSongs.contains(song.getTitle());
+        boolean albumUnlocked = album != null && enabledSets.contains(album.getType());
+
+        // Check unlocking rules
+        if (!songUnlocked || !albumUnlocked) {
+            if (!songUnlocked) {
+                showError("Locked Song", "Cannot play song", song.getTitle() + " is not unlocked yet!");
+            } else if (!albumUnlocked && album != null) {
+                showError("Locked Song", "Cannot queue song", song.getTitle() + " requires album " + album.getName() + " to be unlocked!");
+            }
+            return;
+        }
+
+        // Add to queue, song has passed checks
+        playQueue.add(song);
+        updateQueueDisplay();
+
+        // If nothing is playing, start immediately
+        if (currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) {
+            Song next = playQueue.poll();
+            updateQueueDisplay();
+            if (next != null) {
+                playSong(next);
+            }
+        }
+    }
+
+    private void setupQueueScroll() {
+        // Map vertical scroll to horizontal scroll
+        queueScrollPane.addEventFilter(ScrollEvent.SCROLL, event -> {
+            if (event.getDeltaY() != 0) {
+                double h = queueScrollPane.getHvalue() - event.getDeltaY() * 0.005; // smoother scaling
+                queueScrollPane.setHvalue(Math.min(Math.max(h, 0), 1));
+                event.consume();
+            }
+        });
+    }
+
+    private void initUIComponents() {
+        treeView = new TreeView<>();
+        currentSongLabel = new Label("Currently Playing: None");
+
+        enableSeekCheck = new CheckBox("Enable Seek Slider");
+        enableSeekCheck.setSelected(false); // default off
+
+        progressSlider = new Slider();
+        progressSlider.setMin(0);
+        progressSlider.setMax(1); // normalized
+        progressSlider.setValue(0);
+        progressSlider.setPrefWidth(400);
+        progressSlider.setDisable(true);
+
+        elapsedLabel = new Label("0:00");
+        durationLabel = new Label("0:00");
+
+        progressBox = new HBox(5, elapsedLabel, progressSlider, durationLabel);
+        progressBox.setAlignment(Pos.CENTER);
+
+        queueListView = new ListView<>();
+        queueListView.setPrefHeight(120);
+
+        queueScrollPane = new ScrollPane(queueListView);
+        queueScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.ALWAYS);
+        queueScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+
+        // Fit the ListView nicely inside the ScrollPane
+        queueScrollPane.setFitToHeight(true);
+        queueListView.setMinWidth(Region.USE_PREF_SIZE);
     }
 }
