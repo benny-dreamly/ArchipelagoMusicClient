@@ -11,7 +11,7 @@ import app.player.json.AlbumMetadataLoader;
 import app.player.json.LibraryLoader;
 import app.player.json.SongJSON;
 import app.player.ui.ConnectionPanel;
-import app.util.ConfigPaths;
+import app.player.ui.PlayerPanel;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
@@ -24,8 +24,6 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.media.Media;
@@ -62,43 +60,21 @@ public class MusicAppDemo extends Application {
     private APClient client;
 
     private Song currentSong;
-    private Label currentSongLabel;
 
     // queue UI + data
     private final Queue<Song> playQueue = new LinkedList<>();
-    private ListView<String> queueListView;   // visual queue (titles)
     private MediaPlayer currentPlayer;
 
-    private Slider progressSlider;
-    private Label elapsedLabel;
-    private Label durationLabel;
 
     private boolean isUpdatingSelection = false;
 
     // various fields and stuff for the UI (the others are above or locally defined)
     @SuppressWarnings("FieldCanBeLocal")
-    private HBox queueButtons;
-    @SuppressWarnings("FieldCanBeLocal")
-    private Button removeSelectedBtn;
-    @SuppressWarnings("FieldCanBeLocal")
-    private Button clearQueueBtn;
-    @SuppressWarnings("FieldCanBeLocal")
-    private Button pauseButton;
-    @SuppressWarnings("FieldCanBeLocal")
-    private Button playButton;
-    @SuppressWarnings("FieldCanBeLocal")
-    private HBox playerButtons;
-    @SuppressWarnings("FieldCanBeLocal")
-    private VBox queueBox;
-    @SuppressWarnings("FieldCanBeLocal")
     private ConnectionPanel connectionPanel;
     @SuppressWarnings("FieldCanBeLocal")
+    private PlayerPanel playerPanel;
+    @SuppressWarnings("FieldCanBeLocal")
     private HBox bottomBar;
-    private ScrollPane queueScrollPane;
-    @SuppressWarnings("FieldCanBeLocal")
-    private HBox progressBox;
-    @SuppressWarnings("FieldCanBeLocal")
-    private CheckBox enableSeekCheck;
     @SuppressWarnings("FieldCanBeLocal")
     private VBox root;
 
@@ -115,8 +91,6 @@ public class MusicAppDemo extends Application {
 
         initUIComponents();
 
-        setupQueueScroll();
-
         // When a tree item (song) is selected, add to queue
         treeView.getSelectionModel().selectedItemProperty().addListener((_, _, newSel) ->
             handleTreeSelection(newSel)
@@ -128,10 +102,11 @@ public class MusicAppDemo extends Application {
 
         connectionPanel = new ConnectionPanel(gameFolder, () -> client);
 
-        createQueueBox();
+        playerPanel = new PlayerPanel();
+        setupPlayerPanel(playerPanel);
 
         // Add panels to bottom bar
-        bottomBar.getChildren().addAll(connectionPanel, queueBox);
+        bottomBar.getChildren().addAll(connectionPanel, playerPanel);
 
         root = new VBox(10, treeView, bottomBar);
         stage.setScene(new Scene(root, 800, 600));
@@ -382,11 +357,11 @@ public class MusicAppDemo extends Application {
         currentPlayer = new MediaPlayer(media);
 
         currentPlayer.currentTimeProperty().addListener((_, _, newTime) -> {
-            if (!progressSlider.isValueChanging()) {
+            if (!playerPanel.getProgressSlider().isValueChanging()) {
                 Duration total = currentPlayer.getTotalDuration();
                 if (total != null && total.greaterThan(Duration.ZERO)) {
-                    progressSlider.setValue(newTime.toMillis() / total.toMillis());
-                    elapsedLabel.setText(formatTime(newTime));
+                    playerPanel.getProgressSlider().setValue(newTime.toMillis() / total.toMillis());
+                    playerPanel.getElapsedLabel().setText(formatTime(newTime));
                 }
             }
         });
@@ -395,7 +370,7 @@ public class MusicAppDemo extends Application {
         currentPlayer.setOnReady(() -> {
             Duration total = currentPlayer.getTotalDuration();
             if (total != null) {
-                durationLabel.setText(formatTime(total));
+                playerPanel.getDurationLabel().setText(formatTime(total));
             }
         });
 
@@ -407,7 +382,7 @@ public class MusicAppDemo extends Application {
         });
 
         currentPlayer.play();
-        currentSongLabel.setText("Currently Playing: " + song.getTitle());
+        playerPanel.getCurrentSongLabel().setText("Currently Playing: " + song.getTitle());
         updateQueueDisplay();
         highlightCurrentSong(song.getTitle());
     }
@@ -418,7 +393,7 @@ public class MusicAppDemo extends Application {
         if (next != null) {
             playSong(next);
         } else {
-            currentSongLabel.setText("Currently Playing: None");
+            playerPanel.getCurrentSongLabel().setText("Currently Playing: None");
             currentPlayer = null;
             resetProgress();
         }
@@ -455,12 +430,12 @@ public class MusicAppDemo extends Application {
     // Queue helpers -----------------------------------------------------
 
     private void updateQueueDisplay() {
-        queueListView.getItems().clear();
+        playerPanel.getQueueListView().getItems().clear();
         for (Song s : playQueue) {
-            queueListView.getItems().add(s.getTitle());
+            playerPanel.getQueueListView().getItems().add(s.getTitle());
         }
         if (playQueue.isEmpty()) {
-            queueListView.getItems().add("(empty)");
+            playerPanel.getQueueListView().getItems().add("(empty)");
         }
     }
 
@@ -842,7 +817,7 @@ public class MusicAppDemo extends Application {
     }
 
     public void clearPlaybackState() {
-        currentSongLabel.setText("");
+        playerPanel.getCurrentSongLabel().setText("");
         // any other UI cleanup (like resetting progress bar, etc.)
         resetProgress();
     }
@@ -858,15 +833,15 @@ public class MusicAppDemo extends Application {
         if (!isChanging && currentPlayer != null) {
             Duration total = currentPlayer.getTotalDuration();
             if (total != null) {
-                currentPlayer.seek(total.multiply(progressSlider.getValue()));
+                currentPlayer.seek(total.multiply(playerPanel.getProgressSlider().getValue()));
             }
         }
     };
 
     private void resetProgress() {
-        progressSlider.setValue(0);
-        elapsedLabel.setText("0:00");
-        durationLabel.setText("0:00");
+        playerPanel.getProgressSlider().setValue(0);
+        playerPanel.getElapsedLabel().setText("0:00");
+        playerPanel.getDurationLabel().setText("0:00");
     }
 
     public void setConnectButtonText(String text) {
@@ -963,32 +938,14 @@ public class MusicAppDemo extends Application {
         bottomBar.setAlignment(Pos.CENTER);
     }
 
-    private void createQueueBox() {
-        // Right: Music player panel (with queue ListView and queue controls)
-        queueBox = new VBox(6);
-        queueBox.setAlignment(Pos.CENTER_RIGHT);
-
-        playerButtons = new HBox(6);
-        playButton = new Button("▶");
-        pauseButton = new Button("⏸");
-        playerButtons.getChildren().addAll(playButton, pauseButton);
-
-        // Queue control buttons
-        queueButtons = new HBox(6);
-        removeSelectedBtn = new Button("Remove Selected");
-        clearQueueBtn = new Button("Clear Queue");
-        queueButtons.getChildren().addAll(removeSelectedBtn, clearQueueBtn);
-
-        queueBox.getChildren().addAll(currentSongLabel, enableSeekCheck , progressBox, playerButtons, new Label("Queue:"), queueScrollPane, queueButtons);
-        queueBox.setAlignment(Pos.CENTER_RIGHT);
-        HBox.setHgrow(queueBox, Priority.ALWAYS);
+    private void setupPlayerPanel(PlayerPanel panel) {
 
         // Play button behaviour
-        playButton.setOnAction(_ -> {
+        panel.getPlayButton().setOnAction(_ -> {
             // If paused, resume. If nothing playing but queue has items, start next.
             if (currentPlayer != null && currentPlayer.getStatus() == MediaPlayer.Status.PAUSED) {
                 currentPlayer.play();
-                if (currentSong != null) currentSongLabel.setText("Currently Playing: " + currentSong.getTitle());
+                if (currentSong != null) playerPanel.getCurrentSongLabel().setText("Currently Playing: " + currentSong.getTitle());
                 return;
             }
 
@@ -1006,22 +963,22 @@ public class MusicAppDemo extends Application {
             }
         });
 
-        pauseButton.setOnAction(_ -> {
+        panel.getPauseButton().setOnAction(_ -> {
             if (currentPlayer != null) {
                 MediaPlayer.Status status = currentPlayer.getStatus();
                 if (status == MediaPlayer.Status.PLAYING) {
                     currentPlayer.pause();
-                    if (currentSong != null) currentSongLabel.setText("Paused: " + currentSong.getTitle());
+                    if (currentSong != null) playerPanel.getCurrentSongLabel().setText("Paused: " + currentSong.getTitle());
                 } else if (status == MediaPlayer.Status.PAUSED) {
                     currentPlayer.play();
-                    if (currentSong != null) currentSongLabel.setText("Currently Playing: " + currentSong.getTitle());
+                    if (currentSong != null) playerPanel.getCurrentSongLabel().setText("Currently Playing: " + currentSong.getTitle());
                 }
             }
         });
 
         // Remove selected from the queue (both ListView and underlying queue)
-        removeSelectedBtn.setOnAction(_ -> {
-            String sel = queueListView.getSelectionModel().getSelectedItem();
+        panel.getRemoveSelectedBtn().setOnAction(_ -> {
+            String sel = playerPanel.getQueueListView().getSelectionModel().getSelectedItem();
             if (sel != null) {
                 removeFromQueue(sel);
                 updateQueueDisplay();
@@ -1029,18 +986,18 @@ public class MusicAppDemo extends Application {
         });
 
         // Clear queue
-        clearQueueBtn.setOnAction(_ -> {
+        panel.getClearQueueBtn().setOnAction(_ -> {
             playQueue.clear();
             updateQueueDisplay();
         });
 
-        enableSeekCheck.selectedProperty().addListener((_, _, isSelected) -> {
-            progressSlider.setDisable(!isSelected);  // disable slider when checkbox off
+        panel.getEnableSeekCheck().selectedProperty().addListener((_, _, isSelected) -> {
+            playerPanel.getProgressSlider().setDisable(!isSelected);  // disable slider when checkbox off
 
             if (isSelected) {
-                progressSlider.valueChangingProperty().addListener(seekListener);
+                playerPanel.getProgressSlider().valueChangingProperty().addListener(seekListener);
             } else {
-                progressSlider.valueChangingProperty().removeListener(seekListener);
+                playerPanel.getProgressSlider().valueChangingProperty().removeListener(seekListener);
             }
         });
     }
@@ -1081,47 +1038,8 @@ public class MusicAppDemo extends Application {
         }
     }
 
-    private void setupQueueScroll() {
-        // Map vertical scroll to horizontal scroll
-        queueScrollPane.addEventFilter(ScrollEvent.SCROLL, event -> {
-            if (event.getDeltaY() != 0) {
-                double h = queueScrollPane.getHvalue() - event.getDeltaY() * 0.005; // smoother scaling
-                queueScrollPane.setHvalue(Math.min(Math.max(h, 0), 1));
-                event.consume();
-            }
-        });
-    }
-
     private void initUIComponents() {
         treeView = new TreeView<>();
-        currentSongLabel = new Label("Currently Playing: None");
-
-        enableSeekCheck = new CheckBox("Enable Seek Slider");
-        enableSeekCheck.setSelected(false); // default off
-
-        progressSlider = new Slider();
-        progressSlider.setMin(0);
-        progressSlider.setMax(1); // normalized
-        progressSlider.setValue(0);
-        progressSlider.setPrefWidth(400);
-        progressSlider.setDisable(true);
-
-        elapsedLabel = new Label("0:00");
-        durationLabel = new Label("0:00");
-
-        progressBox = new HBox(5, elapsedLabel, progressSlider, durationLabel);
-        progressBox.setAlignment(Pos.CENTER);
-
-        queueListView = new ListView<>();
-        queueListView.setPrefHeight(120);
-
-        queueScrollPane = new ScrollPane(queueListView);
-        queueScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.ALWAYS);
-        queueScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-
-        // Fit the ListView nicely inside the ScrollPane
-        queueScrollPane.setFitToHeight(true);
-        queueListView.setMinWidth(Region.USE_PREF_SIZE);
     }
 
     public APClient getClient() {
