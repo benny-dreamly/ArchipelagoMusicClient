@@ -382,7 +382,7 @@ public class MusicAppDemo extends Application {
         });
 
         currentPlayer.play();
-        playerPanel.getCurrentSongLabel().setText("Currently Playing: " + song.getTitle());
+        playerPanel.setCurrentSongLabel("Currently Playing: " + song.getTitle());
         updateQueueDisplay();
         highlightCurrentSong(song.getTitle());
     }
@@ -393,7 +393,7 @@ public class MusicAppDemo extends Application {
         if (next != null) {
             playSong(next);
         } else {
-            playerPanel.getCurrentSongLabel().setText("Currently Playing: None");
+            playerPanel.setCurrentSongLabel("Currently Playing: None");
             currentPlayer = null;
             resetProgress();
         }
@@ -817,7 +817,7 @@ public class MusicAppDemo extends Application {
     }
 
     public void clearPlaybackState() {
-        playerPanel.getCurrentSongLabel().setText("");
+        playerPanel.setCurrentSongLabel("");
         // any other UI cleanup (like resetting progress bar, etc.)
         resetProgress();
     }
@@ -945,7 +945,7 @@ public class MusicAppDemo extends Application {
             // If paused, resume. If nothing playing but queue has items, start next.
             if (currentPlayer != null && currentPlayer.getStatus() == MediaPlayer.Status.PAUSED) {
                 currentPlayer.play();
-                if (currentSong != null) playerPanel.getCurrentSongLabel().setText("Currently Playing: " + currentSong.getTitle());
+                if (currentSong != null) playerPanel.setCurrentSongLabel("Currently Playing: " + currentSong.getTitle());
                 return;
             }
 
@@ -968,10 +968,10 @@ public class MusicAppDemo extends Application {
                 MediaPlayer.Status status = currentPlayer.getStatus();
                 if (status == MediaPlayer.Status.PLAYING) {
                     currentPlayer.pause();
-                    if (currentSong != null) playerPanel.getCurrentSongLabel().setText("Paused: " + currentSong.getTitle());
+                    if (currentSong != null) playerPanel.setCurrentSongLabel("Paused: " + currentSong.getTitle());
                 } else if (status == MediaPlayer.Status.PAUSED) {
                     currentPlayer.play();
-                    if (currentSong != null) playerPanel.getCurrentSongLabel().setText("Currently Playing: " + currentSong.getTitle());
+                    if (currentSong != null) playerPanel.setCurrentSongLabel("Currently Playing: " + currentSong.getTitle());
                 }
             }
         });

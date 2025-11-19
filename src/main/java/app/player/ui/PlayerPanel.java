@@ -104,4 +104,8 @@ public class PlayerPanel extends VBox {
     public Label getCurrentSongLabel() { return currentSongLabel; }
     public Label getElapsedLabel() { return elapsedLabel; }
     public Label getDurationLabel() { return durationLabel; }
+
+    public void setCurrentSongLabel(String text) {
+        currentSongLabel.setText(text);
+    }
 }
