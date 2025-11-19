@@ -1,6 +1,7 @@
 package app.player.ui;
 
 import app.player.Song;
+import javafx.beans.value.ChangeListener;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.input.ScrollEvent;
@@ -107,5 +108,25 @@ public class PlayerPanel extends VBox {
 
     public void setCurrentSongLabel(String text) {
         currentSongLabel.setText(text);
+    }
+
+    public void addToQueueDisplay(String title) {
+        queueListView.getItems().add(title);
+    }
+
+    public void clearQueueDisplay() {
+        queueListView.getItems().clear();
+    }
+
+    public void bindSeekCheckBox(ChangeListener<Boolean> seekListener) {
+        enableSeekCheck.selectedProperty().addListener((_, _, isSelected) -> {
+            progressSlider.setDisable(!isSelected);
+
+            if (isSelected) {
+                progressSlider.valueChangingProperty().addListener(seekListener);
+            } else {
+                progressSlider.valueChangingProperty().removeListener(seekListener);
+            }
+        });
     }
 }

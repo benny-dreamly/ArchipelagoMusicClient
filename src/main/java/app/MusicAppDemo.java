@@ -430,12 +430,12 @@ public class MusicAppDemo extends Application {
     // Queue helpers -----------------------------------------------------
 
     private void updateQueueDisplay() {
-        playerPanel.getQueueListView().getItems().clear();
+        playerPanel.clearQueueDisplay();
         for (Song s : playQueue) {
-            playerPanel.getQueueListView().getItems().add(s.getTitle());
+            playerPanel.addToQueueDisplay(s.getTitle());
         }
         if (playQueue.isEmpty()) {
-            playerPanel.getQueueListView().getItems().add("(empty)");
+            playerPanel.addToQueueDisplay("(empty)");
         }
     }
 
@@ -991,15 +991,7 @@ public class MusicAppDemo extends Application {
             updateQueueDisplay();
         });
 
-        panel.getEnableSeekCheck().selectedProperty().addListener((_, _, isSelected) -> {
-            playerPanel.getProgressSlider().setDisable(!isSelected);  // disable slider when checkbox off
-
-            if (isSelected) {
-                playerPanel.getProgressSlider().valueChangingProperty().addListener(seekListener);
-            } else {
-                playerPanel.getProgressSlider().valueChangingProperty().removeListener(seekListener);
-            }
-        });
+        panel.bindSeekCheckBox(seekListener);
     }
 
     private void handleTreeSelection(TreeItem<String> newSel) {
