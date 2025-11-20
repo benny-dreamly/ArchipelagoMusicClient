@@ -68,9 +68,7 @@ public class MusicAppDemo extends Application {
     private boolean isUpdatingSelection = false;
 
     // various fields and stuff for the UI (the others are above or locally defined)
-    @SuppressWarnings("FieldCanBeLocal")
     private ConnectionPanel connectionPanel;
-    @SuppressWarnings("FieldCanBeLocal")
     private PlayerPanel playerPanel;
     @SuppressWarnings("FieldCanBeLocal")
     private HBox bottomBar;
