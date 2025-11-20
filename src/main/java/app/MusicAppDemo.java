@@ -704,14 +704,6 @@ public class MusicAppDemo extends Application {
         clearAlbumOrderCache();  // optional, if album order changes per game
     }
 
-//    private void checkIfGameFolderExists(File gameFolder){
-//        // Ensure the per-game folder exists
-//        if (!gameFolder.exists()) {
-//            //noinspection ResultOfMethodCallIgnored
-//            gameFolder.mkdirs();
-//            logger.info("Created game data folder: {}", gameFolder.getAbsolutePath());        }
-//    }
-
     public Set<String> getUnlockedSongs() {
         return unlockedSongs;
     }
