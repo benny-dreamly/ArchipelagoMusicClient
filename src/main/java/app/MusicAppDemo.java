@@ -49,7 +49,6 @@ import static app.util.SlotDataUtils.parseBooleanSlot;
 import static app.util.SlotDataUtils.parseSlotData;
 import static app.util.TimeUtils.formatTime;
 
-@SuppressWarnings("CommentedOutCode")
 public class MusicAppDemo extends Application {
 
     public static final Logger logger = LoggerFactory.getLogger(MusicAppDemo.class);
