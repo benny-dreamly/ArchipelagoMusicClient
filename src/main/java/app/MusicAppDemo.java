@@ -47,6 +47,7 @@ import static app.util.Normalization.*;
 import static app.util.Dialogs.showError;
 import static app.util.SlotDataUtils.parseBooleanSlot;
 import static app.util.SlotDataUtils.parseSlotData;
+import static app.util.TimeUtils.formatTime;
 
 @SuppressWarnings("CommentedOutCode")
 public class MusicAppDemo extends Application {
@@ -663,13 +664,6 @@ public class MusicAppDemo extends Application {
         playerPanel.setCurrentSongLabel("");
         // any other UI cleanup (like resetting progress bar, etc.)
         resetProgress();
-    }
-
-    private String formatTime(Duration duration) {
-        int totalSeconds = (int) duration.toSeconds();
-        int minutes = totalSeconds / 60;
-        int seconds = totalSeconds % 60;
-        return String.format("%d:%02d", minutes, seconds);
     }
 
     private final ChangeListener<Boolean> seekListener = (_, _, isChanging) -> {
