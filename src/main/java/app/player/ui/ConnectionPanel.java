@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
+import static app.util.ConfigManager.loadConnectionSettings;
 import static app.util.ConfigPaths.checkIfGameFolderExists;
 import static app.util.ConfigPaths.getConnectionConfigFile;
 
@@ -143,20 +144,6 @@ public class ConnectionPanel extends VBox {
 
     public void setConnectButtonText(String text) {
         connectButton.setText(text);
-    }
-
-    private Map<String, String> loadConnectionSettings() {
-        File file = getConnectionConfigFile();
-        if (!file.exists()) return new HashMap<>();
-
-        try (Reader reader = new FileReader(file)) {
-            Type type = new TypeToken<Map<String, String>>(){}.getType();
-            return new Gson().fromJson(reader, type);
-        } catch (IOException e) {
-            //noinspection CallToPrintStackTrace
-            e.printStackTrace();
-            return new HashMap<>();
-        }
     }
 
     public TextClientWindow getTextClientWindow() {

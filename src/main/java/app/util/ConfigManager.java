@@ -1,13 +1,13 @@
 package app.util;
 
+import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.Writer;
+import java.io.*;
+import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -33,6 +33,20 @@ public class ConfigManager {
         } catch (IOException e) {
             //noinspection CallToPrintStackTrace
             e.printStackTrace();
+        }
+    }
+
+    public static Map<String, String> loadConnectionSettings() {
+        File file = getConnectionConfigFile();
+        if (!file.exists()) return new HashMap<>();
+
+        try (Reader reader = new FileReader(file)) {
+            Type type = new TypeToken<Map<String, String>>(){}.getType();
+            return new Gson().fromJson(reader, type);
+        } catch (IOException e) {
+            //noinspection CallToPrintStackTrace
+            e.printStackTrace();
+            return new HashMap<>();
         }
     }
 }
