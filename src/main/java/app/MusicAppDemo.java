@@ -144,7 +144,7 @@ public class MusicAppDemo extends Application {
             @Override
             protected List<Album> call() throws Exception {
                 LibraryLoader loader = new LibraryLoader();
-                File gameFolder = APClient.getGameDataFolderStatic();
+                File gameFolder = getConfigDir();
                 File localLocations = new File(gameFolder, "locations.json");
                 List<SongJSON> rawSongs;
 
