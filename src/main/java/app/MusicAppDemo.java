@@ -40,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static app.util.AlbumUtils.generateDefaultAlbumFolders;
+import static app.util.ConfigManager.saveConnectionSettings;
 import static app.util.ConfigPaths.*;
 import static app.util.Normalization.*;
 import static app.util.Dialogs.showError;
@@ -488,23 +489,6 @@ public class MusicAppDemo extends Application {
                     logger.warn("Could not match file to song: {} in album {}", file.getName(), album.getName());
                 }
             }
-        }
-    }
-
-    private void saveConnectionSettings(String host, int port, String slot, String password) {
-        Map<String, String> data = new HashMap<>();
-        data.put("host", host);
-        data.put("port", String.valueOf(port));
-        data.put("slot", slot);
-        data.put("password", password);
-
-        File file = getConnectionConfigFile();
-        try (Writer writer = new FileWriter(file)) {
-            new GsonBuilder().setPrettyPrinting().create().toJson(data, writer);
-            logger.info("Saved connection settings to {}", file.getAbsolutePath());
-        } catch (IOException e) {
-            //noinspection CallToPrintStackTrace
-            e.printStackTrace();
         }
     }
 
