@@ -18,7 +18,7 @@ public class ConfigPaths {
     }
 
     public static File getConnectionConfigFile() {
-        File configDir = getConfigDir().getParentFile();
+        File configDir = getConfigDir();
         return new File(configDir, "connection.json");
     }
 
