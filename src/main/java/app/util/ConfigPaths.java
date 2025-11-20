@@ -31,7 +31,7 @@ public class ConfigPaths {
     }
 
     public static File getAlbumConfigFile() {
-        File gameDir = APClient.getGameDataFolderStatic();
+        File gameDir = getConfigDir();
         if (!gameDir.exists()) {
             //noinspection ResultOfMethodCallIgnored
             gameDir.mkdirs();
