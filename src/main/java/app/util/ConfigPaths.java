@@ -29,4 +29,13 @@ public class ConfigPaths {
             gameFolder.mkdirs();
             logger.info("Created game data folder: {}", gameFolder.getAbsolutePath());        }
     }
+
+    public static File getAlbumConfigFile() {
+        File gameDir = APClient.getGameDataFolderStatic();
+        if (!gameDir.exists()) {
+            //noinspection ResultOfMethodCallIgnored
+            gameDir.mkdirs();
+        }
+        return new File(gameDir, "albumFolders.json");
+    }
 }

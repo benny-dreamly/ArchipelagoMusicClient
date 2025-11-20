@@ -39,8 +39,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static app.util.ConfigPaths.checkIfGameFolderExists;
-import static app.util.ConfigPaths.getConnectionConfigFile;
+import static app.util.ConfigPaths.*;
 
 @SuppressWarnings("CommentedOutCode")
 public class MusicAppDemo extends Application {
@@ -169,7 +168,7 @@ public class MusicAppDemo extends Application {
             generateDefaultAlbumFolders(albums);
 
             Map<String, String> albumFolders = new HashMap<>();
-            File configFile = getConfigFile();
+            File configFile = getAlbumConfigFile();
 
             if (configFile.exists()) {
                 try (Reader reader = new FileReader(configFile)) {
@@ -448,17 +447,8 @@ public class MusicAppDemo extends Application {
         }
     }
 
-    public File getConfigFile() {
-        File gameDir = APClient.getGameDataFolderStatic();
-        if (!gameDir.exists()) {
-            //noinspection ResultOfMethodCallIgnored
-            gameDir.mkdirs();
-        }
-        return new File(gameDir, "albumFolders.json");
-    }
-
     private void generateDefaultAlbumFolders(List<Album> albums) {
-        File configFile = getConfigFile();
+        File configFile = getAlbumConfigFile();
 
         // If the file already exists, do nothing
         if (configFile.exists()) return;
