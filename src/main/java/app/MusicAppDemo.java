@@ -39,6 +39,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static app.util.AlbumUtils.generateDefaultAlbumFolders;
 import static app.util.ConfigPaths.*;
 import static app.util.Normalization.*;
 import static app.util.Dialogs.showError;
@@ -436,34 +437,6 @@ public class MusicAppDemo extends Application {
                 it.remove();
                 return;
             }
-        }
-    }
-
-    private void generateDefaultAlbumFolders(List<Album> albums) {
-        File configFile = getAlbumConfigFile();
-
-        // If the file already exists, do nothing
-        if (configFile.exists()) return;
-
-        Map<String, String> defaultFolders = new LinkedHashMap<>();
-        for (Album album : albums) {
-            defaultFolders.put(album.getName(), ""); // empty string as placeholder
-        }
-
-        try {
-            //noinspection ResultOfMethodCallIgnored
-            configFile.createNewFile(); // make sure the file exists
-            Gson gson = new GsonBuilder()
-                    .setPrettyPrinting()
-                    .disableHtmlEscaping() // keeps ' as-is instead of \u0027
-                    .create();
-            try (Writer writer = new FileWriter(configFile)) {
-                gson.toJson(defaultFolders, writer);
-            }
-            logger.info("Generated default albumFolders.json at {}", configFile.getAbsolutePath());
-        } catch (Exception e) {
-            //noinspection CallToPrintStackTrace
-            e.printStackTrace();
         }
     }
 
