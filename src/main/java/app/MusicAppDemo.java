@@ -599,7 +599,7 @@ public class MusicAppDemo extends Application {
             return albumOrderCache;
         }
 
-        File gameDir = APClient.getGameDataFolderStatic();
+        File gameDir = getConfigDir();
         File orderFile = new File(gameDir, "albumOrder.json");
 
         List<String> loadedOrder = null;
@@ -870,7 +870,7 @@ public class MusicAppDemo extends Application {
         resetGameState();
         client.setGameName(gameName);
 
-        gameFolder.set(APClient.getGameDataFolderStatic());
+        gameFolder.set(getConfigDir());
         checkIfGameFolderExists(gameFolder.get(), logger);
 
         // ✅ reload slot options after game changes
