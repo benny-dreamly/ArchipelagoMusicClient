@@ -12,6 +12,7 @@ public class ConfigPaths {
     public static File getConfigDir() {
         File gameDir = APClient.getGameDataFolderStatic();
         if (!gameDir.exists()) {
+            //noinspection ResultOfMethodCallIgnored
             gameDir.mkdirs();
         }
         return gameDir;
