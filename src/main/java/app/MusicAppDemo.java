@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import static app.util.ConfigPaths.*;
 import static app.util.Normalization.*;
+import static app.util.Dialogs.showError;
 
 @SuppressWarnings("CommentedOutCode")
 public class MusicAppDemo extends Application {
@@ -246,14 +247,6 @@ public class MusicAppDemo extends Application {
         }
 
         treeView.setRoot(rootItem);
-    }
-
-    public void showError(String title, String header, String content) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle(title);
-        alert.setHeaderText(header);
-        alert.setContentText(content);
-        alert.showAndWait();
     }
 
     public void unlockSong(String songTitle) {

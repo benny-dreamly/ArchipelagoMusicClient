@@ -8,6 +8,8 @@ import io.github.archipelagomw.network.ConnectionResult;
 import javafx.application.Platform;
 import javafx.scene.control.Label;
 
+import static app.util.Dialogs.showError;
+
 
 @SuppressWarnings("ClassCanBeRecord")
 public class ConnectionListener {
@@ -40,7 +42,7 @@ public class ConnectionListener {
                 if (statusLabel.getText().equals("Connection failed")) return;
 
                 statusLabel.setText("Not connected");
-                app.showError(
+                showError(
                         "Connection Failed",
                         "Failed to connect to Archipelago server",
                         "Reason: " + result.name()
