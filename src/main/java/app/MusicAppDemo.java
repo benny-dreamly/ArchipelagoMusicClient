@@ -501,23 +501,6 @@ public class MusicAppDemo extends Application {
                     "Album 3",
                     "Album 4"
             );
-//            loadedOrder = List.of(
-//                    "Taylor Swift",
-//                    "Fearless",
-//                    "Fearless (Taylor's Version)",
-//                    "Speak Now",
-//                    "Speak Now (Taylor's Version)",
-//                    "Red",
-//                    "Red (Taylor's Version)",
-//                    "1989",
-//                    "1989 (Taylor's Version)",
-//                    "Reputation",
-//                    "Lover",
-//                    "Folklore",
-//                    "Evermore",
-//                    "Midnights",
-//                    "The Tortured Poets Department"
-//            );
 
             try (Writer writer = new FileWriter(orderFile)) {
                 new GsonBuilder().setPrettyPrinting().create().toJson(loadedOrder, writer);
