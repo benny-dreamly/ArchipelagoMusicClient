@@ -43,6 +43,8 @@ import static app.util.AlbumUtils.generateDefaultAlbumFolders;
 import static app.util.ConfigPaths.*;
 import static app.util.Normalization.*;
 import static app.util.Dialogs.showError;
+import static app.util.SlotDataUtils.parseBooleanSlot;
+import static app.util.SlotDataUtils.parseSlotData;
 
 @SuppressWarnings("CommentedOutCode")
 public class MusicAppDemo extends Application {
@@ -626,10 +628,6 @@ public class MusicAppDemo extends Application {
         refreshTree(); // update the UI
     }
 
-    private Map<String, Object> parseSlotData(JsonElement json) {
-        return new Gson().fromJson(json, new TypeToken<Map<String, Object>>() {}.getType());
-    }
-
     private void applyAlbumUnlocks(Map<String, Object> slotMap) {
         // Get enabled albums dynamically from SlotDataHelper
         Set<String> enabledAlbumsFromSlotData = SlotDataHelper.getEnabledAlbums(slotMap);
@@ -687,13 +685,6 @@ public class MusicAppDemo extends Application {
                 }
             }
         }
-    }
-
-    private boolean parseBooleanSlot(Map<String, Object> slotMap, String key) {
-        if (!slotMap.containsKey(key)) return false;
-        Object val = slotMap.get(key);
-        if (val instanceof Boolean ) return (Boolean) val;
-        return "true".equalsIgnoreCase(val.toString());
     }
 
     public void stopCurrentSong() {
