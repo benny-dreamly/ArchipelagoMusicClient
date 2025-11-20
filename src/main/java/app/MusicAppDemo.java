@@ -710,12 +710,16 @@ public class MusicAppDemo extends Application {
         clearPlaybackState();
 
         // CLEAR ALL UNLOCKED / ENABLED DATA
-        enabledSets.clear();
-        unlockedAlbums.clear();
-        unlockedSongs.clear();
+        clearUnlocks();
 
         // Refresh tree so nothing shows
         refreshTree();
+    }
+
+    private void clearUnlocks() {
+        enabledSets.clear();
+        unlockedAlbums.clear();
+        unlockedSongs.clear();
     }
 
     private void connectToServer(AtomicReference<File> gameFolder) {
