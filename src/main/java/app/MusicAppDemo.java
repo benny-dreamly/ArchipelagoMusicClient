@@ -12,6 +12,7 @@ import app.player.json.LibraryLoader;
 import app.player.json.SongJSON;
 import app.player.ui.ConnectionPanel;
 import app.player.ui.PlayerPanel;
+import app.util.AlbumLibrary;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
@@ -56,6 +57,7 @@ public class MusicAppDemo extends Application {
     private final Set<String> unlockedAlbums = new HashSet<>();
     private final Set<String> unlockedSongs = new HashSet<>();
     private final Set<String> enabledSets = new HashSet<>();
+    private AlbumLibrary library;
 
     private List<String> albumOrderCache;
 
@@ -171,6 +173,9 @@ public class MusicAppDemo extends Application {
 
             generateDefaultAlbumFolders(albums);
 
+            // initialize AlbumLibrary now we've added the albums and they exist
+            library = new AlbumLibrary(albums);
+
             Map<String, String> albumFolders = new HashMap<>();
             File configFile = getAlbumConfigFile();
 
@@ -278,36 +283,11 @@ public class MusicAppDemo extends Application {
         return enabledSets;
     }
 
-    public Album getAlbumByName(String name) {
-        for (Album album : albums) {
-            if (album.getName().equals(name)) return album;
-        }
-        return null;
-    }
-
-    public Album getAlbumForSong(String songTitle) {
-        for (Album album : albums) {
-            for (Song song : album.getSongs()) {
-                if (song.getTitle().equals(songTitle)) return album;
-            }
-        }
-        return null;
-    }
-
-    public Song getSongByTitle(String songTitle) {
-        for (Album album : albums) {
-            for (Song song : album.getSongs()) {
-                if (song.getTitle().equals(songTitle)) return song;
-            }
-        }
-        return null;
-    }
-
     private void playSong(Song song) {
         if (song == null) return;
 
         boolean canPlay;
-        Album album = getAlbumForSong(song.getTitle());
+        Album album = library.getAlbumForSong(song.getTitle());
         boolean albumUnlocked = album != null && unlockedAlbums.contains(album.getName());
         boolean songUnlocked = unlockedSongs.contains(song.getTitle());
 
@@ -861,11 +841,11 @@ public class MusicAppDemo extends Application {
         if (newSel == null) return;
 
         String songTitle = newSel.getValue();
-        Song song = getSongByTitle(songTitle);
+        Song song = library.getSongByTitle(songTitle);
 
         if (song == null) return;
 
-        Album album = getAlbumForSong(songTitle);
+        Album album = library.getAlbumForSong(songTitle);
         boolean songUnlocked = unlockedSongs.contains(song.getTitle());
         boolean albumUnlocked = album != null && enabledSets.contains(album.getType());
 
