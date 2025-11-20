@@ -75,8 +75,6 @@ public class MusicAppDemo extends Application {
     @SuppressWarnings("FieldCanBeLocal")
     private VBox root;
 
-    private final TextArea outputArea = new TextArea();
-
     @SuppressWarnings("unused")
     public static void main(String[] args) {
         launch();
