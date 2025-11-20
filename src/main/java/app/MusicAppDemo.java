@@ -618,8 +618,95 @@ public class MusicAppDemo extends Application {
         if (client == null || client.getSlotData() == null) return;
 
         JsonElement json = client.getSlotData();
-        Map<String, Object> slotMap = new Gson().fromJson(json, new TypeToken<Map<String, Object>>() {}.getType());
+        Map<String, Object> slotMap = parseSlotData(json);
 
+        applyAlbumUnlocks(slotMap);
+        filterSongCategories(slotMap);
+
+//        // Get enabled albums dynamically from SlotDataHelper
+//        Set<String> enabledAlbumsFromSlotData = SlotDataHelper.getEnabledAlbums(slotMap);
+//
+//        // Clear previously enabled sets
+//        enabledSets.clear();
+//
+//        // Enable only the albums in slot data
+//        for (Album album : albums) {
+//            if (enabledAlbumsFromSlotData.contains(album.getName())) {
+//                unlockedAlbums.add(album.getName());   // mark album as unlocked
+//                enabledSets.add(album.getType());      // enable album type for tree filtering
+//
+//                // Full-album unlock (Taylor style): unlock all songs
+//                if (album.isFullAlbumUnlock()) {
+//                    for (Song s : album.getSongs()) {
+//                        unlockedSongs.add(s.getTitle());
+//                    }
+//                }
+//            }
+//        }
+//
+//        // 2. Unlock albums by type if the corresponding slot is enabled
+//        if (enabledAlbumsFromSlotData.contains("Re-recordings")) {
+//            for (Album album : albums) {
+//                if ("re-recording".equalsIgnoreCase(album.getType())) {
+//                    unlockedAlbums.add(album.getName());
+//                    enabledSets.add(album.getType());
+//                    for (Song s : album.getSongs()) {
+//                        unlockedSongs.add(s.getTitle());
+//                    }
+//                }
+//            }
+//        }
+
+//        // --- Handle song categories (e.g. short songs, vault tracks) ---
+//        boolean shortSongsEnabled = false;
+//
+//        // Safely check if include_short_songs exists and is true
+//        if (slotMap.containsKey("include_short_songs")) {
+//            Object val = slotMap.get("include_short_songs");
+//            if (val instanceof Boolean) {
+//                shortSongsEnabled = (Boolean) val;
+//            } else if ("true".equalsIgnoreCase(val.toString())) {
+//                shortSongsEnabled = true;
+//            }
+//        }
+//
+//        // Same idea for vault tracks if you want:
+//        boolean vaultSongsEnabled = false;
+//        if (slotMap.containsKey("include_vault_tracks")) {
+//            Object val = slotMap.get("include_vault_tracks");
+//            if (val instanceof Boolean) {
+//                vaultSongsEnabled = (Boolean) val;
+//            } else if ("true".equalsIgnoreCase(val.toString())) {
+//                vaultSongsEnabled = true;
+//            }
+//        }
+//
+//        // Now remove any songs that should not be visible
+//        for (Album album : albums) {
+//            for (Song s : new ArrayList<>(album.getSongs())) { // avoid ConcurrentModification
+//                String type = s.getType();
+//
+//                // Skip short songs if disabled
+//                if (!shortSongsEnabled && "short".equalsIgnoreCase(type)) {
+//                    unlockedSongs.remove(s.getTitle());
+//                    continue;
+//                }
+//
+//                // Skip vault tracks if disabled
+//                if (!vaultSongsEnabled && "vault".equalsIgnoreCase(type)) {
+//                    unlockedSongs.remove(s.getTitle());
+//                }
+//            }
+//        }
+
+        refreshTree(); // update the UI
+    }
+
+    private Map<String, Object> parseSlotData(JsonElement json) {
+        return new Gson().fromJson(json, new TypeToken<Map<String, Object>>() {}.getType());
+    }
+
+    private void applyAlbumUnlocks(Map<String, Object> slotMap) {
         // Get enabled albums dynamically from SlotDataHelper
         Set<String> enabledAlbumsFromSlotData = SlotDataHelper.getEnabledAlbums(slotMap);
 
@@ -653,30 +740,11 @@ public class MusicAppDemo extends Application {
                 }
             }
         }
+    }
 
-        // --- Handle song categories (e.g. short songs, vault tracks) ---
-        boolean shortSongsEnabled = false;
-
-        // Safely check if include_short_songs exists and is true
-        if (slotMap.containsKey("include_short_songs")) {
-            Object val = slotMap.get("include_short_songs");
-            if (val instanceof Boolean) {
-                shortSongsEnabled = (Boolean) val;
-            } else if ("true".equalsIgnoreCase(val.toString())) {
-                shortSongsEnabled = true;
-            }
-        }
-
-        // Same idea for vault tracks if you want:
-        boolean vaultSongsEnabled = false;
-        if (slotMap.containsKey("include_vault_tracks")) {
-            Object val = slotMap.get("include_vault_tracks");
-            if (val instanceof Boolean) {
-                vaultSongsEnabled = (Boolean) val;
-            } else if ("true".equalsIgnoreCase(val.toString())) {
-                vaultSongsEnabled = true;
-            }
-        }
+    private void filterSongCategories(Map<String, Object> slotMap) {
+        boolean shortSongsEnabled = parseBooleanSlot(slotMap, "include_short_songs");
+        boolean vaultSongsEnabled = parseBooleanSlot(slotMap, "include_vault_songs");
 
         // Now remove any songs that should not be visible
         for (Album album : albums) {
@@ -695,8 +763,13 @@ public class MusicAppDemo extends Application {
                 }
             }
         }
+    }
 
-        refreshTree(); // update the UI
+    private boolean parseBooleanSlot(Map<String, Object> slotMap, String key) {
+        if (!slotMap.containsKey(key)) return false;
+        Object val = slotMap.get(key);
+        if (val instanceof Boolean ) return (Boolean) val;
+        return "true".equalsIgnoreCase(val.toString());
     }
 
     public void stopCurrentSong() {
