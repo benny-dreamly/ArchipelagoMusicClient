@@ -647,6 +647,7 @@ public class MusicAppDemo extends Application {
         this.currentSong = song;
 
         if (song.getFilePath() == null || !new File(song.getFilePath()).exists()) {
+            logger.info("Current song ({})'s file path does not exist or is null.", currentSong.getTitle());
             showError("File Not Found", "Cannot play song", "File not found for: " + song.getTitle());
             return;
         }
