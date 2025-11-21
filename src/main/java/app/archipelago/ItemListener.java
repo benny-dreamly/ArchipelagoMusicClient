@@ -49,8 +49,8 @@ public class ItemListener {
                         isAlbumItem = true;
                     }
 
-                    Album album = app.getAlbumByName(normalizedItemName);
-                    Song song = app.getSongByTitle(normalizedItemName);
+                    Album album = app.getLibrary().getAlbumByName(normalizedItemName);
+                    Song song = app.getLibrary().getSongByTitle(normalizedItemName);
 
                     // 1. Full-album unlocks (Taylor Swift style)
                     if (album != null && album.isFullAlbumUnlock()) {
@@ -76,7 +76,7 @@ public class ItemListener {
                         app.getUnlockedSongs().add(song.getTitle());
 
                         // Also mark the parent album as "unlocked" for play checks
-                        Album parentAlbum = app.getAlbumForSong(song.getTitle());
+                        Album parentAlbum = app.getLibrary().getAlbumForSong(song.getTitle());
                         if (parentAlbum != null) {
                             app.getUnlockedAlbums().add(parentAlbum.getName());
                             app.getEnabledSets().add(parentAlbum.getType());

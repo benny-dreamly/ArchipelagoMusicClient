@@ -791,4 +791,8 @@ public class MusicAppDemo extends Application {
     private void initUIComponents() {
         treeView = new TreeView<>();
     }
+
+    public AlbumLibrary getLibrary() {
+        return library;
+    }
 }
