@@ -135,4 +135,10 @@ public class PlayerPanel extends VBox {
         elapsedLabel.setText("0:00");
         durationLabel.setText("0:00");
     }
+
+    public void clearPlaybackState() {
+        setCurrentSongLabel("");
+        // any other UI cleanup (like resetting progress bar, etc.)
+        resetProgress();
+    }
 }

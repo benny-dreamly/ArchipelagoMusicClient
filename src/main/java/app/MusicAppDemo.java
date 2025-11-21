@@ -642,12 +642,6 @@ public class MusicAppDemo extends Application {
         playerPanel.resetProgress();
     }
 
-    public void clearPlaybackState() {
-        playerPanel.setCurrentSongLabel("");
-        // any other UI cleanup (like resetting progress bar, etc.)
-        playerPanel.resetProgress();
-    }
-
     private final ChangeListener<Boolean> seekListener = (_, _, isChanging) -> {
         if (!isChanging && currentPlayer != null) {
             Duration total = currentPlayer.getTotalDuration();
@@ -677,7 +671,7 @@ public class MusicAppDemo extends Application {
 
         // stop playback
         stopCurrentSong();
-        clearPlaybackState();
+        playerPanel.clearPlaybackState();
 
         // CLEAR ALL UNLOCKED / ENABLED DATA
         clearUnlocks();
