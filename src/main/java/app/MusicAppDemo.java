@@ -279,6 +279,7 @@ public class MusicAppDemo extends Application {
             }
 
             if (currentSong != null && (currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING)) {
+                logger.info("Current song ({})'s file path: {}", currentSong.getTitle(), currentSong.getFilePath());
                 // start current (if file exists)
                 if (currentSong.getFilePath() != null) {
                     playSong(currentSong);
@@ -558,6 +559,7 @@ public class MusicAppDemo extends Application {
     }
 
     public void showError(String title, String header, String content) {
+        logger.error("Failed to load song. {}", content);
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(title);
         alert.setHeaderText(header);
