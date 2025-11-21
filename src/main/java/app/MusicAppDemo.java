@@ -13,6 +13,7 @@ import app.player.json.SongJSON;
 import app.player.ui.ConnectionPanel;
 import app.player.ui.PlayerPanel;
 import app.util.AlbumLibrary;
+import app.util.AlbumOrderManager;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
@@ -60,6 +61,7 @@ public class MusicAppDemo extends Application {
     private AlbumLibrary library;
 
     private List<String> albumOrderCache;
+    private AlbumOrderManager albumOrderManager;
 
     private TreeView<String> treeView;
 
@@ -101,6 +103,8 @@ public class MusicAppDemo extends Application {
         refreshTree();
 
         createBottomBar();
+
+        albumOrderManager = new AlbumOrderManager();
 
         connectionPanel = new ConnectionPanel(gameFolder, () -> client);
 
@@ -218,7 +222,7 @@ public class MusicAppDemo extends Application {
         unlockedAlbums.clear();
         unlockedSongs.clear();
         enabledSets.clear();
-        clearAlbumOrderCache();
+        albumOrderManager.clearAlbumOrderCache();
 
         Task<List<Album>> loadTask = getLoadTask();
         new Thread(loadTask).start();
@@ -544,15 +548,10 @@ public class MusicAppDemo extends Application {
         }
     }
 
-    // Call this when switching games
-    private void clearAlbumOrderCache() {
-        albumOrderCache = null;
-    }
-
     private void resetGameState() {
         enabledSets.clear();
         unlockedSongs.clear();
-        clearAlbumOrderCache();  // optional, if album order changes per game
+        albumOrderManager.clearAlbumOrderCache();  // optional, if album order changes per game
     }
 
     public Set<String> getUnlockedSongs() {
