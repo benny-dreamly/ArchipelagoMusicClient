@@ -23,8 +23,10 @@ public class AlbumConverter {
                 continue;
             }
 
+            String albumKey = (raw.region == null || raw.region.isBlank()) ? "Songs" : raw.region;
+
             Album album = albums.computeIfAbsent(
-                    raw.region,
+                    albumKey,
                     name -> {
                         boolean fullUnlock = albumMetadata.getOrDefault(name, new AlbumMetadata(false)).isFullAlbumUnlock();
                         return new Album(name, detectAlbumType(raw.category), fullUnlock);
