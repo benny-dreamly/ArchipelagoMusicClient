@@ -323,7 +323,7 @@ public class MusicAppDemo extends Application {
         }
 
         // Reset progress slider and labels
-        resetProgress();
+        playerPanel.resetProgress();
 
         Media media = new Media(Paths.get(song.getFilePath()).toUri().toString());
         currentPlayer = new MediaPlayer(media);
@@ -367,7 +367,7 @@ public class MusicAppDemo extends Application {
         } else {
             playerPanel.setCurrentSongLabel("Currently Playing: None");
             currentPlayer = null;
-            resetProgress();
+            playerPanel.resetProgress();
         }
     }
 
@@ -639,13 +639,13 @@ public class MusicAppDemo extends Application {
             currentPlayer.stop();
             currentPlayer = null;
         }
-        resetProgress();
+        playerPanel.resetProgress();
     }
 
     public void clearPlaybackState() {
         playerPanel.setCurrentSongLabel("");
         // any other UI cleanup (like resetting progress bar, etc.)
-        resetProgress();
+        playerPanel.resetProgress();
     }
 
     private final ChangeListener<Boolean> seekListener = (_, _, isChanging) -> {
@@ -656,12 +656,6 @@ public class MusicAppDemo extends Application {
             }
         }
     };
-
-    private void resetProgress() {
-        playerPanel.getProgressSlider().setValue(0);
-        playerPanel.getElapsedLabel().setText("0:00");
-        playerPanel.getDurationLabel().setText("0:00");
-    }
 
     public void setConnectButtonText(String text) {
         connectionPanel.setConnectButtonText(text);

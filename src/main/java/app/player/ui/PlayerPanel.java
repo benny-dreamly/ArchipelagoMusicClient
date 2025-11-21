@@ -129,4 +129,10 @@ public class PlayerPanel extends VBox {
             }
         });
     }
+
+    public void resetProgress() {
+        progressSlider.setValue(0);
+        elapsedLabel.setText("0:00");
+        durationLabel.setText("0:00");
+    }
 }
