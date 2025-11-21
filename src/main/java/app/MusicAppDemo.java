@@ -60,7 +60,6 @@ public class MusicAppDemo extends Application {
     private final Set<String> enabledSets = new HashSet<>();
     private AlbumLibrary library;
 
-    private List<String> albumOrderCache;
     private AlbumOrderManager albumOrderManager;
 
     private TreeView<String> treeView;
@@ -230,7 +229,7 @@ public class MusicAppDemo extends Application {
 
     public void refreshTree() {
         // Custom album order
-        List<String> albumOrder = getAlbumOrder();
+        List<String> albumOrder = albumOrderManager.getAlbumOrder();
 
         // Sort albums according to albumOrder
         albums.sort(Comparator.comparingInt(a -> {
@@ -476,47 +475,6 @@ public class MusicAppDemo extends Application {
         }
     }
 
-    private List<String> getAlbumOrder() {
-        if (albumOrderCache != null) {
-            return albumOrderCache;
-        }
-
-        File gameDir = getConfigDir();
-        File orderFile = new File(gameDir, "albumOrder.json");
-
-        List<String> loadedOrder = null;
-        if (orderFile.exists()) {
-            try (Reader reader = new FileReader(orderFile)) {
-                Type listType = new TypeToken<List<String>>() {}.getType();
-                loadedOrder = new Gson().fromJson(reader, listType);
-                if (loadedOrder != null && !loadedOrder.isEmpty()) {
-                    logger.info("Loaded album order from {}", orderFile.getAbsolutePath());                }
-            } catch (IOException e) {
-                //noinspection CallToPrintStackTrace
-                e.printStackTrace();
-            }
-        }
-
-        if (loadedOrder == null || loadedOrder.isEmpty()) {
-            loadedOrder = List.of(
-                    "Album 1",
-                    "Album 2",
-                    "Album 3",
-                    "Album 4"
-            );
-
-            try (Writer writer = new FileWriter(orderFile)) {
-                new GsonBuilder().setPrettyPrinting().create().toJson(loadedOrder, writer);
-                logger.info("Generated default albumOrder.json at {}", orderFile.getAbsolutePath());            } catch (IOException e) {
-                //noinspection CallToPrintStackTrace
-                e.printStackTrace();
-            }
-        }
-
-        albumOrderCache = loadedOrder; // cache it
-        return albumOrderCache;
-    }
-
     private void ensureGameDefaults(File gameFolder) {
         if (!gameFolder.exists()) {
             //noinspection ResultOfMethodCallIgnored
@@ -525,7 +483,7 @@ public class MusicAppDemo extends Application {
 
         File albumOrderFile = new File(gameFolder, "albumOrder.json");
         if (!albumOrderFile.exists()) {
-            getAlbumOrder(); // this method already generates the default if missing
+            albumOrderManager.getAlbumOrder(); // this method already generates the default if missing
         }
 
         File foldersFile = new File(gameFolder, "albumFolders.json");
