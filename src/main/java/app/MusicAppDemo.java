@@ -820,8 +820,7 @@ public class MusicAppDemo extends Application {
                     String normalizedSong = normalizeSongTitle(song.getTitle());
 
                     // exact or substring match first
-                    if (normalizedFile.equalsIgnoreCase(normalizedSong) ||
-                            normalizedFile.contains(normalizedSong)) {
+                    if (normalizedFile.equalsIgnoreCase(normalizedSong)) {
                         matchedSong = song;
                         break;
                     }
