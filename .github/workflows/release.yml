@@ -11,6 +11,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     uses: ./.github/workflows/build_jar.yml
