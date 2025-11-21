@@ -100,12 +100,12 @@ public class MusicAppDemo extends Application {
             handleTreeSelection(newSel)
         );
 
+        albumOrderManager = new AlbumOrderManager();
+        stateManager = new StateManager(this, albumOrderManager);
+
         refreshTree();
 
         createBottomBar();
-
-        albumOrderManager = new AlbumOrderManager();
-        stateManager = new StateManager(this, albumOrderManager);
 
         connectionPanel = new ConnectionPanel(gameFolder, () -> client);
 
