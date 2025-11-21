@@ -559,7 +559,7 @@ public class MusicAppDemo extends Application {
     }
 
     public void showError(String title, String header, String content) {
-        logger.error("Failed to load song. {}", content);
+        logger.info("Failed to load song. {}", content);
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(title);
         alert.setHeaderText(header);
@@ -647,7 +647,7 @@ public class MusicAppDemo extends Application {
         this.currentSong = song;
 
         if (song.getFilePath() == null || !new File(song.getFilePath()).exists()) {
-            logger.info("Current song ({})'s file path does not exist or is null.", currentSong.getTitle());
+            logger.info("Song trying to be played ({})'s file path ({}) does not exist or is null.", song.getTitle(), song.getFilePath());
             showError("File Not Found", "Cannot play song", "File not found for: " + song.getTitle());
             return;
         }
