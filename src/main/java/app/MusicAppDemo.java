@@ -196,6 +196,15 @@ public class MusicAppDemo extends Application {
                 logger.info("No config file found at {}, skipping album folder assignment", configFile.getAbsolutePath());
             }
 
+            // add fallback album to unlocked albums
+            for (Album album : albums) {
+                if ("Songs".equals(album.getName())) {
+                    unlockedAlbums.add("Songs");
+                    enabledSets.add(album.getType()); // optional: allow its songs to appear
+                    break;
+                }
+            }
+
             // assign folder paths to albums
             for (Album album : albums) {
                 if (albumFolders.containsKey(album.getName())) {
