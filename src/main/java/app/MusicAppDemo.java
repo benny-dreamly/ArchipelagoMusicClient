@@ -14,6 +14,7 @@ import app.player.ui.ConnectionPanel;
 import app.player.ui.PlayerPanel;
 import app.util.AlbumLibrary;
 import app.util.AlbumOrderManager;
+import app.util.StateManager;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
@@ -60,6 +61,7 @@ public class MusicAppDemo extends Application {
     private AlbumLibrary library;
 
     private AlbumOrderManager albumOrderManager;
+    private StateManager stateManager;
 
     private TreeView<String> treeView;
 
@@ -103,6 +105,7 @@ public class MusicAppDemo extends Application {
         createBottomBar();
 
         albumOrderManager = new AlbumOrderManager();
+        stateManager = new StateManager(this, albumOrderManager);
 
         connectionPanel = new ConnectionPanel(gameFolder, () -> client);
 
@@ -505,12 +508,6 @@ public class MusicAppDemo extends Application {
         }
     }
 
-    private void resetGameState() {
-        enabledSets.clear();
-        unlockedSongs.clear();
-        albumOrderManager.clearAlbumOrderCache();  // optional, if album order changes per game
-    }
-
     public Set<String> getUnlockedSongs() {
         return unlockedSongs;
     }
@@ -630,16 +627,10 @@ public class MusicAppDemo extends Application {
         playerPanel.clearPlaybackState();
 
         // CLEAR ALL UNLOCKED / ENABLED DATA
-        clearUnlocks();
+        stateManager.clearUnlocks();
 
         // Refresh tree so nothing shows
         refreshTree();
-    }
-
-    private void clearUnlocks() {
-        enabledSets.clear();
-        unlockedAlbums.clear();
-        unlockedSongs.clear();
     }
 
     private void connectToServer(AtomicReference<File> gameFolder) {
@@ -655,7 +646,7 @@ public class MusicAppDemo extends Application {
 
         client = new APClient(host, port, slot, password);
 
-        resetGameState();
+        stateManager.resetGameState();
         client.setGameName(gameName);
 
         gameFolder.set(getConfigDir());
