@@ -144,7 +144,20 @@ public class MusicAppDemo extends Application {
                         }
                     } else {
                         // Album nodes
-                        setStyle("-fx-font-weight: normal; -fx-text-fill: black;");
+                        if (item.equals("Albums")) {
+                            // Root "Albums" node — keep it normal black
+                            setStyle("-fx-font-weight: normal; -fx-text-fill: black;");
+                        } else {
+                            // Regular album node
+                            Album album = getAlbumByName(item);
+                            if (album != null && unlockedAlbums.contains(album.getName())) {
+                                // unlocked → bold black
+                                setStyle("-fx-font-weight: bold; -fx-text-fill: black;");
+                            } else {
+                                // locked → normal black
+                                setStyle("-fx-font-weight: normal; -fx-text-fill: black;");
+                            }
+                        }
                     }
                 }
             }
