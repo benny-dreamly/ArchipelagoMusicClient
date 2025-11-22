@@ -34,7 +34,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.event.inputs.version || github.ref_name }}
-          name: Release ${{ github.event.inputs.version || github.ref_name }}
+          name: Archipelago Music Client Version ${{ github.event.inputs.version || github.ref_name }}
           body: |
             ## Changes
             - Auto-generated release from build workflow
