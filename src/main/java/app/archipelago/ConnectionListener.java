@@ -35,6 +35,8 @@ public class ConnectionListener {
                 //System.out.println(slotData);
                 client.setSlotData(slotData);
                 statusLabel.setText("Connected!");
+
+                app.applySlotData();
             } else {
                 // Prevent duplicate error alerts if a socket error already happened
                 if (statusLabel.getText().equals("Connection failed")) return;
