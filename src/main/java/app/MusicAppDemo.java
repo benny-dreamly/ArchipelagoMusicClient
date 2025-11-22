@@ -584,8 +584,9 @@ public class MusicAppDemo extends Application {
         // Get enabled albums dynamically from SlotDataHelper
         Set<String> enabledAlbumsFromSlotData = SlotDataHelper.getEnabledAlbums(slotMap);
 
-        // Clear previously enabled sets
+        // Clear previously enabled sets and albums
         enabledSets.clear();
+        enabledAlbums.clear();
 
         // Enable only the albums in slot data
         for (Album album : albums) {
