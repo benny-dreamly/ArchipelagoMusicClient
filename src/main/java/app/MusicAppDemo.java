@@ -1111,12 +1111,6 @@ public class MusicAppDemo extends Application {
                 enabledAlbums.add(album.getName());   // mark album as enabled
                 enabledSets.add(album.getType());      // enable album type for tree filtering
 
-//                // Full-album unlock (Taylor style): unlock all songs
-//                if (album.isFullAlbumUnlock()) {
-//                    for (Song s : album.getSongs()) {
-//                        unlockedSongs.add(s.getTitle());
-//                    }
-//                }
             }
         }
 
@@ -1126,9 +1120,6 @@ public class MusicAppDemo extends Application {
                 if ("re-recording".equalsIgnoreCase(album.getType())) {
                     enabledAlbums.add(album.getName());
                     enabledSets.add(album.getType());
-//                    for (Song s : album.getSongs()) {
-//                        unlockedSongs.add(s.getTitle());
-//                    }
                 }
             }
         }
