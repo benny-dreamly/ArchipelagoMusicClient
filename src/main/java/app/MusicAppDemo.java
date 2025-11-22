@@ -144,11 +144,7 @@ public class MusicAppDemo extends Application {
                         }
                     } else {
                         // Album nodes
-                        if (item.equals("Albums")) {
-                            setStyle("-fx-font-weight: bold; -fx-text-fill: black;");
-                        } else {
-                            setStyle("-fx-font-weight: bold; -fx-text-fill: blue;");
-                        }
+                        setStyle("-fx-font-weight: normal; -fx-text-fill: black;");
                     }
                 }
             }
