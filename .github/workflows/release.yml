@@ -29,18 +29,41 @@ jobs:
           name: MusicPlayer-JAR
           path: ./artifacts
 
+      - name: Strip leading v from version
+        id: strip_v
+        run: |
+          ver="${{ github.event.inputs.version || github.ref_name }}"
+          echo "version_no_v=${ver#v}" >> $GITHUB_OUTPUT
+
+      - name: Detect JAR and extract version
+        id: jarinfo
+        run: |
+          file=$(ls artifacts/*.jar | head -n 1)
+          echo "jar_file=$file" >> $GITHUB_OUTPUT
+      
+          # Extract version between the first '-' and '-all'
+          # Example: ArchipelagoMusicClient-3.0-all.jar → 3.0
+          version=$(basename "$file" | sed -E 's/^.*-([0-9]+\.[0-9]+.*)-all\.jar$/\1/')
+          echo "version=$version" >> $GITHUB_OUTPUT
+
       - name: Create draft release
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.event.inputs.version || github.ref_name }}
-          name: Archipelago Music Client Version ${{ github.event.inputs.version || github.ref_name }}
+          name: Archipelago Music Client Version ${{ steps.strip_v.outputs.version_no_v }}
           body: |
             ## Changes
             - Auto-generated release from build workflow
             
-            ## Assets
-            - JAR file built from latest code
+            To run, edit this template command:
+
+            ```
+            java \
+              --module-path /path/to/javafx-sdk/lib \
+              --add-modules javafx.controls,javafx.media \
+              -jar ArchipelagoMusicClient-${{ steps.jarinfo.outputs.version }}-all.jar
+            ```
           draft: true
           files: ./artifacts/*.jar
         env:
