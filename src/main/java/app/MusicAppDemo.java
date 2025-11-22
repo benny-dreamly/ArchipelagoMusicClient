@@ -181,6 +181,39 @@ public class MusicAppDemo extends Application {
             // initialize AlbumLibrary now we've added the albums and they exist
             library = new AlbumLibrary(albums);
 
+            treeView.setCellFactory(tv -> new TreeCell<>() {
+                @Override
+                protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+
+                    if (empty || item == null) {
+                        setText(null);
+                        setStyle(""); // reset style
+                    } else {
+                        setText(item);
+
+                        TreeItem<String> treeItem = getTreeItem();
+
+                        if (treeItem != null && treeItem.isLeaf()) {
+                            // Song nodes
+                            Song song = library.getSongByTitle(item);
+                            if (song != null && unlockedSongs.contains(song.getTitle())) {
+                                setStyle("-fx-font-weight: bold; -fx-text-fill: green;");
+                            } else {
+                                setStyle("-fx-font-weight: normal; -fx-text-fill: black;");
+                            }
+                        } else {
+                            // Album nodes
+                            if (item.equals("Albums")) {
+                                setStyle("-fx-font-weight: bold; -fx-text-fill: black;");
+                            } else {
+                                setStyle("-fx-font-weight: bold; -fx-text-fill: blue;");
+                            }
+                        }
+                    }
+                }
+            });
+
             Map<String, String> albumFolders = new HashMap<>();
             File configFile = getAlbumConfigFile();
 
