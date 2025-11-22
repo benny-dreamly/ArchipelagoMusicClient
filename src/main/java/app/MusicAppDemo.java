@@ -151,7 +151,6 @@ public class MusicAppDemo extends Application {
                         } else {
                             // Regular album node
                             Album album = getAlbumByName(item);
-                            System.out.println(unlockedAlbums);
                             if (album != null && unlockedAlbums.contains(album.getName())) {
                                 // unlocked → bold black
                                 setStyle("-fx-font-weight: bold; -fx-text-fill: black;");
