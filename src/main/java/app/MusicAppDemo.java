@@ -584,7 +584,7 @@ public class MusicAppDemo extends Application {
 
         for (Album album : albums) {
             // Skip albums not unlocked in slot data
-            if (!unlockedAlbums.contains(album.getName())) continue;
+            if (!enabledAlbums.contains(album.getName())) continue;
 
             TreeItem<String> albumItem = new TreeItem<>(album.getName());
             boolean hasSongs = false;
