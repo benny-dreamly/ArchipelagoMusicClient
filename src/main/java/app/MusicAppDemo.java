@@ -49,6 +49,7 @@ public class MusicAppDemo extends Application {
     private final Set<String> unlockedAlbums = new HashSet<>();
     private final Set<String> unlockedSongs = new HashSet<>();
     private final Set<String> enabledSets = new HashSet<>();
+    private final Set<String> enabledAlbums = new HashSet<>();
 
     private List<String> albumOrderCache;
 
@@ -150,6 +151,7 @@ public class MusicAppDemo extends Application {
                         } else {
                             // Regular album node
                             Album album = getAlbumByName(item);
+                            System.out.println(unlockedAlbums);
                             if (album != null && unlockedAlbums.contains(album.getName())) {
                                 // unlocked → bold black
                                 setStyle("-fx-font-weight: bold; -fx-text-fill: black;");
@@ -1106,15 +1108,15 @@ public class MusicAppDemo extends Application {
         // Enable only the albums in slot data
         for (Album album : albums) {
             if (enabledAlbumsFromSlotData.contains(album.getName())) {
-                unlockedAlbums.add(album.getName());   // mark album as unlocked
+                enabledAlbums.add(album.getName());   // mark album as enabled
                 enabledSets.add(album.getType());      // enable album type for tree filtering
 
-                // Full-album unlock (Taylor style): unlock all songs
-                if (album.isFullAlbumUnlock()) {
-                    for (Song s : album.getSongs()) {
-                        unlockedSongs.add(s.getTitle());
-                    }
-                }
+//                // Full-album unlock (Taylor style): unlock all songs
+//                if (album.isFullAlbumUnlock()) {
+//                    for (Song s : album.getSongs()) {
+//                        unlockedSongs.add(s.getTitle());
+//                    }
+//                }
             }
         }
 
@@ -1122,11 +1124,11 @@ public class MusicAppDemo extends Application {
         if (enabledAlbumsFromSlotData.contains("Re-recordings")) {
             for (Album album : albums) {
                 if ("re-recording".equalsIgnoreCase(album.getType())) {
-                    unlockedAlbums.add(album.getName());
+                    enabledAlbums.add(album.getName());
                     enabledSets.add(album.getType());
-                    for (Song s : album.getSongs()) {
-                        unlockedSongs.add(s.getTitle());
-                    }
+//                    for (Song s : album.getSongs()) {
+//                        unlockedSongs.add(s.getTitle());
+//                    }
                 }
             }
         }
