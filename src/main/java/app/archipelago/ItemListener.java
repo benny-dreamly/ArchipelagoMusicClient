@@ -78,7 +78,7 @@ public class ItemListener {
                         // Also mark the parent album as "unlocked" for play checks
                         Album parentAlbum = app.getLibrary().getAlbumForSong(song.getTitle());
                         if (parentAlbum != null) {
-                            app.getUnlockedAlbums().add(parentAlbum.getName());
+                            // app.getUnlockedAlbums().add(parentAlbum.getName());
                             app.getEnabledSets().add(parentAlbum.getType());
                         }
                     } else if (album != null) {
