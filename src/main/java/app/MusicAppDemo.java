@@ -724,7 +724,6 @@ public class MusicAppDemo extends Application {
             connectionPanel.disableGameField(true);
             connectionPanel.setGameFieldTooltip("Cannot change game while connected");
 
-            applySlotData();
         } catch (Exception ex) {
             connectionPanel.setStatus("Connection failed");
             showError("Connection Failed", "Failed to connect to Archipelago server", ex.getMessage());
