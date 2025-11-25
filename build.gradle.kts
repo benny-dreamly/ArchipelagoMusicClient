@@ -42,6 +42,9 @@ dependencies {
 
     // SpotBugs annotations (optional but helpful)
     compileOnly("com.github.spotbugs:spotbugs-annotations:4.9.8")
+
+    // ✅ Add Apache HttpClient (required by Java-Client and SpotBugs analysis)
+    implementation("org.apache.httpcomponents.core5:httpcore5:5.2.4")
 }
 
 spotbugs {
