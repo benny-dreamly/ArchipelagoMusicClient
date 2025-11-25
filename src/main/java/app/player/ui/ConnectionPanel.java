@@ -1,10 +1,7 @@
 package app.player.ui;
 
-import app.MusicAppDemo;
 import app.archipelago.APClient;
 import app.archipelago.SlotDataHelper;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -17,18 +14,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.Reader;
-import java.lang.reflect.Type;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import static app.util.ConfigManager.loadConnectionSettings;
 import static app.util.ConfigPaths.checkIfGameFolderExists;
-import static app.util.ConfigPaths.getConnectionConfigFile;
 
 public class ConnectionPanel extends VBox {
     private final TextField hostField;

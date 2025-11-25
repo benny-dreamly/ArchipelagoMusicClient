@@ -1,6 +1,5 @@
 package app.player.ui;
 
-import app.player.Song;
 import javafx.beans.value.ChangeListener;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -9,7 +8,6 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-import javafx.scene.media.MediaPlayer;
 
 public class PlayerPanel extends VBox {
 
