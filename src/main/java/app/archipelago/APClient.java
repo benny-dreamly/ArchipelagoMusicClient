@@ -7,7 +7,12 @@ import io.github.archipelagomw.Client;
 import io.github.archipelagomw.flags.ItemsHandling;
 import javafx.application.Platform;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.Reader;
+import java.io.Writer;
+import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.function.Consumer;

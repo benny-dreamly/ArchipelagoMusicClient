@@ -3,7 +3,8 @@ package app.archipelago;
 import app.MusicAppDemo;
 import io.github.archipelagomw.events.ArchipelagoEventListener;
 import io.github.archipelagomw.events.PrintJSONEvent;
-import io.github.archipelagomw.Print.*;
+import io.github.archipelagomw.Print.APPrint;
+import io.github.archipelagomw.Print.APPrintJsonType;
 import javafx.application.Platform;
 import javafx.scene.control.TextArea;
 
