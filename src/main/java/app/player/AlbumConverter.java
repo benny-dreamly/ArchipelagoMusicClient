@@ -3,7 +3,10 @@ package app.player;
 import app.player.json.AlbumMetadata;
 import app.player.json.SongJSON;
 
-import java.util.*;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
 
 @SuppressWarnings("ClassCanBeRecord")
 public class AlbumConverter {
