@@ -185,12 +185,13 @@ public class APClient extends Client {
         String os = System.getProperty("os.name").toLowerCase();
         File baseDir;
 
-        if (os.contains("win"))
+        if (os.contains("win")) {
             baseDir = new File(userHome, "AppData\\Roaming\\MusicAppDemo");
-        else if (os.contains("mac"))
+        } else if (os.contains("mac")) {
             baseDir = new File(userHome, "Library/Application Support/MusicAppDemo");
-        else
+        } else {
             baseDir = new File(userHome, ".config/MusicAppDemo");
+        }
 
         if (!baseDir.exists()) {
             //noinspection ResultOfMethodCallIgnored
@@ -207,12 +208,13 @@ public class APClient extends Client {
         String os = System.getProperty("os.name").toLowerCase();
         File baseDir;
 
-        if (os.contains("win"))
+        if (os.contains("win")) {
             baseDir = new File(userHome, "AppData\\Roaming\\MusicAppDemo");
-        else if (os.contains("mac"))
+        } else if (os.contains("mac")) {
             baseDir = new File(userHome, "Library/Application Support/MusicAppDemo");
-        else
+        } else {
             baseDir = new File(userHome, ".config/MusicAppDemo");
+        }
 
         File dir = new File(baseDir, gameName);
         if (!dir.exists()) {
