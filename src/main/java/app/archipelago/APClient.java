@@ -9,6 +9,7 @@ import javafx.application.Platform;
 
 import java.io.*;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.util.function.Consumer;
 
 import static app.MusicAppDemo.logger;
@@ -92,7 +93,7 @@ public class APClient extends Client {
 
     private void saveGameName(String name) {
         File configFile = getGameConfigFile();
-        try (Writer writer = new FileWriter(configFile)) {
+        try (Writer writer = new FileWriter(configFile, StandardCharsets.UTF_8)) {
             new GsonBuilder().setPrettyPrinting().create().toJson(name, writer);
         } catch (IOException e) {
             //noinspection CallToPrintStackTrace
@@ -103,7 +104,7 @@ public class APClient extends Client {
     private String loadSavedGameName() {
         File configFile = getGameConfigFile();
         if (configFile.exists()) {
-            try (Reader reader = new FileReader(configFile)) {
+            try (Reader reader = new FileReader(configFile, StandardCharsets.UTF_8)) {
                 return new Gson().fromJson(reader, String.class);
             } catch (IOException e) {
                 //noinspection CallToPrintStackTrace
@@ -159,7 +160,7 @@ public class APClient extends Client {
     public static String loadSavedGameNameStatic() {
         File configFile = getGameConfigFileStatic();
         if (configFile.exists()) {
-            try (Reader reader = new FileReader(configFile)) {
+            try (Reader reader = new FileReader(configFile, StandardCharsets.UTF_8)) {
                 return new Gson().fromJson(reader, String.class);
             } catch (IOException e) {
                 //noinspection CallToPrintStackTrace
@@ -171,7 +172,7 @@ public class APClient extends Client {
 
     public static void saveGameNameStatic(String name) {
         File configFile = getGameConfigFileStatic();
-        try (Writer writer = new FileWriter(configFile)) {
+        try (Writer writer = new FileWriter(configFile, StandardCharsets.UTF_8)) {
             new GsonBuilder().setPrettyPrinting().create().toJson(name, writer);
         } catch (IOException e) {
             //noinspection CallToPrintStackTrace

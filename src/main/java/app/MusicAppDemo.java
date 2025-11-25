@@ -33,6 +33,7 @@ import javafx.util.Duration;
 
 import java.io.*;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
@@ -492,7 +493,7 @@ public class MusicAppDemo extends Application {
                 List<SongJSON> rawSongs;
 
                 if (localLocations.exists()) {
-                    try (Reader reader = new FileReader(localLocations)) {
+                    try (Reader reader = new FileReader(localLocations, StandardCharsets.UTF_8)) {
                         rawSongs = loader.loadSongsFromReader(reader); // new method
                     }
                 } else {
@@ -514,7 +515,7 @@ public class MusicAppDemo extends Application {
             File configFile = getConfigFile();
 
             if (configFile.exists()) {
-                try (Reader reader = new FileReader(configFile)) {
+                try (Reader reader = new FileReader(configFile, StandardCharsets.UTF_8)) {
                     Type type = new TypeToken<Map<String, String>>(){}.getType();
                     albumFolders = new Gson().fromJson(reader, type);
                 } catch (Exception ex) {
@@ -828,7 +829,7 @@ public class MusicAppDemo extends Application {
                     .setPrettyPrinting()
                     .disableHtmlEscaping() // keeps ' as-is instead of \u0027
                     .create();
-            try (Writer writer = new FileWriter(configFile)) {
+            try (Writer writer = new FileWriter(configFile, StandardCharsets.UTF_8)) {
                 gson.toJson(defaultFolders, writer);
             }
             logger.info("Generated default albumFolders.json at {}", configFile.getAbsolutePath());
@@ -952,7 +953,7 @@ public class MusicAppDemo extends Application {
         data.put("password", password);
 
         File file = getConnectionConfigFile();
-        try (Writer writer = new FileWriter(file)) {
+        try (Writer writer = new FileWriter(file, StandardCharsets.UTF_8)) {
             new GsonBuilder().setPrettyPrinting().create().toJson(data, writer);
             logger.info("Saved connection settings to {}", file.getAbsolutePath());
         } catch (IOException e) {
@@ -965,7 +966,7 @@ public class MusicAppDemo extends Application {
         File file = getConnectionConfigFile();
         if (!file.exists()) return new HashMap<>();
 
-        try (Reader reader = new FileReader(file)) {
+        try (Reader reader = new FileReader(file, StandardCharsets.UTF_8)) {
             Type type = new TypeToken<Map<String, String>>(){}.getType();
             return new Gson().fromJson(reader, type);
         } catch (IOException e) {
@@ -985,7 +986,7 @@ public class MusicAppDemo extends Application {
 
         List<String> loadedOrder = null;
         if (orderFile.exists()) {
-            try (Reader reader = new FileReader(orderFile)) {
+            try (Reader reader = new FileReader(orderFile, StandardCharsets.UTF_8)) {
                 Type listType = new TypeToken<List<String>>() {}.getType();
                 loadedOrder = new Gson().fromJson(reader, listType);
                 if (loadedOrder != null && !loadedOrder.isEmpty()) {
@@ -1021,7 +1022,7 @@ public class MusicAppDemo extends Application {
 //                    "The Tortured Poets Department"
 //            );
 
-            try (Writer writer = new FileWriter(orderFile)) {
+            try (Writer writer = new FileWriter(orderFile, StandardCharsets.UTF_8)) {
                 new GsonBuilder().setPrettyPrinting().create().toJson(loadedOrder, writer);
                 logger.info("Generated default albumOrder.json at {}", orderFile.getAbsolutePath());            } catch (IOException e) {
                 //noinspection CallToPrintStackTrace
