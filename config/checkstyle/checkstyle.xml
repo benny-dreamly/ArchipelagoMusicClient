@@ -7,13 +7,6 @@
     <property name="charset" value="UTF-8"/>
     <property name="severity" value="warning"/>
 
-    <!-- Support @SuppressWarnings and comments -->
-    <module name="SuppressWarningsFilter"/>
-    <module name="SuppressionCommentFilter">
-        <property name="offCommentFormat" value="CHECKSTYLE:OFF"/>
-        <property name="onCommentFormat" value="CHECKSTYLE:ON"/>
-    </module>
-
     <module name="TreeWalker">
         <!-- Required for @SuppressWarnings to work -->
         <module name="SuppressWarningsHolder"/>
