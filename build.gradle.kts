@@ -41,11 +41,11 @@ dependencies {
     annotationProcessor("com.google.errorprone:error_prone_core:2.23.0")
 
     // SpotBugs annotations (optional but helpful)
-    compileOnly("com.github.spotbugs:spotbugs-annotations:4.8.0")
+    compileOnly("com.github.spotbugs:spotbugs-annotations:4.9.8")
 }
 
 spotbugs {
-    toolVersion.set("4.8.0")
+    toolVersion.set("4.9.8")
     effort.set(com.github.spotbugs.snom.Effort.MAX)
     reportLevel.set(com.github.spotbugs.snom.Confidence.HIGH)
     ignoreFailures.set(true) // Make it optional - won't fail the build
