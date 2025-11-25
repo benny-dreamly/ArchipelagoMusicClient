@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -27,7 +28,7 @@ public class ConfigManager {
         data.put("password", password);
 
         File file = getConnectionConfigFile();
-        try (Writer writer = new FileWriter(file)) {
+        try (Writer writer = new FileWriter(file, StandardCharsets.UTF_8)) {
             new GsonBuilder().setPrettyPrinting().create().toJson(data, writer);
             logger.info("Saved connection settings to {}", file.getAbsolutePath());
         } catch (IOException e) {
@@ -40,7 +41,7 @@ public class ConfigManager {
         File file = getConnectionConfigFile();
         if (!file.exists()) return new HashMap<>();
 
-        try (Reader reader = new FileReader(file)) {
+        try (Reader reader = new FileReader(file, StandardCharsets.UTF_8)) {
             Type type = new TypeToken<Map<String, String>>(){}.getType();
             return new Gson().fromJson(reader, type);
         } catch (IOException e) {

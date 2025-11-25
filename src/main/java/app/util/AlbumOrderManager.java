@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static app.util.ConfigPaths.getConfigDir;
@@ -31,7 +32,7 @@ public class AlbumOrderManager {
 
         List<String> loadedOrder = null;
         if (orderFile.exists()) {
-            try (Reader reader = new FileReader(orderFile)) {
+            try (Reader reader = new FileReader(orderFile, StandardCharsets.UTF_8)) {
                 Type listType = new TypeToken<List<String>>() {}.getType();
                 loadedOrder = new Gson().fromJson(reader, listType);
                 if (loadedOrder != null && !loadedOrder.isEmpty()) {
@@ -50,7 +51,7 @@ public class AlbumOrderManager {
                     "Album 4"
             );
 
-            try (Writer writer = new FileWriter(orderFile)) {
+            try (Writer writer = new FileWriter(orderFile, StandardCharsets.UTF_8)) {
                 new GsonBuilder().setPrettyPrinting().create().toJson(loadedOrder, writer);
                 logger.info("Generated default albumOrder.json at {}", orderFile.getAbsolutePath());            } catch (IOException e) {
                 //noinspection CallToPrintStackTrace

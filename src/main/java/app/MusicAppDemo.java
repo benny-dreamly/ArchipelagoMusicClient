@@ -34,6 +34,7 @@ import javafx.util.Duration;
 
 import java.io.*;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
@@ -161,7 +162,7 @@ public class MusicAppDemo extends Application {
                 List<SongJSON> rawSongs;
 
                 if (localLocations.exists()) {
-                    try (Reader reader = new FileReader(localLocations)) {
+                    try (Reader reader = new FileReader(localLocations, StandardCharsets.UTF_8)) {
                         rawSongs = loader.loadSongsFromReader(reader); // new method
                     }
                 } else {
@@ -228,7 +229,7 @@ public class MusicAppDemo extends Application {
             File configFile = getAlbumConfigFile();
 
             if (configFile.exists()) {
-                try (Reader reader = new FileReader(configFile)) {
+                try (Reader reader = new FileReader(configFile, StandardCharsets.UTF_8)) {
                     Type type = new TypeToken<Map<String, String>>(){}.getType();
                     albumFolders = new Gson().fromJson(reader, type);
                 } catch (Exception ex) {

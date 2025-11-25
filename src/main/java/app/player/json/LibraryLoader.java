@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 public class LibraryLoader {
@@ -28,7 +29,7 @@ public class LibraryLoader {
             throw new IllegalArgumentException("Resource not found: " + resourcePath);
         }
 
-        try (InputStreamReader reader = new InputStreamReader(is)) {
+        try (InputStreamReader reader = new InputStreamReader(is, StandardCharsets.UTF_8)) {
             return gson.fromJson(reader, listType);
         }
     }

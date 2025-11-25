@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +40,7 @@ public class AlbumUtils {
                     .setPrettyPrinting()
                     .disableHtmlEscaping() // keeps ' as-is instead of \u0027
                     .create();
-            try (Writer writer = new FileWriter(configFile)) {
+            try (Writer writer = new FileWriter(configFile, StandardCharsets.UTF_8)) {
                 gson.toJson(defaultFolders, writer);
             }
             logger.info("Generated default albumFolders.json at {}", configFile.getAbsolutePath());

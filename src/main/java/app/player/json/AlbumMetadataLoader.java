@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Map;
 
@@ -21,7 +22,7 @@ public class AlbumMetadataLoader {
             return Collections.emptyMap();
         }
 
-        try (FileReader reader = new FileReader(file)) {
+        try (FileReader reader = new FileReader(file, StandardCharsets.UTF_8)) {
             Type type = new TypeToken<Map<String, AlbumMetadata>>() {}.getType();
             Map<String, AlbumMetadata> metadata = new Gson().fromJson(reader, type);
             logger.info("Loaded album metadata for {} albums.", metadata.size());

@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import static app.MusicAppDemo.logger;
@@ -22,7 +23,7 @@ public class SlotDataHelper {
             return;
         }
 
-        try (FileReader reader = new FileReader(file)) {
+        try (FileReader reader = new FileReader(file, StandardCharsets.UTF_8)) {
             Type type = new TypeToken<Map<String, Map<String, SlotOption>>>() {}.getType();
             Map<String, Map<String, SlotOption>> raw = new Gson().fromJson(reader, type);
             slotOptions = raw.getOrDefault("slot_data_keys", Collections.emptyMap());
