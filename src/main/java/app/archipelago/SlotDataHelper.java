@@ -35,7 +35,7 @@ public class SlotDataHelper {
             slotOptions = raw.getOrDefault("slot_data_keys", Collections.emptyMap());
             LOGGER.info("Loaded slot_data.json with {} keys.", slotOptions.size());
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.error("Failed to load slot_data.json", e);
             slotOptions = Collections.emptyMap();
         }
     }
