@@ -18,7 +18,7 @@ import static app.util.ConfigPaths.getAlbumConfigFile;
 
 public class AlbumUtils {
 
-    private static final Logger logger = LoggerFactory.getLogger(AlbumUtils.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AlbumUtils.class);
 
     private AlbumUtils() {} // utility class
 
@@ -43,7 +43,7 @@ public class AlbumUtils {
             try (Writer writer = new FileWriter(configFile, StandardCharsets.UTF_8)) {
                 gson.toJson(defaultFolders, writer);
             }
-            logger.info("Generated default albumFolders.json at {}", configFile.getAbsolutePath());
+            LOGGER.info("Generated default albumFolders.json at {}", configFile.getAbsolutePath());
         } catch (Exception e) {
             //noinspection CallToPrintStackTrace
             e.printStackTrace();

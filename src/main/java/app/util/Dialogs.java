@@ -6,12 +6,12 @@ import org.slf4j.LoggerFactory;
 
 public class Dialogs {
 
-    private static final Logger logger = LoggerFactory.getLogger(Dialogs.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(Dialogs.class);
 
     private Dialogs() {} // utility class
 
     public static void showError(String title, String header, String content) {
-        logger.info("Failed to load song. {}", content);
+        LOGGER.info("Failed to load song. {}", content);
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(title);
         alert.setHeaderText(header);

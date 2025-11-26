@@ -20,7 +20,7 @@ import static app.util.ConfigPaths.getConfigDir;
 
 public class AlbumOrderManager {
 
-    private static final Logger logger = LoggerFactory.getLogger(AlbumOrderManager.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AlbumOrderManager.class);
     private List<String> cache;
 
     public List<String> getAlbumOrderCache() {
@@ -41,7 +41,7 @@ public class AlbumOrderManager {
                 Type listType = new TypeToken<List<String>>() {}.getType();
                 loadedOrder = new Gson().fromJson(reader, listType);
                 if (loadedOrder != null && !loadedOrder.isEmpty()) {
-                    logger.info("Loaded album order from {}", orderFile.getAbsolutePath());                }
+                    LOGGER.info("Loaded album order from {}", orderFile.getAbsolutePath());                }
             } catch (IOException e) {
                 //noinspection CallToPrintStackTrace
                 e.printStackTrace();
@@ -58,7 +58,7 @@ public class AlbumOrderManager {
 
             try (Writer writer = new FileWriter(orderFile, StandardCharsets.UTF_8)) {
                 new GsonBuilder().setPrettyPrinting().create().toJson(loadedOrder, writer);
-                logger.info("Generated default albumOrder.json at {}", orderFile.getAbsolutePath());            } catch (IOException e) {
+                LOGGER.info("Generated default albumOrder.json at {}", orderFile.getAbsolutePath());            } catch (IOException e) {
                 //noinspection CallToPrintStackTrace
                 e.printStackTrace();
             }

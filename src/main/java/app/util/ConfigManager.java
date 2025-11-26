@@ -21,7 +21,7 @@ import static app.util.ConfigPaths.getConnectionConfigFile;
 
 public class ConfigManager {
 
-    private static final Logger logger = LoggerFactory.getLogger(ConfigManager.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
 
     private ConfigManager() {} // utility class
 
@@ -35,7 +35,7 @@ public class ConfigManager {
         File file = getConnectionConfigFile();
         try (Writer writer = new FileWriter(file, StandardCharsets.UTF_8)) {
             new GsonBuilder().setPrettyPrinting().create().toJson(data, writer);
-            logger.info("Saved connection settings to {}", file.getAbsolutePath());
+            LOGGER.info("Saved connection settings to {}", file.getAbsolutePath());
         } catch (IOException e) {
             //noinspection CallToPrintStackTrace
             e.printStackTrace();

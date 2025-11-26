@@ -75,7 +75,7 @@ import static app.util.TimeUtils.formatTime;
 
 public class MusicAppDemo extends Application {
 
-    public static final Logger logger = LoggerFactory.getLogger(MusicAppDemo.class);
+    public static final Logger LOGGER = LoggerFactory.getLogger(MusicAppDemo.class);
 
     private final List<Album> albums = new ArrayList<>();
     private final Set<String> unlockedAlbums = new HashSet<>();
@@ -259,7 +259,7 @@ public class MusicAppDemo extends Application {
                     ex.printStackTrace();
                 }
             } else {
-                logger.info("No config file found at {}, skipping album folder assignment", configFile.getAbsolutePath());
+                LOGGER.info("No config file found at {}, skipping album folder assignment", configFile.getAbsolutePath());
             }
 
             // add fallback album to unlocked albums
@@ -393,7 +393,7 @@ public class MusicAppDemo extends Application {
         this.currentSong = song;
 
         if (song.getFilePath() == null || !new File(song.getFilePath()).exists()) {
-            logger.info("Song trying to be played ({})'s file path ({}) does not exist or is null.", song.getTitle(), song.getFilePath());
+            LOGGER.info("Song trying to be played ({})'s file path ({}) does not exist or is null.", song.getTitle(), song.getFilePath());
             showError("File Not Found", "Cannot play song", "File not found for: " + song.getTitle());
             return;
         }
@@ -544,9 +544,9 @@ public class MusicAppDemo extends Application {
 
                 if (matchedSong != null) {
                     matchedSong.setFilePath(file.getAbsolutePath());
-                    logger.info("Matched: {} -> {} | path: {}", file.getName(), matchedSong.getTitle(), matchedSong.getFilePath());
+                    LOGGER.info("Matched: {} -> {} | path: {}", file.getName(), matchedSong.getTitle(), matchedSong.getFilePath());
                 } else {
-                    logger.warn("Could not match file to song: {} in album {}", file.getName(), album.getName());
+                    LOGGER.warn("Could not match file to song: {} in album {}", file.getName(), album.getName());
                 }
             }
         }
@@ -575,7 +575,7 @@ public class MusicAppDemo extends Application {
                  FileOutputStream out = new FileOutputStream(localLocations)) {
                 if (in != null) {
                     in.transferTo(out);
-                    logger.info("Copied default locations.json to {}", localLocations.getAbsolutePath());                }
+                    LOGGER.info("Copied default locations.json to {}", localLocations.getAbsolutePath());                }
             } catch (IOException e) {
                 //noinspection CallToPrintStackTrace
                 e.printStackTrace();
@@ -716,7 +716,7 @@ public class MusicAppDemo extends Application {
         client.setGameName(gameName);
 
         gameFolder.set(getConfigDir());
-        checkIfGameFolderExists(gameFolder.get(), logger);
+        checkIfGameFolderExists(gameFolder.get(), LOGGER);
 
         // ✅ reload slot options after game changes
         SlotDataHelper.loadSlotOptions(gameFolder.get());
@@ -773,7 +773,7 @@ public class MusicAppDemo extends Application {
             }
 
             if (currentSong != null && (currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING)) {
-                logger.info("Current song ({})'s file path: {}", currentSong.getTitle(), currentSong.getFilePath());
+                LOGGER.info("Current song ({})'s file path: {}", currentSong.getTitle(), currentSong.getFilePath());
                 // start current (if file exists)
                 if (currentSong.getFilePath() != null) {
                     playSong(currentSong);

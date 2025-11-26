@@ -33,7 +33,7 @@ public class ConnectionPanel extends VBox {
     private final HBox connectButtonsBox;
     private TextClientWindow textClientWindow;
 
-    private static final Logger logger = LoggerFactory.getLogger(ConnectionPanel.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionPanel.class);
 
     public ConnectionPanel(AtomicReference<File> gameFolder, Supplier<APClient> clientSupplier) {
         super(5);
@@ -62,7 +62,7 @@ public class ConnectionPanel extends VBox {
 
         // Ensure the per-game folder exists
         gameFolder.set(APClient.getGameDataFolderStatic());
-        checkIfGameFolderExists(gameFolder.get(), logger);
+        checkIfGameFolderExists(gameFolder.get(), LOGGER);
 
         // load slot_data.json to help with parsing the slot data, we already know the game
         SlotDataHelper.loadSlotOptions(gameFolder.get());

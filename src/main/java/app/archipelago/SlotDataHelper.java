@@ -13,7 +13,7 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.HashSet;
 
-import static app.MusicAppDemo.logger;
+import static app.MusicAppDemo.LOGGER;
 
 public class SlotDataHelper {
 
@@ -30,7 +30,7 @@ public class SlotDataHelper {
             Type type = new TypeToken<Map<String, Map<String, SlotOption>>>() {}.getType();
             Map<String, Map<String, SlotOption>> raw = new Gson().fromJson(reader, type);
             slotOptions = raw.getOrDefault("slot_data_keys", Collections.emptyMap());
-            logger.info("Loaded slot_data.json with {} keys.", slotOptions.size());        } catch (IOException e) {
+            LOGGER.info("Loaded slot_data.json with {} keys.", slotOptions.size());        } catch (IOException e) {
             e.printStackTrace();
             slotOptions = Collections.emptyMap();
         }
