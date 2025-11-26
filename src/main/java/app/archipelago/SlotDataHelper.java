@@ -1,7 +1,10 @@
 package app.archipelago;
 
+import app.MusicAppDemo;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileReader;
@@ -13,9 +16,9 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.HashSet;
 
-import static app.MusicAppDemo.LOGGER;
-
 public class SlotDataHelper {
+
+    public static final Logger LOGGER = LoggerFactory.getLogger(SlotDataHelper.class);
 
     private static Map<String, SlotOption> slotOptions = Collections.emptyMap();
 
