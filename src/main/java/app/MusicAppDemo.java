@@ -251,8 +251,10 @@ public class MusicAppDemo extends Application {
             // Check unlocking rules
             if (!songUnlocked || !albumUnlocked) {
                 if (!songUnlocked) {
+                    LOGGER.info("Failed to play song. {} is not unlocked yet!", song.getTitle());
                     showError("Locked Song", "Cannot play song", song.getTitle() + " is not unlocked yet!");
                 } else if (!albumUnlocked && album != null) {
+                    LOGGER.info("Failed to queue song. {} requires album {} to be unlocked!", song.getTitle(), album.getName());
                     showError("Locked Song", "Cannot queue song", song.getTitle() + " requires album " + album.getName() + " to be unlocked!");
                 }
                 return; // do not queue
@@ -361,6 +363,7 @@ public class MusicAppDemo extends Application {
                 if (currentSong.getFilePath() != null) {
                     playSong(currentSong);
                 } else {
+                    LOGGER.info("Cannot play song. File not found for {}.", currentSong.getTitle());
                     showError("File Not Found", "Cannot play song", "File not found for: " + currentSong.getTitle());
                 }
             } else if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) && !playQueue.isEmpty()) {
@@ -455,6 +458,7 @@ public class MusicAppDemo extends Application {
 
                 client.setOnErrorCallback(ex -> {
                     statusLabel.setText("Connection failed");
+                    LOGGER.info("Failed to connect to the Archipelago server. Reason: {}", ex.getMessage());
                     showError("Connection Failed",
                             "Failed to connect to the Archipelago server",
                             "Reason: " + ex.getMessage());
@@ -478,6 +482,7 @@ public class MusicAppDemo extends Application {
 
                 } catch (Exception ex) {
                     statusLabel.setText("Connection failed");
+                    LOGGER.info("Failed to connect to the Archipelago Server. {}", ex.getMessage());
                     showError("Connection Failed", "Failed to connect to the Archipelago server", ex.getMessage());
                     connectButton.setText("Connect");
                 }
@@ -635,7 +640,6 @@ public class MusicAppDemo extends Application {
     }
 
     public void showError(String title, String header, String content) {
-        LOGGER.info("Failed to load song. {}", content);
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(title);
         alert.setHeaderText(header);
@@ -716,6 +720,7 @@ public class MusicAppDemo extends Application {
             } else {
                 msg = song.getTitle() + " is not unlocked yet!";
             }
+            LOGGER.info("Cannot play song. {}", msg);
             showError("Locked Song", "Cannot play song", msg);
             return;
         }
