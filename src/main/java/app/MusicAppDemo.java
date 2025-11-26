@@ -1162,8 +1162,8 @@ public class MusicAppDemo extends Application {
         // Safely check if include_short_songs exists and is true
         if (slotMap.containsKey("include_short_songs")) {
             Object val = slotMap.get("include_short_songs");
-            if (val instanceof Boolean) {
-                shortSongsEnabled = (Boolean) val;
+            if (val instanceof Boolean b) {
+                shortSongsEnabled = b;
             } else if ("true".equalsIgnoreCase(val.toString())) {
                 shortSongsEnabled = true;
             }
@@ -1173,8 +1173,8 @@ public class MusicAppDemo extends Application {
         boolean vaultSongsEnabled = false;
         if (slotMap.containsKey("include_vault_tracks")) {
             Object val = slotMap.get("include_vault_tracks");
-            if (val instanceof Boolean) {
-                vaultSongsEnabled = (Boolean) val;
+            if (val instanceof Boolean b) {
+                vaultSongsEnabled = b;
             } else if ("true".equalsIgnoreCase(val.toString())) {
                 vaultSongsEnabled = true;
             }
