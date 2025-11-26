@@ -556,8 +556,7 @@ public class MusicAppDemo extends Application {
                     Type type = new TypeToken<Map<String, String>>(){}.getType();
                     albumFolders = new Gson().fromJson(reader, type);
                 } catch (Exception ex) {
-                    //noinspection CallToPrintStackTrace
-                    ex.printStackTrace();
+                    LOGGER.error("Error loading album folders configuration", ex);
                 }
             } else {
                 LOGGER.info("No config file found at {}, skipping album folder assignment", configFile.getAbsolutePath());
@@ -871,8 +870,7 @@ public class MusicAppDemo extends Application {
             }
             LOGGER.info("Generated default albumFolders.json at {}", configFile.getAbsolutePath());
         } catch (Exception e) {
-            //noinspection CallToPrintStackTrace
-            e.printStackTrace();
+            LOGGER.error("Failed to generate default albumFolders.json at {}", configFile.getAbsolutePath(), e);
         }
     }
 
@@ -994,8 +992,7 @@ public class MusicAppDemo extends Application {
             new GsonBuilder().setPrettyPrinting().create().toJson(data, writer);
             LOGGER.info("Saved connection settings to {}", file.getAbsolutePath());
         } catch (IOException e) {
-            //noinspection CallToPrintStackTrace
-            e.printStackTrace();
+            LOGGER.error("Failed to save connection settings to {}", file.getAbsolutePath(), e);
         }
     }
 
@@ -1029,8 +1026,7 @@ public class MusicAppDemo extends Application {
                 if (loadedOrder != null && !loadedOrder.isEmpty()) {
                     LOGGER.info("Loaded album order from {}", orderFile.getAbsolutePath());                }
             } catch (IOException e) {
-                //noinspection CallToPrintStackTrace
-                e.printStackTrace();
+                LOGGER.error("Failed to load album order from {}", orderFile.getAbsolutePath(), e);
             }
         }
 
@@ -1061,9 +1057,9 @@ public class MusicAppDemo extends Application {
 
             try (Writer writer = new FileWriter(orderFile, StandardCharsets.UTF_8)) {
                 new GsonBuilder().setPrettyPrinting().create().toJson(loadedOrder, writer);
-                LOGGER.info("Generated default albumOrder.json at {}", orderFile.getAbsolutePath());            } catch (IOException e) {
-                //noinspection CallToPrintStackTrace
-                e.printStackTrace();
+                LOGGER.info("Generated default albumOrder.json at {}", orderFile.getAbsolutePath());
+            } catch (IOException e) {
+                LOGGER.error("Failed to generate default albumOrder.json at {}", orderFile.getAbsolutePath(), e);
             }
         }
 
@@ -1096,8 +1092,7 @@ public class MusicAppDemo extends Application {
                     in.transferTo(out);
                     LOGGER.info("Copied default locations.json to {}", localLocations.getAbsolutePath());                }
             } catch (IOException e) {
-                //noinspection CallToPrintStackTrace
-                e.printStackTrace();
+                LOGGER.error("Failed to copy default locations.json to {}", localLocations.getAbsolutePath(), e);
             }
         }
     }
