@@ -50,7 +50,7 @@ dependencies {
     implementation("org.apache.httpcomponents.core5:httpcore5:5.2.4")
 
     // ✅ Error Prone dependencies
-    errorprone("com.google.errorprone:error_prone_core:2.35.1")  // Updated to latest
+    errorprone("com.google.errorprone:error_prone_core:2.44.0")  // Updated to latest
 }
 
 spotbugs {
