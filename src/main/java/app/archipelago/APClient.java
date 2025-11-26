@@ -51,6 +51,7 @@ public class APClient extends Client {
         super.connect(this.address);
     }
 
+    @Override
     public void disconnect() {
         if (isConnected()) {
             super.disconnect();
