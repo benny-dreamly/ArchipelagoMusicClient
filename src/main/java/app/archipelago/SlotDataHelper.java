@@ -1,6 +1,5 @@
 package app.archipelago;
 
-import app.MusicAppDemo;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import org.slf4j.Logger;
