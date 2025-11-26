@@ -256,8 +256,7 @@ public class MusicAppDemo extends Application {
                     Type type = new TypeToken<Map<String, String>>(){}.getType();
                     albumFolders = new Gson().fromJson(reader, type);
                 } catch (Exception ex) {
-                    //noinspection CallToPrintStackTrace
-                    ex.printStackTrace();
+                    LOGGER.error("Error loading album folders configuration", ex);
                 }
             } else {
                 LOGGER.info("No config file found at {}, skipping album folder assignment", configFile.getAbsolutePath());
@@ -578,8 +577,7 @@ public class MusicAppDemo extends Application {
                     in.transferTo(out);
                     LOGGER.info("Copied default locations.json to {}", localLocations.getAbsolutePath());                }
             } catch (IOException e) {
-                //noinspection CallToPrintStackTrace
-                e.printStackTrace();
+                LOGGER.error("Failed to copy default locations.json to {}", localLocations.getAbsolutePath(), e);
             }
         }
     }

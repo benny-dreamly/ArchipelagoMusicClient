@@ -45,8 +45,7 @@ public class AlbumUtils {
             }
             LOGGER.info("Generated default albumFolders.json at {}", configFile.getAbsolutePath());
         } catch (Exception e) {
-            //noinspection CallToPrintStackTrace
-            e.printStackTrace();
+            LOGGER.error("Failed to generate default albumFolders.json at {}", configFile.getAbsolutePath(), e);
         }
     }
 }

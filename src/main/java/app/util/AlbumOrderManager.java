@@ -43,8 +43,7 @@ public class AlbumOrderManager {
                 if (loadedOrder != null && !loadedOrder.isEmpty()) {
                     LOGGER.info("Loaded album order from {}", orderFile.getAbsolutePath());                }
             } catch (IOException e) {
-                //noinspection CallToPrintStackTrace
-                e.printStackTrace();
+                LOGGER.error("Failed to load album order from {}", orderFile.getAbsolutePath(), e);
             }
         }
 
@@ -60,8 +59,7 @@ public class AlbumOrderManager {
                 new GsonBuilder().setPrettyPrinting().create().toJson(loadedOrder, writer);
                 LOGGER.info("Generated default albumOrder.json at {}", orderFile.getAbsolutePath());
             } catch (IOException e) {
-                //noinspection CallToPrintStackTrace
-                e.printStackTrace();
+                LOGGER.error("Failed to generate default albumOrder.json at {}", orderFile.getAbsolutePath(), e);
             }
         }
 

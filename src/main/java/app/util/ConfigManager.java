@@ -37,8 +37,7 @@ public class ConfigManager {
             new GsonBuilder().setPrettyPrinting().create().toJson(data, writer);
             LOGGER.info("Saved connection settings to {}", file.getAbsolutePath());
         } catch (IOException e) {
-            //noinspection CallToPrintStackTrace
-            e.printStackTrace();
+            LOGGER.error("Failed to save connection settings to {}", file.getAbsolutePath(), e);
         }
     }
 
