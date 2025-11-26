@@ -17,7 +17,7 @@ public class SlotDataUtils {
     public static boolean parseBooleanSlot(Map<String, Object> slotMap, String key) {
         if (!slotMap.containsKey(key)) return false;
         Object val = slotMap.get(key);
-        if (val instanceof Boolean ) return (Boolean) val;
+        if (val instanceof Boolean b) return b;
         return "true".equalsIgnoreCase(val.toString());
     }
 }
