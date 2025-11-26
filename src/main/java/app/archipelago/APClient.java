@@ -18,6 +18,7 @@ import java.io.Writer;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.function.Consumer;
 
 public class APClient extends Client {
@@ -126,7 +127,7 @@ public class APClient extends Client {
         String userHome = System.getProperty("user.home");
         File baseDir;
 
-        String os = System.getProperty("os.name").toLowerCase();
+        String os = System.getProperty("os.name").toLowerCase(Locale.ROOT);
         if (os.contains("win")) {
             baseDir = new File(userHome, "AppData\\Roaming\\MusicAppDemo");
         } else if (os.contains("mac")) {
@@ -151,7 +152,7 @@ public class APClient extends Client {
 
         File baseDir;
         String userHome = System.getProperty("user.home");
-        String os = System.getProperty("os.name").toLowerCase();
+        String os = System.getProperty("os.name").toLowerCase(Locale.ROOT);
 
         if (os.contains("win")) {
             baseDir = new File(userHome, "AppData\\Roaming\\MusicAppDemo");
@@ -187,7 +188,7 @@ public class APClient extends Client {
 
     private static File getGameConfigFileStatic() {
         String userHome = System.getProperty("user.home");
-        String os = System.getProperty("os.name").toLowerCase();
+        String os = System.getProperty("os.name").toLowerCase(Locale.ROOT);
         File baseDir;
 
         if (os.contains("win")) {
@@ -210,7 +211,7 @@ public class APClient extends Client {
     public static File getGameDataFolderStatic() {
         String gameName = loadSavedGameNameStatic();
         String userHome = System.getProperty("user.home");
-        String os = System.getProperty("os.name").toLowerCase();
+        String os = System.getProperty("os.name").toLowerCase(Locale.ROOT);
         File baseDir;
 
         if (os.contains("win")) {
