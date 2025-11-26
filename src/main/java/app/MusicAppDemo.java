@@ -57,17 +57,7 @@ import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 
-import java.util.List;
-import java.util.LinkedList;
-import java.util.ArrayList;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Queue;
-import java.util.Comparator;
-import java.util.Iterator;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
@@ -883,9 +873,9 @@ public class MusicAppDemo extends Application {
             if (!albumDirectory.exists() || !albumDirectory.isDirectory()) continue;
 
             File[] files = albumDirectory.listFiles((_, name) ->
-                    name.toLowerCase().endsWith(".mp3") ||
-                            name.toLowerCase().endsWith(".m4a") ||
-                            name.toLowerCase().endsWith(".wav")
+                    name.toLowerCase(Locale.ROOT).endsWith(".mp3") ||
+                            name.toLowerCase(Locale.ROOT).endsWith(".m4a") ||
+                            name.toLowerCase(Locale.ROOT).endsWith(".wav")
             );
 
             if (files == null) continue;
@@ -905,7 +895,7 @@ public class MusicAppDemo extends Application {
                     }
 
                     // fallback fuzzy match if close enough
-                    int dist = levenshteinDistance(normalizedFile.toLowerCase(), normalizedSong.toLowerCase());
+                    int dist = levenshteinDistance(normalizedFile.toLowerCase(Locale.ROOT), normalizedSong.toLowerCase(Locale.ROOT));
                     if (dist < 5 && dist < bestDistance) { // tweak threshold if needed
                         matchedSong = song;
                         bestDistance = dist;
