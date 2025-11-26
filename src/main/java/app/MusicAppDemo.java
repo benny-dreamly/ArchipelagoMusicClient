@@ -97,6 +97,7 @@ public class MusicAppDemo extends Application {
     private Label currentSongLabel;
 
     // queue UI + data
+    @SuppressWarnings("JdkObsolete")
     private final Queue<Song> playQueue = new LinkedList<>();
     private ListView<String> queueListView;   // visual queue (titles)
     private MediaPlayer currentPlayer;
