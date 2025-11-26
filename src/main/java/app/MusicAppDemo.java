@@ -863,7 +863,7 @@ public class MusicAppDemo extends Application {
             configFile.createNewFile(); // make sure the file exists
             Gson gson = new GsonBuilder()
                     .setPrettyPrinting()
-                    .disableHtmlEscaping() // keeps ' as-is instead of \u0027
+                    .disableHtmlEscaping() // keeps ' as-is instead of converting to unicode escape
                     .create();
             try (Writer writer = new FileWriter(configFile, StandardCharsets.UTF_8)) {
                 gson.toJson(defaultFolders, writer);
