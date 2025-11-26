@@ -95,6 +95,7 @@ public class MusicAppDemo extends Application {
     private Song currentSong;
 
     // queue UI + data
+    @SuppressWarnings("JdkObsolete")
     private final Queue<Song> playQueue = new LinkedList<>();
     private MediaPlayer currentPlayer;
 
