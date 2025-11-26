@@ -58,7 +58,8 @@ public class AlbumOrderManager {
 
             try (Writer writer = new FileWriter(orderFile, StandardCharsets.UTF_8)) {
                 new GsonBuilder().setPrettyPrinting().create().toJson(loadedOrder, writer);
-                LOGGER.info("Generated default albumOrder.json at {}", orderFile.getAbsolutePath());            } catch (IOException e) {
+                LOGGER.info("Generated default albumOrder.json at {}", orderFile.getAbsolutePath());
+            } catch (IOException e) {
                 //noinspection CallToPrintStackTrace
                 e.printStackTrace();
             }
