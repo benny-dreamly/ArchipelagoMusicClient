@@ -1,3 +1,5 @@
+import net.ltgt.gradle.errorprone.errorprone
+
 plugins {
     id("java")
     id("application")
@@ -5,6 +7,7 @@ plugins {
     id("com.github.johnrengelman.shadow") version "8.1.1"
     id("checkstyle")
     id("com.github.spotbugs") version "6.4.5"
+    id("net.ltgt.errorprone") version "4.1.0"
 }
 
 group = "org.example"
@@ -45,6 +48,9 @@ dependencies {
 
     // ✅ Add Apache HttpClient (required by Java-Client and SpotBugs analysis)
     implementation("org.apache.httpcomponents.core5:httpcore5:5.2.4")
+
+    // ✅ Error Prone dependencies
+    errorprone("com.google.errorprone:error_prone_core:2.35.1")  // Updated to latest
 }
 
 spotbugs {
@@ -76,6 +82,30 @@ tasks.withType<Checkstyle>().configureEach {
     reports {
         xml.required.set(false)
         html.required.set(true)
+    }
+}
+
+// ✅ Error Prone Configuration
+tasks.withType<JavaCompile>().configureEach {
+    options.errorprone {
+        isEnabled.set(true)
+        disableWarningsInGeneratedCode.set(true)
+
+        // Set severity levels
+        error(
+            "DefaultCharset",  // Catches the FileReader issue SpotBugs found
+            "StreamResourceLeak"
+        )
+
+        warn(
+            "UnusedVariable",
+            "UnusedMethod"
+        )
+
+        // Disable noisy checks
+        disable(
+            "NullAway"
+        )
     }
 }
 
