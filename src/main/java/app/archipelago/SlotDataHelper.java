@@ -30,7 +30,8 @@ public class SlotDataHelper {
             Type type = new TypeToken<Map<String, Map<String, SlotOption>>>() {}.getType();
             Map<String, Map<String, SlotOption>> raw = new Gson().fromJson(reader, type);
             slotOptions = raw.getOrDefault("slot_data_keys", Collections.emptyMap());
-            LOGGER.info("Loaded slot_data.json with {} keys.", slotOptions.size());        } catch (IOException e) {
+            LOGGER.info("Loaded slot_data.json with {} keys.", slotOptions.size());
+        } catch (IOException e) {
             e.printStackTrace();
             slotOptions = Collections.emptyMap();
         }
