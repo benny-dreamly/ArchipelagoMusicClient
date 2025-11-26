@@ -55,6 +55,7 @@ import java.util.ArrayList;
 import java.util.Queue;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
@@ -513,9 +514,9 @@ public class MusicAppDemo extends Application {
             if (!albumDirectory.exists() || !albumDirectory.isDirectory()) continue;
 
             File[] files = albumDirectory.listFiles((_, name) ->
-                    name.toLowerCase().endsWith(".mp3") ||
-                            name.toLowerCase().endsWith(".m4a") ||
-                            name.toLowerCase().endsWith(".wav")
+                    name.toLowerCase(Locale.ROOT).endsWith(".mp3") ||
+                            name.toLowerCase(Locale.ROOT).endsWith(".m4a") ||
+                            name.toLowerCase(Locale.ROOT).endsWith(".wav")
             );
 
             if (files == null) continue;
@@ -535,7 +536,7 @@ public class MusicAppDemo extends Application {
                     }
 
                     // fallback fuzzy match if close enough
-                    int dist = levenshteinDistance(normalizedFile.toLowerCase(), normalizedSong.toLowerCase());
+                    int dist = levenshteinDistance(normalizedFile.toLowerCase(Locale.ROOT), normalizedSong.toLowerCase(Locale.ROOT));
                     if (dist < 5 && dist < bestDistance) { // tweak threshold if needed
                         matchedSong = song;
                         bestDistance = dist;
