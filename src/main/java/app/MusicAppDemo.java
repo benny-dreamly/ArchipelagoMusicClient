@@ -478,7 +478,7 @@ public class MusicAppDemo extends Application {
 
                 } catch (Exception ex) {
                     statusLabel.setText("Connection failed");
-                    showError("Connection Failed", "Failed to connect to Archipelago server", ex.getMessage());
+                    showError("Connection Failed", "Failed to connect to the Archipelago server", ex.getMessage());
                     connectButton.setText("Connect");
                 }
             } else {
