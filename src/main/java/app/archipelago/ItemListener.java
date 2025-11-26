@@ -32,15 +32,11 @@ public class ItemListener {
 
         Platform.runLater(() -> {
             switch (itemName) {
-                case "Vault Tracks":
-                    app.getEnabledSets().add("vault");
-                    // Optionally unlock the vault songs if you want immediate access
-                    break;
-                case "Re-recordings":
-                    app.getEnabledSets().add("rerecording");
-                    // Unlock the rerecorded albums
-                    break;
-                default:
+                case "Vault Tracks" -> // Optionally unlock the vault songs if you want immediate access
+                        app.getEnabledSets().add("vault");
+                case "Re-recordings" -> // Unlock the rerecorded albums
+                        app.getEnabledSets().add("rerecording");
+                default -> {
                     // Normalize for album lookup only
                     String normalizedItemName = itemName;
                     boolean isAlbumItem = false;
@@ -87,7 +83,7 @@ public class ItemListener {
                         app.getEnabledSets().add(album.getType());
                     }
 
-                    break;
+                }
             }
 
             app.refreshTree();
