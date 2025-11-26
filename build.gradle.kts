@@ -102,10 +102,6 @@ tasks.withType<JavaCompile>().configureEach {
             "UnusedMethod"
         )
 
-        // Disable noisy checks
-        disable(
-            "NullAway"
-        )
     }
 }
 
