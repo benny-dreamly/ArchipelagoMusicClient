@@ -50,7 +50,7 @@ public class SlotDataHelper {
             SlotOption option = slotOptions.get(key);
             if (option == null) continue;
 
-            if (val instanceof Number && ((Number) val).intValue() == 1) {
+            if (val instanceof Number number && number.intValue() == 1) {
                 if ("album".equals(option.type)) {
                     enabled.add(option.display_name);
                 }
@@ -74,7 +74,7 @@ public class SlotDataHelper {
             SlotOption option = slotOptions.get(key);
             if (option == null) continue;
 
-            if (val instanceof Number && ((Number) val).intValue() == 1) {
+            if (val instanceof Number number && number.intValue() == 1) {
                 if ("song_category".equals(option.type)) {
                     enabled.add(option.display_name);
                 }
