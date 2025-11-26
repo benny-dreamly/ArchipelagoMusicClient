@@ -76,7 +76,7 @@ import org.slf4j.LoggerFactory;
 @SuppressWarnings("CommentedOutCode")
 public class MusicAppDemo extends Application {
 
-    public static final Logger logger = LoggerFactory.getLogger(MusicAppDemo.class);
+    public static final Logger LOGGER = LoggerFactory.getLogger(MusicAppDemo.class);
 
     private final List<Album> albums = new ArrayList<>();
     private final Set<String> unlockedAlbums = new HashSet<>();
@@ -356,7 +356,7 @@ public class MusicAppDemo extends Application {
             }
 
             if (currentSong != null && (currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING)) {
-                logger.info("Current song ({})'s file path: {}", currentSong.getTitle(), currentSong.getFilePath());
+                LOGGER.info("Current song ({})'s file path: {}", currentSong.getTitle(), currentSong.getFilePath());
                 // start current (if file exists)
                 if (currentSong.getFilePath() != null) {
                     playSong(currentSong);
@@ -555,7 +555,7 @@ public class MusicAppDemo extends Application {
                     ex.printStackTrace();
                 }
             } else {
-                logger.info("No config file found at {}, skipping album folder assignment", configFile.getAbsolutePath());
+                LOGGER.info("No config file found at {}, skipping album folder assignment", configFile.getAbsolutePath());
             }
 
             // add fallback album to unlocked albums
@@ -635,7 +635,7 @@ public class MusicAppDemo extends Application {
     }
 
     public void showError(String title, String header, String content) {
-        logger.info("Failed to load song. {}", content);
+        LOGGER.info("Failed to load song. {}", content);
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(title);
         alert.setHeaderText(header);
@@ -723,7 +723,7 @@ public class MusicAppDemo extends Application {
         this.currentSong = song;
 
         if (song.getFilePath() == null || !new File(song.getFilePath()).exists()) {
-            logger.info("Song trying to be played ({})'s file path ({}) does not exist or is null.", song.getTitle(), song.getFilePath());
+            LOGGER.info("Song trying to be played ({})'s file path ({}) does not exist or is null.", song.getTitle(), song.getFilePath());
             showError("File Not Found", "Cannot play song", "File not found for: " + song.getTitle());
             return;
         }
@@ -864,7 +864,7 @@ public class MusicAppDemo extends Application {
             try (Writer writer = new FileWriter(configFile, StandardCharsets.UTF_8)) {
                 gson.toJson(defaultFolders, writer);
             }
-            logger.info("Generated default albumFolders.json at {}", configFile.getAbsolutePath());
+            LOGGER.info("Generated default albumFolders.json at {}", configFile.getAbsolutePath());
         } catch (Exception e) {
             //noinspection CallToPrintStackTrace
             e.printStackTrace();
@@ -911,9 +911,9 @@ public class MusicAppDemo extends Application {
 
                 if (matchedSong != null) {
                     matchedSong.setFilePath(file.getAbsolutePath());
-                    logger.info("Matched: {} -> {} | path: {}", file.getName(), matchedSong.getTitle(), matchedSong.getFilePath());
+                    LOGGER.info("Matched: {} -> {} | path: {}", file.getName(), matchedSong.getTitle(), matchedSong.getFilePath());
                 } else {
-                    logger.warn("Could not match file to song: {} in album {}", file.getName(), album.getName());
+                    LOGGER.warn("Could not match file to song: {} in album {}", file.getName(), album.getName());
                 }
             }
         }
@@ -987,7 +987,7 @@ public class MusicAppDemo extends Application {
         File file = getConnectionConfigFile();
         try (Writer writer = new FileWriter(file, StandardCharsets.UTF_8)) {
             new GsonBuilder().setPrettyPrinting().create().toJson(data, writer);
-            logger.info("Saved connection settings to {}", file.getAbsolutePath());
+            LOGGER.info("Saved connection settings to {}", file.getAbsolutePath());
         } catch (IOException e) {
             //noinspection CallToPrintStackTrace
             e.printStackTrace();
@@ -1022,7 +1022,7 @@ public class MusicAppDemo extends Application {
                 Type listType = new TypeToken<List<String>>() {}.getType();
                 loadedOrder = new Gson().fromJson(reader, listType);
                 if (loadedOrder != null && !loadedOrder.isEmpty()) {
-                    logger.info("Loaded album order from {}", orderFile.getAbsolutePath());                }
+                    LOGGER.info("Loaded album order from {}", orderFile.getAbsolutePath());                }
             } catch (IOException e) {
                 //noinspection CallToPrintStackTrace
                 e.printStackTrace();
@@ -1056,7 +1056,7 @@ public class MusicAppDemo extends Application {
 
             try (Writer writer = new FileWriter(orderFile, StandardCharsets.UTF_8)) {
                 new GsonBuilder().setPrettyPrinting().create().toJson(loadedOrder, writer);
-                logger.info("Generated default albumOrder.json at {}", orderFile.getAbsolutePath());            } catch (IOException e) {
+                LOGGER.info("Generated default albumOrder.json at {}", orderFile.getAbsolutePath());            } catch (IOException e) {
                 //noinspection CallToPrintStackTrace
                 e.printStackTrace();
             }
@@ -1089,7 +1089,7 @@ public class MusicAppDemo extends Application {
                  FileOutputStream out = new FileOutputStream(localLocations)) {
                 if (in != null) {
                     in.transferTo(out);
-                    logger.info("Copied default locations.json to {}", localLocations.getAbsolutePath());                }
+                    LOGGER.info("Copied default locations.json to {}", localLocations.getAbsolutePath());                }
             } catch (IOException e) {
                 //noinspection CallToPrintStackTrace
                 e.printStackTrace();
@@ -1113,7 +1113,7 @@ public class MusicAppDemo extends Application {
         if (!gameFolder.exists()) {
             //noinspection ResultOfMethodCallIgnored
             gameFolder.mkdirs();
-            logger.info("Created game data folder: {}", gameFolder.getAbsolutePath());        }
+            LOGGER.info("Created game data folder: {}", gameFolder.getAbsolutePath());        }
     }
 
     public Set<String> getUnlockedSongs() {

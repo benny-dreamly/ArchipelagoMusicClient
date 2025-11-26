@@ -1,6 +1,6 @@
 package app.player;
 
-import static app.MusicAppDemo.logger;
+import static app.MusicAppDemo.LOGGER;
 
 public class Song {
 
@@ -23,7 +23,7 @@ public class Song {
     }
 
     public void setFilePath(String absolutePath) {
-        logger.info("Setting file path for {} -> {}", title, absolutePath);
+        LOGGER.info("Setting file path for {} -> {}", title, absolutePath);
         this.filePath = absolutePath;
     }
 

@@ -11,7 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Map;
 
-import static app.MusicAppDemo.logger;
+import static app.MusicAppDemo.LOGGER;
 
 public class AlbumMetadataLoader {
 
@@ -25,7 +25,7 @@ public class AlbumMetadataLoader {
         try (FileReader reader = new FileReader(file, StandardCharsets.UTF_8)) {
             Type type = new TypeToken<Map<String, AlbumMetadata>>() {}.getType();
             Map<String, AlbumMetadata> metadata = new Gson().fromJson(reader, type);
-            logger.info("Loaded album metadata for {} albums.", metadata.size());
+            LOGGER.info("Loaded album metadata for {} albums.", metadata.size());
             return metadata;
         } catch (IOException e) {
             //noinspection CallToPrintStackTrace

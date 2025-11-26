@@ -10,7 +10,7 @@ import javafx.application.Platform;
 import java.util.HashSet;
 import java.util.Set;
 
-import static app.MusicAppDemo.logger;
+import static app.MusicAppDemo.LOGGER;
 
 public class ItemListener {
 
@@ -92,7 +92,7 @@ public class ItemListener {
 
             app.refreshTree();
 
-            logger.info("Received item: {} from {}", itemName, locationName);
+            LOGGER.info("Received item: {} from {}", itemName, locationName);
         });
     }
 
