@@ -7,6 +7,8 @@ import com.google.gson.JsonElement;
 import io.github.archipelagomw.Client;
 import io.github.archipelagomw.flags.ItemsHandling;
 import javafx.application.Platform;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileReader;
@@ -25,6 +27,8 @@ public class APClient extends Client {
     private Consumer<Exception> onErrorCallback;
     private String gameName;
     private JsonElement slotData;
+
+    public static final Logger LOGGER = LoggerFactory.getLogger(APClient.class);
 
     public APClient(String host, int port, String slot, String password) {
         super();
@@ -101,8 +105,7 @@ public class APClient extends Client {
         try (Writer writer = new FileWriter(configFile, StandardCharsets.UTF_8)) {
             new GsonBuilder().setPrettyPrinting().create().toJson(name, writer);
         } catch (IOException e) {
-            //noinspection CallToPrintStackTrace
-            e.printStackTrace();
+            LOGGER.error("Failed to save game name to {}", configFile.getAbsolutePath(), e);
         }
     }
 
@@ -112,8 +115,7 @@ public class APClient extends Client {
             try (Reader reader = new FileReader(configFile, StandardCharsets.UTF_8)) {
                 return new Gson().fromJson(reader, String.class);
             } catch (IOException e) {
-                //noinspection CallToPrintStackTrace
-                e.printStackTrace();
+                LOGGER.error("Failed to load saved game name from {}", configFile.getAbsolutePath(), e);
             }
         }
         // fallback default
@@ -168,8 +170,7 @@ public class APClient extends Client {
             try (Reader reader = new FileReader(configFile, StandardCharsets.UTF_8)) {
                 return new Gson().fromJson(reader, String.class);
             } catch (IOException e) {
-                //noinspection CallToPrintStackTrace
-                e.printStackTrace();
+                LOGGER.error("Failed to load saved game name from {}", configFile.getAbsolutePath(), e);
             }
         }
         return "Manual_TaylorSwiftDiscography_bennydreamly";
@@ -180,8 +181,7 @@ public class APClient extends Client {
         try (Writer writer = new FileWriter(configFile, StandardCharsets.UTF_8)) {
             new GsonBuilder().setPrettyPrinting().create().toJson(name, writer);
         } catch (IOException e) {
-            //noinspection CallToPrintStackTrace
-            e.printStackTrace();
+            LOGGER.error("Failed to save game name to {}", configFile.getAbsolutePath(), e);
         }
     }
 
