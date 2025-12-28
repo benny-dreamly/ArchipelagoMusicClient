@@ -248,7 +248,7 @@ public class MusicAppDemo extends Application {
 
             Album album = getAlbumForSong(songTitle);
             boolean songUnlocked = unlockedSongs.contains(song.getTitle());
-            boolean albumUnlocked = album != null && unlockedAlbums.contains(album.getType());
+            boolean albumUnlocked = album != null && unlockedAlbums.contains(album.getName());
 
             // Check unlocking rules
             if (!songUnlocked || !albumUnlocked) {
