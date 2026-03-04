@@ -27,7 +27,7 @@ application {
 }
 
 javafx {
-    version = "24"
+    version = "25"
     modules = listOf("javafx.controls", "javafx.media")
 }
 
@@ -83,6 +83,11 @@ tasks.withType<Checkstyle>().configureEach {
         xml.required.set(false)
         html.required.set(true)
     }
+}
+
+// Add this to handle ShadowJar duplicates in Gradle 9.x
+tasks.withType<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar> {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 // ✅ Error Prone Configuration
