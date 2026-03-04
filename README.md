@@ -20,7 +20,7 @@ This client makes use of JavaFX, which you will need to make sure you have insta
 
 Before running or building the client, make sure you have the following installed:
 
-- **Java Development Kit (JDK) 24 or newer**  
+- **Java Development Kit (JDK) 25 or newer**  
   Make sure your environment variables (`JAVA_HOME`, `PATH`) are configured correctly.
 
 - **JavaFX SDK (matching your JDK version)**  
