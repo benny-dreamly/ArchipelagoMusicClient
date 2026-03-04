@@ -64,7 +64,7 @@ spotbugs {
 tasks.withType<com.github.spotbugs.snom.SpotBugsTask>().configureEach {
     reports.create("html") {
         required.set(true)
-        outputLocation.set(file("${layout.buildDirectory.get()}/reports/spotbugs/${this@configureEach.name}.html"))
+        outputLocation.set(layout.buildDirectory.file("reports/spotbugs/${this@configureEach.name}.html"))
     }
     reports.create("xml") {
         required.set(false)
