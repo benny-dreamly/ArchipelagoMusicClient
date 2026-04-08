@@ -387,6 +387,7 @@ public class MusicAppDemo extends Application {
             } else {
                 msg = song.getTitle() + " is not unlocked yet!";
             }
+            LOGGER.info("Cannot play song. {}", msg);
             showError("Locked Song", "Cannot play song", msg);
             return;
         }
