@@ -1,6 +1,5 @@
 package app.archipelago;
 
-import app.MusicAppDemo;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
@@ -77,7 +76,7 @@ public class APClient extends Client {
         if (locationID != null) {
             checkLocation(locationID);
         } else {
-            MusicAppDemo.LOGGER.warn("No location ID found for location: {}", locationName);
+            LOGGER.warn("No location ID found for location: {}", locationName);
         }
     }
 
@@ -91,7 +90,7 @@ public class APClient extends Client {
         File gameDir = getGameDataFolder();
         if (!gameDir.exists()) {
             if (gameDir.mkdirs()) {
-                MusicAppDemo.LOGGER.info("Created new game folder: {}", gameDir.getAbsolutePath());
+                LOGGER.info("Created new game folder: {}", gameDir.getAbsolutePath());
             }
         }
     }
