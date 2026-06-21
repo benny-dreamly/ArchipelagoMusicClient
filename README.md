@@ -10,9 +10,9 @@ This makes use of the Archipelago Java Client library in order to communicate wi
 Configuration is simple enough, but I will elaborate more on the schema of the required configuration files,
 and the structure of the configuration folder in the `docs` folder of this repository. This will include every file you need and examples.
 
-You do need to have the songs locally on your computer, most likely ripped from a CD or obtained from iTunes or a similar online music marketplace.
-Streaming will not work with this client. I might consider implementing it in the future, but as of right now,
-any music streaming services such as Spotify and Apple Music will not work with this client. 
+You do need to have the songs locally on your computer, either by ripping them from a CD or obtaining them from iTunes or a similar online music marketplace.
+Streaming will not work with this client. I was considering implementing it in the future, however it looks like that approach is not actually possible. As of right now,
+any music streaming services such as Spotify and Apple Music will not work with this client, and will likely never work with it. 
 
 ## How can I get started using the client?
 
