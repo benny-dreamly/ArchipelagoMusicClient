@@ -30,7 +30,9 @@ public class Normalization {
     // Levenshtein distance helper
     public static int levenshteinDistance(String a, String b) {
         int[] costs = new int[b.length() + 1];
-        for (int j = 0; j < costs.length; j++) costs[j] = j;
+        for (int j = 0; j < costs.length; j++) {
+            costs[j] = j;
+        }
         for (int i = 1; i <= a.length(); i++) {
             costs[0] = i;
             int nw = i - 1;
