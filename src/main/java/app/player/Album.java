@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Set;
 
 public class Album {
 
@@ -67,4 +68,22 @@ public class Album {
     public boolean isFullAlbumUnlock() { return fullAlbumUnlock; }
     @SuppressWarnings("unused")
     public void setFullAlbumUnlock(boolean fullAlbumUnlock) { this.fullAlbumUnlock = fullAlbumUnlock; }
+
+    public List<Song> getQueueableSongs(Set<String> enabledSets, Set<String> unlockedSongs, Set<String> unlockedAlbums) {
+        List<Song> queueable = new ArrayList<>();
+        boolean albumUnlocked = unlockedAlbums.contains(name);
+
+        for (Song song : songs) {
+            if (!enabledSets.contains(song.getType())) continue;
+
+            boolean songUnlocked = unlockedSongs.contains(song.getTitle());
+            boolean canPlay = fullAlbumUnlock || (songUnlocked && albumUnlocked);
+
+            if (!canPlay) continue;
+
+            queueable.add(song);
+        }
+
+        return queueable;
+    }
 }
