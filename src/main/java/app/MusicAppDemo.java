@@ -25,6 +25,8 @@ import javafx.beans.value.ChangeListener;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
@@ -54,7 +56,6 @@ import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.Queue;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -126,6 +127,8 @@ public class MusicAppDemo extends Application {
         treeView.getSelectionModel().selectedItemProperty().addListener((_, _, newSel) ->
             handleTreeSelection(newSel)
         );
+
+        setupAlbumContextMenu();
 
         albumOrderManager = new AlbumOrderManager();
         stateManager = new StateManager(this, albumOrderManager);
@@ -354,6 +357,47 @@ public class MusicAppDemo extends Application {
         treeView.setRoot(rootItem);
     }
 
+    private void setupAlbumContextMenu() {
+        treeView.setOnContextMenuRequested(event -> {
+            TreeItem<String> item = treeView.getSelectionModel().getSelectedItem();
+            if (item == null || item.getParent() == null) return;
+
+            // Only show for album nodes (non-leaf, child of root)
+            if (!item.isLeaf() && item.getParent().getParent() == null) {
+                ContextMenu contextMenu = new ContextMenu();
+                MenuItem queueAll = new MenuItem("Queue All Songs");
+                queueAll.setOnAction(_ -> queueAlbum(item.getValue()));
+                contextMenu.getItems().add(queueAll);
+                contextMenu.show(treeView, event.getScreenX(), event.getScreenY());
+                event.consume();
+            }
+        });
+    }
+
+    private void queueAlbum(String albumName) {
+        Album album = library.getAlbumByName(albumName);
+        if (album == null) return;
+
+        List<Song> queueable = album.getQueueableSongs(enabledSets, unlockedSongs, unlockedAlbums);
+        if (queueable.isEmpty()) {
+            LOGGER.info("No queueable songs in album '{}'", albumName);
+            return;
+        }
+
+        playQueue.addAll(queueable);
+        LOGGER.info("Queued {} songs from album '{}'", queueable.size(), albumName);
+        updateQueueDisplay();
+
+        // If nothing is playing, start the first queued song
+        if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) && !playQueue.isEmpty()) {
+            Song next = playQueue.poll();
+            updateQueueDisplay();
+            if (next != null) {
+                playSong(next);
+            }
+        }
+    }
+
     public void unlockSong(String songTitle) {
         if (!unlockedSongs.contains(songTitle)) {
             unlockedSongs.add(songTitle);
@@ -502,23 +546,12 @@ public class MusicAppDemo extends Application {
     private void updateQueueDisplay() {
         playerPanel.clearQueueDisplay();
         for (Song s : playQueue) {
-            playerPanel.addToQueueDisplay(s.getTitle());
-        }
-        if (playQueue.isEmpty()) {
-            playerPanel.addToQueueDisplay("(empty)");
+            playerPanel.addToQueueDisplay(s);
         }
     }
 
-    private void removeFromQueue(String title) {
-        // remove first occurrence in queue matching title
-        Iterator<Song> it = playQueue.iterator();
-        while (it.hasNext()) {
-            Song s = it.next();
-            if (s.getTitle().equals(title)) {
-                it.remove();
-                return;
-            }
-        }
+    private void removeFromQueue(Song song) {
+        playQueue.remove(song);
     }
 
     private void assignFilesToSongs() {
@@ -871,7 +904,7 @@ public class MusicAppDemo extends Application {
 
         // Remove selected from the queue (both ListView and underlying queue)
         panel.getRemoveSelectedBtn().setOnAction(_ -> {
-            String sel = playerPanel.getQueueListView().getSelectionModel().getSelectedItem();
+            Song sel = playerPanel.getQueueListView().getSelectionModel().getSelectedItem();
             if (sel != null) {
                 removeFromQueue(sel);
                 updateQueueDisplay();

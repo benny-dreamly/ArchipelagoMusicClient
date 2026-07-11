@@ -1,11 +1,13 @@
 package app.player.ui;
 
+import app.player.Song;
 import javafx.beans.value.ChangeListener;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Slider;
 import javafx.scene.control.ListView;
+import javafx.scene.control.ListCell;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Button;
 import javafx.scene.input.ScrollEvent;
@@ -25,7 +27,7 @@ public class PlayerPanel extends VBox {
 
     private final HBox progressBox;
 
-    private final ListView<String> queueListView;
+    private final ListView<Song> queueListView;
     private final ScrollPane queueScrollPane;
 
     private final HBox queueButtons;
@@ -59,6 +61,19 @@ public class PlayerPanel extends VBox {
 
         queueListView = new ListView<>();
         queueListView.setPrefHeight(120);
+        queueListView.setCellFactory(_ -> new ListCell<>() {
+            @Override
+            protected void updateItem(Song song, boolean empty) {
+                super.updateItem(song, empty);
+                if (empty || song == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(song.getTitle());
+                    setStyle("-fx-text-fill: black;");
+                }
+            }
+        });
 
         queueScrollPane = new ScrollPane(queueListView);
         queueScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.ALWAYS);
@@ -100,7 +115,7 @@ public class PlayerPanel extends VBox {
     public Button getRemoveSelectedBtn() { return removeSelectedBtn; }
     public Button getClearQueueBtn() { return clearQueueBtn; }
 
-    public ListView<String> getQueueListView() { return queueListView; }
+    public ListView<Song> getQueueListView() { return queueListView; }
 
     public CheckBox getEnableSeekCheck() { return enableSeekCheck; }
     public Slider getProgressSlider() { return progressSlider; }
@@ -113,8 +128,8 @@ public class PlayerPanel extends VBox {
         currentSongLabel.setText(text);
     }
 
-    public void addToQueueDisplay(String title) {
-        queueListView.getItems().add(title);
+    public void addToQueueDisplay(Song song) {
+        queueListView.getItems().add(song);
     }
 
     public void clearQueueDisplay() {
