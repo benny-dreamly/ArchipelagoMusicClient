@@ -30,6 +30,8 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.media.MediaPlayer;
@@ -146,9 +148,12 @@ public class MusicAppDemo extends Application {
         bottomBar.getChildren().addAll(connectionPanel, playerPanel);
 
         root = new VBox(10, treeView, bottomBar);
-        stage.setScene(new Scene(root, 800, 600));
+        Scene scene = new Scene(root, 800, 600);
+        stage.setScene(scene);
         stage.setTitle("Archipelago Music Client");
         stage.show();
+
+        setupKeyboardShortcuts(scene);
 
         Task<List<Album>> loadTask = getLoadTask();
 
@@ -918,6 +923,70 @@ public class MusicAppDemo extends Application {
         });
 
         panel.bindSeekCheckBox(seekListener);
+    }
+
+    private void setupKeyboardShortcuts(Scene scene) {
+        scene.setOnKeyPressed(this::handleKeyPress);
+    }
+
+    private void handleKeyPress(KeyEvent event) {
+        switch (event.getCode()) {
+            case SPACE -> {
+                togglePlayPause();
+                event.consume();
+            }
+            case LEFT -> {
+                seekRelative(-5);
+                event.consume();
+            }
+            case RIGHT -> {
+                seekRelative(5);
+                event.consume();
+            }
+            case T -> {
+                connectionPanel.getTextClientWindow().show();
+                event.consume();
+            }
+            case O -> {
+                connectionPanel.getOfflineCheck().setSelected(
+                    !connectionPanel.getOfflineCheck().isSelected()
+                );
+                event.consume();
+            }
+            case N -> {
+                playNextInQueue();
+                event.consume();
+            }
+            default -> { /* ignore other keys */ }
+        }
+    }
+
+    private void togglePlayPause() {
+        if (currentPlayer != null) {
+            MediaPlayer.Status status = currentPlayer.getStatus();
+            if (status == MediaPlayer.Status.PLAYING) {
+                currentPlayer.pause();
+                if (currentSong != null) playerPanel.setCurrentSongLabel("Paused: " + currentSong.getTitle());
+            } else if (status == MediaPlayer.Status.PAUSED) {
+                currentPlayer.play();
+                if (currentSong != null) playerPanel.setCurrentSongLabel("Currently Playing: " + currentSong.getTitle());
+            }
+        } else if (!playQueue.isEmpty()) {
+            Song next = playQueue.poll();
+            updateQueueDisplay();
+            if (next != null) playSong(next);
+        }
+    }
+
+    private void seekRelative(int seconds) {
+        if (currentPlayer == null || currentPlayer.getStatus() == MediaPlayer.Status.STOPPED) return;
+        Duration current = currentPlayer.getCurrentTime();
+        Duration total = currentPlayer.getTotalDuration();
+        if (total == null) return;
+        Duration newTime = current.add(Duration.seconds(seconds));
+        if (newTime.greaterThan(total)) newTime = total;
+        if (newTime.lessThan(Duration.ZERO)) newTime = Duration.ZERO;
+        currentPlayer.seek(newTime);
     }
 
     private void handleTreeSelection(TreeItem<String> newSel) {
