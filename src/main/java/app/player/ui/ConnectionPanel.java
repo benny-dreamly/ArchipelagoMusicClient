@@ -4,6 +4,7 @@ import app.archipelago.APClient;
 import app.archipelago.SlotDataHelper;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
@@ -30,6 +31,7 @@ public class ConnectionPanel extends VBox {
     private final Button connectButton;
     private final Label statusLabel;
     private final Button showTextClientBtn;
+    private final CheckBox offlineCheck;
     private final HBox connectButtonsBox;
     private TextClientWindow textClientWindow;
 
@@ -71,6 +73,9 @@ public class ConnectionPanel extends VBox {
         textClientWindow = new TextClientWindow(clientSupplier);
         showTextClientBtn.setOnAction(_ -> textClientWindow.show());
 
+        offlineCheck = new CheckBox("Offline Mode");
+        offlineCheck.setSelected(false);
+
         // Create a horizontal container for connect button and text client button
         connectButtonsBox = new HBox(10);
         connectButtonsBox.setAlignment(Pos.CENTER_LEFT);
@@ -83,6 +88,7 @@ public class ConnectionPanel extends VBox {
                 new Label("Slot:"), slotField,
                 new Label("Password:"), passwordField,
                 connectButtonsBox,
+                offlineCheck,
                 statusLabel
         );
         setAlignment(Pos.CENTER_LEFT);
@@ -135,6 +141,19 @@ public class ConnectionPanel extends VBox {
 
     public void setConnectButtonText(String text) {
         connectButton.setText(text);
+    }
+
+    public CheckBox getOfflineCheck() {
+        return offlineCheck;
+    }
+
+    public void setConnectionFieldsDisabled(boolean disabled) {
+        hostField.setDisable(disabled);
+        portField.setDisable(disabled);
+        slotField.setDisable(disabled);
+        passwordField.setDisable(disabled);
+        connectButton.setDisable(disabled);
+        showTextClientBtn.setDisable(disabled);
     }
 
     public TextClientWindow getTextClientWindow() {

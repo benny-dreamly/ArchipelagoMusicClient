@@ -83,6 +83,7 @@ public class MusicAppDemo extends Application {
     private final Set<String> unlockedSongs = new HashSet<>();
     private final Set<String> enabledSets = new HashSet<>();
     private final Set<String> enabledAlbums = new HashSet<>();
+    private boolean offlineMode = false;
     private AlbumLibrary library;
 
     private AlbumOrderManager albumOrderManager;
@@ -162,6 +163,15 @@ public class MusicAppDemo extends Application {
                 connectToServer(gameFolder);
             } else {
                 disconnectFromServer();
+            }
+        });
+
+        // Offline mode toggle
+        connectionPanel.getOfflineCheck().selectedProperty().addListener((_, _, isOffline) -> {
+            if (isOffline) {
+                enableOfflineMode();
+            } else {
+                disableOfflineMode();
             }
         });
     }
@@ -283,6 +293,11 @@ public class MusicAppDemo extends Application {
             assignFilesToSongs();
 
             refreshTree(); // populate TreeView after loading
+
+            // If offline mode was activated before load finished, apply it now
+            if (offlineMode) {
+                applyOfflineUnlocks();
+            }
         });
 
         loadTask.setOnFailed(_ -> {
@@ -654,6 +669,59 @@ public class MusicAppDemo extends Application {
         }
     }
 
+    private void enableOfflineMode() {
+        offlineMode = true;
+
+        // Disconnect any active connection first
+        if (client != null && client.isConnected()) {
+            client.disconnect();
+            connectionPanel.setConnectButtonText("Connect");
+            connectionPanel.disableGameField(false);
+            connectionPanel.setGameFieldTooltip(null);
+        }
+
+        connectionPanel.setStatus("Offline Mode");
+        connectionPanel.setConnectionFieldsDisabled(true);
+
+        if (!albums.isEmpty()) {
+            applyOfflineUnlocks();
+        }
+        // If albums aren't loaded yet, applyOfflineUnlocks will be called in onSucceeded
+    }
+
+    private void disableOfflineMode() {
+        offlineMode = false;
+        connectionPanel.setStatus("Not connected");
+        connectionPanel.setConnectionFieldsDisabled(false);
+
+        if (client != null) {
+            client.disconnect();
+        }
+
+        stateManager.clearUnlocks();
+        enabledAlbums.clear();
+        refreshTree();
+    }
+
+    private void applyOfflineUnlocks() {
+        enabledSets.clear();
+        enabledAlbums.clear();
+        unlockedAlbums.clear();
+        unlockedSongs.clear();
+
+        for (Album album : albums) {
+            enabledAlbums.add(album.getName());
+            enabledSets.add(album.getType());
+            unlockedAlbums.add(album.getName());
+
+            for (Song song : album.getSongs()) {
+                unlockedSongs.add(song.getTitle());
+            }
+        }
+
+        refreshTree();
+    }
+
     public void stopCurrentSong() {
         if (currentPlayer != null) {
             currentPlayer.stop();
@@ -829,7 +897,7 @@ public class MusicAppDemo extends Application {
 
         Album album = library.getAlbumForSong(songTitle);
         boolean songUnlocked = unlockedSongs.contains(song.getTitle());
-        boolean albumUnlocked = album != null && unlockedAlbums.contains(album.getType());
+        boolean albumUnlocked = album != null && unlockedAlbums.contains(album.getName());
 
         // Check unlocking rules
         if (!songUnlocked || !albumUnlocked) {
