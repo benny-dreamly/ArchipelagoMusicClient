@@ -1024,11 +1024,9 @@ public class MusicAppDemo extends Application {
             case ESCAPE -> exitVolumeAdjustMode();
             case ENTER -> {
                 if (volumeInput.length() > 0) {
-                    try {
-                        int vol = Integer.parseInt(volumeInput.toString());
-                        playerPanel.getVolumeSlider().setValue(Math.min(100, Math.max(0, vol)));
-                    } catch (NumberFormatException ignored) {
-                    }
+                    playerPanel.getVolumeSlider().setValue(
+                        Math.min(100, Math.max(0, Integer.parseInt(volumeInput.toString())))
+                    );
                 }
                 exitVolumeAdjustMode();
             }
