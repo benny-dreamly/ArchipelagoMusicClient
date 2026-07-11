@@ -27,6 +27,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.Slider;
 import javafx.scene.control.TreeView;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
@@ -87,6 +88,8 @@ public class MusicAppDemo extends Application {
     private final Set<String> enabledSets = new HashSet<>();
     private final Set<String> enabledAlbums = new HashSet<>();
     private boolean offlineMode = false;
+    private boolean volumeAdjustMode = false;
+    private final StringBuilder volumeInput = new StringBuilder();
     private AlbumLibrary library;
 
     private AlbumOrderManager albumOrderManager;
@@ -935,6 +938,12 @@ public class MusicAppDemo extends Application {
     }
 
     private void handleKeyPress(KeyEvent event) {
+        if (volumeAdjustMode) {
+            handleVolumeModeKey(event.getCode());
+            event.consume();
+            return;
+        }
+
         switch (event.getCode()) {
             case SPACE -> {
                 togglePlayPause();
@@ -960,6 +969,10 @@ public class MusicAppDemo extends Application {
             }
             case N -> {
                 playNextInQueue();
+                event.consume();
+            }
+            case V -> {
+                enterVolumeAdjustMode();
                 event.consume();
             }
             default -> { /* ignore other keys */ }
@@ -992,6 +1005,64 @@ public class MusicAppDemo extends Application {
         if (newTime.greaterThan(total)) newTime = total;
         if (newTime.lessThan(Duration.ZERO)) newTime = Duration.ZERO;
         currentPlayer.seek(newTime);
+    }
+
+    private void enterVolumeAdjustMode() {
+        volumeAdjustMode = true;
+        volumeInput.setLength(0);
+        connectionPanel.setStatus("Volume: " + (int) playerPanel.getVolumeSlider().getValue() + "% (arrows/numbers, Enter=set, Esc=cancel)");
+    }
+
+    private void exitVolumeAdjustMode() {
+        volumeAdjustMode = false;
+        volumeInput.setLength(0);
+        connectionPanel.setStatus(offlineMode ? "Offline Mode" : (client != null && client.isConnected() ? "Connected!" : "Not connected"));
+    }
+
+    private void handleVolumeModeKey(KeyCode code) {
+        switch (code) {
+            case ESCAPE -> exitVolumeAdjustMode();
+            case ENTER -> {
+                if (volumeInput.length() > 0) {
+                    playerPanel.getVolumeSlider().setValue(
+                        Math.min(100, Math.max(0, Integer.parseInt(volumeInput.toString())))
+                    );
+                }
+                exitVolumeAdjustMode();
+            }
+            case UP -> {
+                Slider slider = playerPanel.getVolumeSlider();
+                slider.setValue(Math.min(100, slider.getValue() + 10));
+                volumeInput.setLength(0);
+            }
+            case DOWN -> {
+                Slider slider = playerPanel.getVolumeSlider();
+                slider.setValue(Math.max(0, slider.getValue() - 10));
+                volumeInput.setLength(0);
+            }
+            case LEFT -> {
+                Slider slider = playerPanel.getVolumeSlider();
+                slider.setValue(Math.max(0, slider.getValue() - 1));
+                volumeInput.setLength(0);
+            }
+            case RIGHT -> {
+                Slider slider = playerPanel.getVolumeSlider();
+                slider.setValue(Math.min(100, slider.getValue() + 1));
+                volumeInput.setLength(0);
+            }
+            case DIGIT0, DIGIT1, DIGIT2, DIGIT3, DIGIT4, DIGIT5, DIGIT6, DIGIT7, DIGIT8, DIGIT9 -> {
+                int digit = switch (code) {
+                    case DIGIT0 -> 0; case DIGIT1 -> 1; case DIGIT2 -> 2; case DIGIT3 -> 3;
+                    case DIGIT4 -> 4; case DIGIT5 -> 5; case DIGIT6 -> 6; case DIGIT7 -> 7;
+                    case DIGIT8 -> 8; default -> 9;
+                };
+                if (volumeInput.length() < 3) {
+                    volumeInput.append(digit);
+                }
+                connectionPanel.setStatus("Volume: " + volumeInput.toString() + "% (Enter=set)");
+            }
+            default -> { /* ignore */ }
+        }
     }
 
     private void handleTreeSelection(TreeItem<String> newSel) {

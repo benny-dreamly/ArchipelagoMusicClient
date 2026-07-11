@@ -71,3 +71,9 @@ See [`config-locations.md`](docs/config-locations.md) for platform-specific path
 | N | Play next song in queue |
 | T | Open text client window |
 | O | Toggle offline mode |
+| V | Enter volume adjust mode |
+| ↑ / ↓ (volume mode) | Volume +10 / -10 |
+| ← / → (volume mode) | Volume +1 / -1 |
+| 0-9 (volume mode) | Type exact volume value |
+| Enter (volume mode) | Apply typed volume |
+| Esc (volume mode) | Cancel volume adjustment |
