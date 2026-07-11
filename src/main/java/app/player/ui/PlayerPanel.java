@@ -27,6 +27,8 @@ public class PlayerPanel extends VBox {
 
     private final HBox progressBox;
 
+    private final Slider volumeSlider;
+
     private final ListView<Song> queueListView;
     private final ScrollPane queueScrollPane;
 
@@ -92,10 +94,15 @@ public class PlayerPanel extends VBox {
             }
         });
 
+        volumeSlider = new Slider(0, 100, 100);
+        volumeSlider.setPrefWidth(120);
+        volumeSlider.setShowTickLabels(true);
+        volumeSlider.setMajorTickUnit(50);
+
         playerButtons = new HBox(6);
         playButton = new Button("▶");
         pauseButton = new Button("⏸");
-        playerButtons.getChildren().addAll(playButton, pauseButton);
+        playerButtons.getChildren().addAll(new Label("Vol:"), volumeSlider, playButton, pauseButton);
 
         // Queue control buttons
         queueButtons = new HBox(6);
@@ -119,6 +126,7 @@ public class PlayerPanel extends VBox {
 
     public CheckBox getEnableSeekCheck() { return enableSeekCheck; }
     public Slider getProgressSlider() { return progressSlider; }
+    public Slider getVolumeSlider() { return volumeSlider; }
 
     public Label getCurrentSongLabel() { return currentSongLabel; }
     public Label getElapsedLabel() { return elapsedLabel; }
