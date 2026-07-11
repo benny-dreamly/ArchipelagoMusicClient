@@ -61,3 +61,13 @@ If you’re setting up your own music manual (or modifying an existing one), you
 All configuration files live inside your **per-game folder**, which is automatically created under your operating system’s application data directory.
 
 See [`config-locations.md`](docs/config-locations.md) for platform-specific paths.
+
+## Keyboard Shortcuts
+
+| Key | Action |
+|---|---|
+| Space | Toggle play/pause |
+| Left / Right | Seek backward / forward 5 seconds |
+| N | Play next song in queue |
+| T | Open text client window |
+| O | Toggle offline mode |
