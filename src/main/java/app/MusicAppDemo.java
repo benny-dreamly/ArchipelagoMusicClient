@@ -926,7 +926,7 @@ public class MusicAppDemo extends Application {
     }
 
     private void setupKeyboardShortcuts(Scene scene) {
-        scene.setOnKeyPressed(this::handleKeyPress);
+        scene.addEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyPress);
     }
 
     private void handleKeyPress(KeyEvent event) {
