@@ -10,6 +10,7 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Button;
+import javafx.scene.control.Tooltip;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -26,6 +27,9 @@ public class PlayerPanel extends VBox {
     private final Label durationLabel;
 
     private final HBox progressBox;
+
+    private final HBox volumeBox;
+    private final Slider volumeSlider;
 
     private final ListView<Song> queueListView;
     private final ScrollPane queueScrollPane;
@@ -92,6 +96,21 @@ public class PlayerPanel extends VBox {
             }
         });
 
+        volumeSlider = new Slider(0, 100, 100);
+        volumeSlider.setPrefWidth(120);
+        volumeSlider.setShowTickLabels(true);
+        volumeSlider.setShowTickMarks(true);
+        volumeSlider.setMajorTickUnit(50);
+
+        Tooltip volumeTooltip = new Tooltip("100%");
+        volumeSlider.setTooltip(volumeTooltip);
+        volumeSlider.valueProperty().addListener((_, _, newVal) ->
+            volumeTooltip.setText(String.format("%.0f%%", newVal.doubleValue()))
+        );
+
+        volumeBox = new HBox(5, new Label("Volume:"), volumeSlider);
+        volumeBox.setAlignment(Pos.CENTER);
+
         playerButtons = new HBox(6);
         playButton = new Button("▶");
         pauseButton = new Button("⏸");
@@ -103,7 +122,7 @@ public class PlayerPanel extends VBox {
         clearQueueBtn = new Button("Clear Queue");
         queueButtons.getChildren().addAll(removeSelectedBtn, clearQueueBtn);
 
-        getChildren().addAll(currentSongLabel, enableSeekCheck , progressBox, playerButtons, new Label("Queue:"), queueScrollPane, queueButtons);
+        getChildren().addAll(currentSongLabel, enableSeekCheck , progressBox, volumeBox, playerButtons, new Label("Queue:"), queueScrollPane, queueButtons);
         setAlignment(Pos.CENTER_RIGHT);
         HBox.setHgrow(this, Priority.ALWAYS);
 
@@ -119,6 +138,7 @@ public class PlayerPanel extends VBox {
 
     public CheckBox getEnableSeekCheck() { return enableSeekCheck; }
     public Slider getProgressSlider() { return progressSlider; }
+    public Slider getVolumeSlider() { return volumeSlider; }
 
     public Label getCurrentSongLabel() { return currentSongLabel; }
     public Label getElapsedLabel() { return elapsedLabel; }

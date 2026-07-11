@@ -469,6 +469,7 @@ public class MusicAppDemo extends Application {
 
         Media media = new Media(Paths.get(song.getFilePath()).toUri().toString());
         currentPlayer = new MediaPlayer(media);
+        currentPlayer.setVolume(playerPanel.getVolumeSlider().getValue() / 100.0);
 
         currentPlayer.currentTimeProperty().addListener((_, _, newTime) -> {
             if (!playerPanel.getProgressSlider().isValueChanging()) {
@@ -514,31 +515,28 @@ public class MusicAppDemo extends Application {
     }
 
     private void highlightCurrentSong(String songTitle) {
-        if (isUpdatingSelection) return; // FIX 2: skip if already running
+        if (isUpdatingSelection) return;
 
         TreeItem<String> root = treeView.getRoot();
         if (root == null) return;
 
-        isUpdatingSelection = true; // guard on
+        isUpdatingSelection = true;
 
-        outerLoop:
         for (TreeItem<String> albumItem : root.getChildren()) {
             for (TreeItem<String> songItem : albumItem.getChildren()) {
                 if (songItem.getValue().equals(songTitle)) {
                     treeView.getSelectionModel().select(songItem);
-
-                    // Optional Improvement 1: only scroll if not already visible
-                    int index = treeView.getSelectionModel().getSelectedIndex();
-                    if (index < treeView.getFixedCellSize() || index >= treeView.getHeight() / treeView.getFixedCellSize()) {
-                        treeView.scrollTo(index);
+                    int row = treeView.getRow(songItem);
+                    if (row >= 0) {
+                        treeView.scrollTo(row);
                     }
-
-                    break outerLoop; // Optional Improvement 2: stop after first match
+                    isUpdatingSelection = false;
+                    return;
                 }
             }
         }
 
-        isUpdatingSelection = false; // guard off
+        isUpdatingSelection = false;
     }
 
     // Queue helpers -----------------------------------------------------
@@ -917,6 +915,13 @@ public class MusicAppDemo extends Application {
             updateQueueDisplay();
         });
 
+        // Volume slider updates live during playback
+        panel.getVolumeSlider().valueProperty().addListener((_, _, newVal) -> {
+            if (currentPlayer != null) {
+                currentPlayer.setVolume(newVal.doubleValue() / 100.0);
+            }
+        });
+
         panel.bindSeekCheckBox(seekListener);
     }
 
@@ -927,6 +932,9 @@ public class MusicAppDemo extends Application {
         Song song = library.getSongByTitle(songTitle);
 
         if (song == null) return;
+
+        // Don't re-queue the currently playing song (e.g. from highlightCurrentSong)
+        if (song == currentSong) return;
 
         Album album = library.getAlbumForSong(songTitle);
         boolean songUnlocked = unlockedSongs.contains(song.getTitle());
