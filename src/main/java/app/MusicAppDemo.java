@@ -112,6 +112,7 @@ public class MusicAppDemo extends Application {
     // various fields and stuff for the UI (the others are above or locally defined)
     private ConnectionPanel connectionPanel;
     private PlayerPanel playerPanel;
+    private final ContextMenu contextMenu = new ContextMenu();
     @SuppressWarnings("FieldCanBeLocal")
     private HBox bottomBar;
     @SuppressWarnings("FieldCanBeLocal")
@@ -366,8 +367,6 @@ public class MusicAppDemo extends Application {
     }
 
     private void setupAlbumContextMenu() {
-
-        private final ContextMenu contextMenu = new ContextMenu();
         treeView.setOnContextMenuRequested(event -> {
             TreeItem<String> item = treeView.getSelectionModel().getSelectedItem();
             if (item == null || item.getParent() == null) return;
