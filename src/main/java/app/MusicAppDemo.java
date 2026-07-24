@@ -366,13 +366,14 @@ public class MusicAppDemo extends Application {
     }
 
     private void setupAlbumContextMenu() {
+
+        private final ContextMenu contextMenu = new ContextMenu();
         treeView.setOnContextMenuRequested(event -> {
             TreeItem<String> item = treeView.getSelectionModel().getSelectedItem();
             if (item == null || item.getParent() == null) return;
 
             // Only show for album nodes (non-leaf, child of root)
             if (!item.isLeaf() && item.getParent().getParent() == null) {
-                ContextMenu contextMenu = new ContextMenu();
                 MenuItem queueAll = new MenuItem("Queue All Songs");
                 queueAll.setOnAction(_ -> queueAlbum(item.getValue()));
                 contextMenu.getItems().add(queueAll);
