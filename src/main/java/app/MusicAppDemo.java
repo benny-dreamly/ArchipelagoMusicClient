@@ -33,6 +33,8 @@ import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.media.MediaPlayer;
@@ -108,6 +110,7 @@ public class MusicAppDemo extends Application {
 
 
     private boolean isUpdatingSelection = false;
+    private boolean suppressSelection = false;
 
     // various fields and stuff for the UI (the others are above or locally defined)
     private ConnectionPanel connectionPanel;
@@ -130,11 +133,22 @@ public class MusicAppDemo extends Application {
         initUIComponents();
 
         // When a tree item (song) is selected, add to queue
-        treeView.getSelectionModel().selectedItemProperty().addListener((_, _, newSel) ->
-            handleTreeSelection(newSel)
-        );
+        treeView.getSelectionModel().selectedItemProperty().addListener((_, _, newSel) -> {
+            if (suppressSelection) {
+                suppressSelection = false;
+                return;
+            }
+            handleTreeSelection(newSel);
+        });
 
         setupAlbumContextMenu();
+
+        // Suppress selection handling on right-click so context menu doesn't double-queue
+        treeView.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
+            if (event.getButton() == MouseButton.SECONDARY) {
+                suppressSelection = true;
+            }
+        });
 
         albumOrderManager = new AlbumOrderManager();
         stateManager = new StateManager(this, albumOrderManager);
