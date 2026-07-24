@@ -371,6 +371,16 @@ public class MusicAppDemo extends Application {
             TreeItem<String> item = treeView.getSelectionModel().getSelectedItem();
             if (item == null || item.getParent() == null) return;
 
+            contextMenu.getItems().clear(); // reset the context menu
+
+            if (item.isLeaf() && item.getParent().getParent() != null) {
+                MenuItem queueNext = new MenuItem("Queue Next");
+                queueNext.setOnAction(_ -> queueSongNext(item.getValue()));
+                contextMenu.getItems().add(queueNext);
+                contextMenu.show(treeView, event.getScreenX(), event.getScreenY());
+                event.consume();
+            }
+
             // Only show for album nodes (non-leaf, child of root)
             if (!item.isLeaf() && item.getParent().getParent() == null) {
                 MenuItem queueAll = new MenuItem("Queue All Songs");
@@ -394,6 +404,33 @@ public class MusicAppDemo extends Application {
 
         playQueue.addAll(queueable);
         LOGGER.info("Queued {} songs from album '{}'", queueable.size(), albumName);
+        updateQueueDisplay();
+
+        // If nothing is playing, start the first queued song
+        if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) && !playQueue.isEmpty()) {
+            Song next = playQueue.poll();
+            updateQueueDisplay();
+            if (next != null) {
+                playSong(next);
+            }
+        }
+    }
+
+    private void queueSongNext(String songTitle) {
+        Song song = library.getSongByTitle(songTitle);
+        if (song == null) return;
+
+        Album album = library.getAlbumForSong(songTitle);
+        boolean songUnlocked = unlockedSongs.contains(songTitle);
+        boolean albumUnlocked = album != null && unlockedAlbums.contains(album.getName());
+        boolean canPlay = album == null || album.isFullAlbumUnlock() || (songUnlocked && albumUnlocked);
+        if (!canPlay) return;
+
+        // insert at front
+        LinkedList<Song> temp = new LinkedList<>(playQueue);
+        temp.addFirst(song);
+        playQueue.clear();
+        playQueue.addAll(temp);
         updateQueueDisplay();
 
         // If nothing is playing, start the first queued song
