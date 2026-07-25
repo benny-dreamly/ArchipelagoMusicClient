@@ -1042,6 +1042,7 @@ public class MusicAppDemo extends Application {
                 if (target >= 0) {
                     dragToIndex[0] = target;
                 }
+                LOGGER.info("Drag over: y={}, target={}, dragTo={}", event.getY(), target, dragToIndex[0]);
             }
             event.consume();
         });
