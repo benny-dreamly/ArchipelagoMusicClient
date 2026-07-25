@@ -448,7 +448,7 @@ public class MusicAppDemo extends Application {
         updateQueueDisplay();
 
         // If nothing is playing, start the first queued song
-        if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) && !playQueue.isEmpty()) {
+        if (currentPlayer == null && !playQueue.isEmpty()) {
             Song next = playQueue.poll();
             updateQueueDisplay();
             if (next != null) {
