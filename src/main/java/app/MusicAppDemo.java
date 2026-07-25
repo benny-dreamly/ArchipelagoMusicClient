@@ -382,6 +382,7 @@ public class MusicAppDemo extends Application {
 
     private void setupAlbumContextMenu() {
         treeView.setOnContextMenuRequested(event -> {
+            suppressSelection = false
             TreeItem<String> item = treeView.getSelectionModel().getSelectedItem();
             if (item == null || item.getParent() == null) return;
 
