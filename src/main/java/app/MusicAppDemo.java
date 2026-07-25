@@ -388,7 +388,7 @@ public class MusicAppDemo extends Application {
             contextMenu.getItems().clear(); // reset the context menu
 
             if (item.isLeaf() && item.getParent().getParent() != null) {
-                MenuItem queueNext = new MenuItem("Queue Next");
+                MenuItem queueNext = new MenuItem("Play Next");
                 queueNext.setOnAction(_ -> queueSongNext(item.getValue()));
                 contextMenu.getItems().add(queueNext);
                 contextMenu.show(treeView, event.getScreenX(), event.getScreenY());
