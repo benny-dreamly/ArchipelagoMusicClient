@@ -34,11 +34,10 @@ import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-import javafx.scene.input.ClipboardContent;
-import javafx.scene.input.Dragboard;
-import javafx.scene.input.DragEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.Dragboard;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -640,8 +639,9 @@ public class MusicAppDemo extends Application {
         for (javafx.scene.Node node : listView.getChildrenUnmodifiable()) {
             if (node instanceof javafx.scene.control.ListCell<?> cell) {
                 if (cell.getItem() == null) continue;
-                javafx.geometry.Bounds bounds = cell.getBoundsInParent();
-                if (y >= bounds.getMinY() && y < bounds.getMaxY()) {
+                javafx.geometry.Bounds cellBounds = listView.sceneToLocal(
+                    node.localToScene(node.getBoundsInLocal()));
+                if (y >= cellBounds.getMinY() && y < cellBounds.getMaxY()) {
                     return listView.getItems().indexOf(cell.getItem());
                 }
             }
