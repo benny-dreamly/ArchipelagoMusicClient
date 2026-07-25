@@ -115,7 +115,6 @@ public class MusicAppDemo extends Application {
 
     private boolean isUpdatingSelection = false;
     private boolean suppressSelection = false;
-    private int lastChildCount = 0;
 
     // various fields and stuff for the UI (the others are above or locally defined)
     private ConnectionPanel connectionPanel;
@@ -637,13 +636,16 @@ public class MusicAppDemo extends Application {
     }
 
     private int getQueueIndexAtY(ListView<Song> listView, double y) {
-        for (javafx.scene.Node node : listView.getChildrenUnmodifiable()) {
-            if (node instanceof javafx.scene.control.ListCell<?> cell) {
-                if (cell.getItem() == null) continue;
-                javafx.geometry.Bounds cellBounds = listView.sceneToLocal(
-                    node.localToScene(node.getBoundsInLocal()));
-                if (y >= cellBounds.getMinY() && y < cellBounds.getMaxY()) {
-                    return listView.getItems().indexOf(cell.getItem());
+        for (javafx.scene.Node child : listView.getChildrenUnmodifiable()) {
+            if (!(child instanceof javafx.scene.Parent parent)) continue;
+            for (javafx.scene.Node cellNode : parent.getChildrenUnmodifiable()) {
+                if (cellNode instanceof javafx.scene.control.ListCell<?> cell) {
+                    if (cell.getItem() == null) continue;
+                    javafx.geometry.Bounds cellBounds = listView.sceneToLocal(
+                        cellNode.localToScene(cellNode.getBoundsInLocal()));
+                    if (y >= cellBounds.getMinY() && y < cellBounds.getMaxY()) {
+                        return listView.getItems().indexOf(cell.getItem());
+                    }
                 }
             }
         }
@@ -1039,17 +1041,6 @@ public class MusicAppDemo extends Application {
         queueList.setOnDragOver(event -> {
             if (event.getDragboard().hasString()) {
                 event.acceptTransferModes(TransferMode.MOVE);
-                var children = queueList.getChildrenUnmodifiable();
-                if (!children.isEmpty() && children.size() != lastChildCount) {
-                    lastChildCount = children.size();
-                    LOGGER.info("Drag over: children count={}", children.size());
-                    for (int i = 0; i < children.size(); i++) {
-                        var child = children.get(i);
-                        LOGGER.info("  child[{}] class={} layoutY={} boundsParent={}",
-                            i, child.getClass().getSimpleName(), child.getLayoutY(),
-                            child.getBoundsInParent());
-                    }
-                }
                 int target = getQueueIndexAtY(queueList, event.getY());
                 if (target >= 0) {
                     dragToIndex[0] = target;
