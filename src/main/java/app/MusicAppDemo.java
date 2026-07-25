@@ -33,6 +33,8 @@ import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.media.MediaPlayer;
@@ -108,10 +110,12 @@ public class MusicAppDemo extends Application {
 
 
     private boolean isUpdatingSelection = false;
+    private boolean suppressSelection = false;
 
     // various fields and stuff for the UI (the others are above or locally defined)
     private ConnectionPanel connectionPanel;
     private PlayerPanel playerPanel;
+    private final ContextMenu contextMenu = new ContextMenu();
     @SuppressWarnings("FieldCanBeLocal")
     private HBox bottomBar;
     @SuppressWarnings("FieldCanBeLocal")
@@ -129,11 +133,22 @@ public class MusicAppDemo extends Application {
         initUIComponents();
 
         // When a tree item (song) is selected, add to queue
-        treeView.getSelectionModel().selectedItemProperty().addListener((_, _, newSel) ->
-            handleTreeSelection(newSel)
-        );
+        treeView.getSelectionModel().selectedItemProperty().addListener((_, _, newSel) -> {
+            if (suppressSelection) {
+                suppressSelection = false;
+                return;
+            }
+            handleTreeSelection(newSel);
+        });
 
         setupAlbumContextMenu();
+
+        // Suppress selection handling on right-click so context menu doesn't double-queue
+        treeView.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
+            if (event.getButton() == MouseButton.SECONDARY) {
+                suppressSelection = true;
+            }
+        });
 
         albumOrderManager = new AlbumOrderManager();
         stateManager = new StateManager(this, albumOrderManager);
@@ -367,12 +382,22 @@ public class MusicAppDemo extends Application {
 
     private void setupAlbumContextMenu() {
         treeView.setOnContextMenuRequested(event -> {
+            suppressSelection = false;
             TreeItem<String> item = treeView.getSelectionModel().getSelectedItem();
             if (item == null || item.getParent() == null) return;
 
+            contextMenu.getItems().clear(); // reset the context menu
+
+            if (item.isLeaf() && item.getParent().getParent() != null) {
+                MenuItem queueNext = new MenuItem("Play Next");
+                queueNext.setOnAction(_ -> queueSongNext(item.getValue()));
+                contextMenu.getItems().add(queueNext);
+                contextMenu.show(treeView, event.getScreenX(), event.getScreenY());
+                event.consume();
+            }
+
             // Only show for album nodes (non-leaf, child of root)
             if (!item.isLeaf() && item.getParent().getParent() == null) {
-                ContextMenu contextMenu = new ContextMenu();
                 MenuItem queueAll = new MenuItem("Queue All Songs");
                 queueAll.setOnAction(_ -> queueAlbum(item.getValue()));
                 contextMenu.getItems().add(queueAll);
@@ -398,6 +423,33 @@ public class MusicAppDemo extends Application {
 
         // If nothing is playing, start the first queued song
         if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) && !playQueue.isEmpty()) {
+            Song next = playQueue.poll();
+            updateQueueDisplay();
+            if (next != null) {
+                playSong(next);
+            }
+        }
+    }
+
+    private void queueSongNext(String songTitle) {
+        Song song = library.getSongByTitle(songTitle);
+        if (song == null) return;
+
+        Album album = library.getAlbumForSong(songTitle);
+        boolean songUnlocked = unlockedSongs.contains(songTitle);
+        boolean albumUnlocked = album != null && unlockedAlbums.contains(album.getName());
+        boolean canPlay = album == null || album.isFullAlbumUnlock() || (songUnlocked && albumUnlocked);
+        if (!canPlay) return;
+
+        // insert at front
+        LinkedList<Song> temp = new LinkedList<>(playQueue);
+        temp.addFirst(song);
+        playQueue.clear();
+        playQueue.addAll(temp);
+        updateQueueDisplay();
+
+        // If nothing is playing, start the first queued song
+        if (currentPlayer == null && !playQueue.isEmpty()) {
             Song next = playQueue.poll();
             updateQueueDisplay();
             if (next != null) {
