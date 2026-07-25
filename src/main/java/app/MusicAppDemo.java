@@ -1021,6 +1021,7 @@ public class MusicAppDemo extends Application {
 
         // Drag-and-drop reordering for queue
         ListView<Song> queueList = panel.getQueueListView();
+        final int[] dragToIndex = {-1};
 
         queueList.setOnDragDetected(event -> {
             int index = queueList.getSelectionModel().getSelectedIndex();
@@ -1030,6 +1031,7 @@ public class MusicAppDemo extends Application {
             ClipboardContent content = new ClipboardContent();
             content.putString(String.valueOf(index));
             db.setContent(content);
+            dragToIndex[0] = index;
             event.consume();
         });
 
@@ -1038,7 +1040,7 @@ public class MusicAppDemo extends Application {
                 event.acceptTransferModes(TransferMode.MOVE);
                 int target = getQueueIndexAtY(queueList, event.getY());
                 if (target >= 0) {
-                    queueList.getSelectionModel().select(target);
+                    dragToIndex[0] = target;
                 }
             }
             event.consume();
@@ -1049,8 +1051,10 @@ public class MusicAppDemo extends Application {
             if (!db.hasString()) return;
 
             int fromIndex = Integer.parseInt(db.getString());
-            int toIndex = getQueueIndexAtY(queueList, event.getY());
-            if (fromIndex == toIndex || toIndex < 0) return;
+            int toIndex = dragToIndex[0];
+            LOGGER.info("Drag dropped: from={}, to={}", fromIndex, toIndex);
+            dragToIndex[0] = -1;
+            if (fromIndex < 0 || toIndex < 0 || fromIndex == toIndex) return;
 
             moveInQueue(fromIndex, toIndex);
             event.setDropCompleted(true);
