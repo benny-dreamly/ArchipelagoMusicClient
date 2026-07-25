@@ -115,6 +115,7 @@ public class MusicAppDemo extends Application {
 
     private boolean isUpdatingSelection = false;
     private boolean suppressSelection = false;
+    private int lastChildCount = 0;
 
     // various fields and stuff for the UI (the others are above or locally defined)
     private ConnectionPanel connectionPanel;
@@ -1038,11 +1039,21 @@ public class MusicAppDemo extends Application {
         queueList.setOnDragOver(event -> {
             if (event.getDragboard().hasString()) {
                 event.acceptTransferModes(TransferMode.MOVE);
+                var children = queueList.getChildrenUnmodifiable();
+                if (!children.isEmpty() && children.size() != lastChildCount) {
+                    lastChildCount = children.size();
+                    LOGGER.info("Drag over: children count={}", children.size());
+                    for (int i = 0; i < children.size(); i++) {
+                        var child = children.get(i);
+                        LOGGER.info("  child[{}] class={} layoutY={} boundsParent={}",
+                            i, child.getClass().getSimpleName(), child.getLayoutY(),
+                            child.getBoundsInParent());
+                    }
+                }
                 int target = getQueueIndexAtY(queueList, event.getY());
                 if (target >= 0) {
                     dragToIndex[0] = target;
                 }
-                LOGGER.info("Drag over: y={}, target={}, dragTo={}", event.getY(), target, dragToIndex[0]);
             }
             event.consume();
         });
