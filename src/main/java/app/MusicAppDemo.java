@@ -636,20 +636,32 @@ public class MusicAppDemo extends Application {
     }
 
     private int getQueueIndexAtY(ListView<Song> listView, double y) {
+        int result = -1;
         for (javafx.scene.Node child : listView.getChildrenUnmodifiable()) {
+            LOGGER.info("Level1: class={}, isParent={}", child.getClass().getSimpleName(), child instanceof javafx.scene.Parent);
             if (!(child instanceof javafx.scene.Parent parent)) continue;
-            for (javafx.scene.Node cellNode : parent.getChildrenUnmodifiable()) {
+            var grandchildren = parent.getChildrenUnmodifiable();
+            LOGGER.info("Level1 children count={}", grandchildren.size());
+            for (javafx.scene.Node cellNode : grandchildren) {
+                LOGGER.info("  Level2: class={}, isCell={}", cellNode.getClass().getSimpleName(), cellNode instanceof javafx.scene.control.ListCell);
                 if (cellNode instanceof javafx.scene.control.ListCell<?> cell) {
-                    if (cell.getItem() == null) continue;
+                    if (cell.getItem() == null) {
+                        LOGGER.info("    item=null, skip");
+                        continue;
+                    }
                     javafx.geometry.Bounds cellBounds = listView.sceneToLocal(
                         cellNode.localToScene(cellNode.getBoundsInLocal()));
+                    LOGGER.info("    item={}, bounds={}, y={}", cell.getItem(), cellBounds, y);
                     if (y >= cellBounds.getMinY() && y < cellBounds.getMaxY()) {
-                        return listView.getItems().indexOf(cell.getItem());
+                        result = listView.getItems().indexOf(cell.getItem());
+                        LOGGER.info("    MATCH: index={}", result);
+                        return result;
                     }
                 }
             }
         }
-        return -1;
+        LOGGER.info("getQueueIndexAtY returning -1, y={}", y);
+        return result;
     }
 
     private void assignFilesToSongs() {
