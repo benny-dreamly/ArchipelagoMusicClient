@@ -1038,7 +1038,7 @@ public class MusicAppDemo extends Application {
         });
 
         queueList.setOnDragOver(event -> {
-            if (event.getDragboard().hasString()) {
+            if (event.getGestureSource() == queueList && event.getDragboard().hasString()) {
                 event.acceptTransferModes(TransferMode.MOVE);
                 int target = getQueueIndexAtY(queueList, event.getY());
                 if (target >= 0) {
@@ -1049,10 +1049,13 @@ public class MusicAppDemo extends Application {
         });
 
         queueList.setOnDragDropped(event -> {
-            Dragboard db = event.getDragboard();
-            if (!db.hasString()) return;
+            if (event.getGestureSource() != queueList || !event.getDragboard().hasString()) {
+                event.setDropCompleted(false);
+                event.consume();
+                return;
+            }
 
-            int fromIndex = Integer.parseInt(db.getString());
+            int fromIndex = Integer.parseInt(event.getDragboard().getString());
             int toIndex = dragToIndex[0];
             dragToIndex[0] = -1;
             if (fromIndex == toIndex) return;
