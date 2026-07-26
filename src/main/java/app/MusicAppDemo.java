@@ -26,6 +26,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.ContextMenu;
+import javafx.scene.control.ListView;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.Slider;
 import javafx.scene.control.TreeView;
@@ -35,6 +36,9 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.media.MediaPlayer;
@@ -612,6 +616,41 @@ public class MusicAppDemo extends Application {
         playQueue.remove(song);
     }
 
+    private void moveInQueue(int fromIndex, int toIndex) {
+        int i = 0;
+        Song song = null;
+        for (Song s : playQueue) {
+            if (i == fromIndex) { song = s; break; }
+            i++;
+        }
+        if (song == null) return;
+        playQueue.remove(song);
+        // reinsert at toIndex, adjusting if removing shifted the position
+        int adjusted = toIndex > fromIndex ? toIndex - 1 : toIndex;
+        i = 0;
+        LinkedList<Song> temp = new LinkedList<>(playQueue);
+        temp.add(adjusted, song);
+        playQueue.clear();
+        playQueue.addAll(temp);
+        updateQueueDisplay();
+    }
+
+    private int getQueueIndexAtY(ListView<Song> listView, double y) {
+        for (javafx.scene.Node node : listView.lookupAll(".list-cell")) {
+            if (node instanceof javafx.scene.control.ListCell<?> cell) {
+                if (cell.getItem() == null) continue;
+                if (cell.getListView() != listView) continue;
+                javafx.geometry.Bounds cellBounds = listView.sceneToLocal(
+                    node.localToScene(node.getBoundsInLocal()));
+                if (y >= cellBounds.getMinY() && y < cellBounds.getMaxY()) {
+                    double midpoint = cellBounds.getMinY() + cellBounds.getHeight() / 2.0;
+                    return y < midpoint ? cell.getIndex() : cell.getIndex() + 1;
+                }
+            }
+        }
+        return listView.getItems().size();
+    }
+
     private void assignFilesToSongs() {
         for (Album album : albums) {
             String folderPath = album.getFolderPath();
@@ -980,6 +1019,50 @@ public class MusicAppDemo extends Application {
             if (currentPlayer != null) {
                 currentPlayer.setVolume(newVal.doubleValue() / 100.0);
             }
+        });
+
+        // Drag-and-drop reordering for queue
+        ListView<Song> queueList = panel.getQueueListView();
+        final int[] dragToIndex = {-1};
+
+        queueList.setOnDragDetected(event -> {
+            int index = queueList.getSelectionModel().getSelectedIndex();
+            if (index < 0) return;
+
+            Dragboard db = queueList.startDragAndDrop(TransferMode.MOVE);
+            ClipboardContent content = new ClipboardContent();
+            content.putString(String.valueOf(index));
+            db.setContent(content);
+            dragToIndex[0] = index;
+            event.consume();
+        });
+
+        queueList.setOnDragOver(event -> {
+            if (event.getGestureSource() == queueList && event.getDragboard().hasString()) {
+                event.acceptTransferModes(TransferMode.MOVE);
+                int target = getQueueIndexAtY(queueList, event.getY());
+                if (target >= 0) {
+                    dragToIndex[0] = target;
+                }
+            }
+            event.consume();
+        });
+
+        queueList.setOnDragDropped(event -> {
+            if (event.getGestureSource() != queueList || !event.getDragboard().hasString()) {
+                event.setDropCompleted(false);
+                event.consume();
+                return;
+            }
+
+            int fromIndex = Integer.parseInt(event.getDragboard().getString());
+            int toIndex = dragToIndex[0];
+            dragToIndex[0] = -1;
+            if (fromIndex == toIndex) return;
+
+            moveInQueue(fromIndex, toIndex);
+            event.setDropCompleted(true);
+            event.consume();
         });
 
         panel.bindSeekCheckBox(seekListener);
