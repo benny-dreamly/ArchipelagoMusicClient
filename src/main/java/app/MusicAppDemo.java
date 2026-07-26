@@ -1014,6 +1014,15 @@ public class MusicAppDemo extends Application {
             updateQueueDisplay();
         });
 
+        // Shuffle queue
+        panel.getShuffleQueueBtn().setOnAction(_ -> {
+            LinkedList<Song> temp = new LinkedList<>(playQueue);
+            java.util.Collections.shuffle(temp);
+            playQueue.clear();
+            playQueue.addAll(temp);
+            updateQueueDisplay();
+        });
+
         // Volume slider updates live during playback
         panel.getVolumeSlider().valueProperty().addListener((_, _, newVal) -> {
             if (currentPlayer != null) {
