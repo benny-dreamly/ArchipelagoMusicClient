@@ -643,11 +643,12 @@ public class MusicAppDemo extends Application {
                 javafx.geometry.Bounds cellBounds = listView.sceneToLocal(
                     node.localToScene(node.getBoundsInLocal()));
                 if (y >= cellBounds.getMinY() && y < cellBounds.getMaxY()) {
-                    return listView.getItems().indexOf(cell.getItem());
+                    double midpoint = cellBounds.getMinY() + cellBounds.getHeight() / 2.0;
+                    return y < midpoint ? cell.getIndex() : cell.getIndex() + 1;
                 }
             }
         }
-        return -1;
+        return listView.getItems().size();
     }
 
     private void assignFilesToSongs() {
@@ -1054,7 +1055,7 @@ public class MusicAppDemo extends Application {
             int fromIndex = Integer.parseInt(db.getString());
             int toIndex = dragToIndex[0];
             dragToIndex[0] = -1;
-            if (fromIndex < 0 || toIndex < 0 || fromIndex == toIndex) return;
+            if (fromIndex == toIndex) return;
 
             moveInQueue(fromIndex, toIndex);
             event.setDropCompleted(true);
