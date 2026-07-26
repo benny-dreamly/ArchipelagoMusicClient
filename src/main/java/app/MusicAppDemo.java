@@ -331,6 +331,8 @@ public class MusicAppDemo extends Application {
             if (offlineMode) {
                 applyOfflineUnlocks();
             }
+
+            playerPanel.getLoadQueueBtn().setDisable(false);
         });
 
         loadTask.setOnFailed(_ -> {
@@ -348,6 +350,8 @@ public class MusicAppDemo extends Application {
         unlockedSongs.clear();
         enabledSets.clear();
         albumOrderManager.clearAlbumOrderCache();
+
+        playerPanel.getLoadQueueBtn().setDisable(true);
 
         Task<List<Album>> loadTask = getLoadTask();
         new Thread(loadTask).start();
