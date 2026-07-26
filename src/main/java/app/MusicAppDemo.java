@@ -1056,7 +1056,8 @@ public class MusicAppDemo extends Application {
                 Type listType = new TypeToken<List<Map<String, String>>>() {}.getType();
                 List<Map<String, String>> entries = new Gson().fromJson(reader, listType);
                 if (entries == null) return;
-                playQueue.clear();
+
+                LinkedList<Song> resolved = new LinkedList<>();
                 for (Map<String, String> entry : entries) {
                     String title = entry.get("title");
                     String type = entry.get("type");
@@ -1064,15 +1065,18 @@ public class MusicAppDemo extends Application {
                     for (Album album : albums) {
                         for (Song song : album.getSongs()) {
                             if (song.getTitle().equals(title) && song.getType().equals(type)) {
-                                playQueue.add(song);
+                                resolved.add(song);
                             }
                         }
                     }
                 }
+
+                playQueue.clear();
+                playQueue.addAll(resolved);
                 updateQueueDisplay();
                 LOGGER.info("Queue loaded from {} ({} songs)", queueFile.getAbsolutePath(), playQueue.size());
-            } catch (IOException e) {
-                LOGGER.error("Failed to load queue", e);
+            } catch (Exception e) {
+                LOGGER.error("Failed to load queue from {}", queueFile.getAbsolutePath(), e);
             }
         });
 
