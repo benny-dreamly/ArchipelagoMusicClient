@@ -1053,7 +1053,6 @@ public class MusicAppDemo extends Application {
 
             int fromIndex = Integer.parseInt(db.getString());
             int toIndex = dragToIndex[0];
-            LOGGER.info("Drag dropped: from={}, to={}", fromIndex, toIndex);
             dragToIndex[0] = -1;
             if (fromIndex < 0 || toIndex < 0 || fromIndex == toIndex) return;
 
