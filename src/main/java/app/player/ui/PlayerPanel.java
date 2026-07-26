@@ -40,6 +40,8 @@ public class PlayerPanel extends VBox {
     private final Button removeSelectedBtn;
     private final Button clearQueueBtn;
     private final Button shuffleQueueBtn;
+    private final Button saveQueueBtn;
+    private final Button loadQueueBtn;
     private final HBox playerButtons;
 
     public PlayerPanel() {
@@ -122,7 +124,9 @@ public class PlayerPanel extends VBox {
         removeSelectedBtn = new Button("Remove Selected");
         clearQueueBtn = new Button("Clear Queue");
         shuffleQueueBtn = new Button("Shuffle Queue");
-        queueButtons.getChildren().addAll(removeSelectedBtn, clearQueueBtn, shuffleQueueBtn);
+        saveQueueBtn = new Button("Save Queue");
+        loadQueueBtn = new Button("Load Queue");
+        queueButtons.getChildren().addAll(removeSelectedBtn, clearQueueBtn, shuffleQueueBtn, saveQueueBtn, loadQueueBtn);
 
         getChildren().addAll(currentSongLabel, enableSeekCheck , progressBox, volumeBox, playerButtons, new Label("Queue:"), queueScrollPane, queueButtons);
         setAlignment(Pos.CENTER_RIGHT);
@@ -136,6 +140,8 @@ public class PlayerPanel extends VBox {
     public Button getRemoveSelectedBtn() { return removeSelectedBtn; }
     public Button getClearQueueBtn() { return clearQueueBtn; }
     public Button getShuffleQueueBtn() { return shuffleQueueBtn; }
+    public Button getSaveQueueBtn() { return saveQueueBtn; }
+    public Button getLoadQueueBtn() { return loadQueueBtn; }
 
     public ListView<Song> getQueueListView() { return queueListView; }
 
