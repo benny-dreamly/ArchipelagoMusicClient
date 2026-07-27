@@ -37,6 +37,7 @@ public class PlayerPanel extends VBox {
     private final HBox queueButtons;
     private final Button playButton;
     private final Button pauseButton;
+    private final Button repeatButton;
     private final Button removeSelectedBtn;
     private final Button clearQueueBtn;
     private final Button shuffleQueueBtn;
@@ -117,7 +118,8 @@ public class PlayerPanel extends VBox {
         playerButtons = new HBox(6);
         playButton = new Button("▶");
         pauseButton = new Button("⏸");
-        playerButtons.getChildren().addAll(playButton, pauseButton);
+        repeatButton = new Button("No Repeat");
+        playerButtons.getChildren().addAll(playButton, pauseButton, repeatButton);
 
         // Queue control buttons
         queueButtons = new HBox(6);
@@ -138,6 +140,7 @@ public class PlayerPanel extends VBox {
     // ----- GETTERS -----
     public Button getPlayButton() { return playButton; }
     public Button getPauseButton() { return pauseButton; }
+    public Button getRepeatButton() { return repeatButton; }
     public Button getRemoveSelectedBtn() { return removeSelectedBtn; }
     public Button getClearQueueBtn() { return clearQueueBtn; }
     public Button getShuffleQueueBtn() { return shuffleQueueBtn; }
