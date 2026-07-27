@@ -564,9 +564,11 @@ public class MusicAppDemo extends Application {
         currentPlayer = new MediaPlayer(media);
         currentPlayer.setVolume(playerPanel.getVolumeSlider().getValue() / 100.0);
 
+        MediaPlayer playerRef = currentPlayer;
         currentPlayer.currentTimeProperty().addListener((_, _, newTime) -> {
+            if (playerRef != currentPlayer) return;
             if (!playerPanel.getProgressSlider().isValueChanging()) {
-                Duration total = currentPlayer.getTotalDuration();
+                Duration total = playerRef.getTotalDuration();
                 if (total != null && total.greaterThan(Duration.ZERO)) {
                     playerPanel.getProgressSlider().setValue(newTime.toMillis() / total.toMillis());
                     playerPanel.getElapsedLabel().setText(formatTime(newTime));
@@ -575,7 +577,7 @@ public class MusicAppDemo extends Application {
             // Crossfade detection
             Duration crossfadeDur = Duration.seconds(playerPanel.getCrossfadeSlider().getValue());
             if (crossfadeDur.greaterThan(Duration.ZERO) && !crossfadeTriggered) {
-                Duration total = currentPlayer.getTotalDuration();
+                Duration total = playerRef.getTotalDuration();
                 if (total != null && total.greaterThan(crossfadeDur)) {
                     Duration remaining = total.subtract(newTime);
                     if (remaining.lessThanOrEqualTo(crossfadeDur)) {
@@ -643,9 +645,11 @@ public class MusicAppDemo extends Application {
         this.currentSong = nextSong;
 
         // Progress listener for new player
+        MediaPlayer newPlayerRef = newPlayer;
         newPlayer.currentTimeProperty().addListener((_, _, newTime) -> {
+            if (newPlayerRef != currentPlayer) return;
             if (!playerPanel.getProgressSlider().isValueChanging()) {
-                Duration total = newPlayer.getTotalDuration();
+                Duration total = newPlayerRef.getTotalDuration();
                 if (total != null && total.greaterThan(Duration.ZERO)) {
                     playerPanel.getProgressSlider().setValue(newTime.toMillis() / total.toMillis());
                     playerPanel.getElapsedLabel().setText(formatTime(newTime));
@@ -654,7 +658,7 @@ public class MusicAppDemo extends Application {
             // Crossfade detection for the new player
             Duration cfDur = Duration.seconds(playerPanel.getCrossfadeSlider().getValue());
             if (cfDur.greaterThan(Duration.ZERO) && !crossfadeTriggered) {
-                Duration total = newPlayer.getTotalDuration();
+                Duration total = newPlayerRef.getTotalDuration();
                 if (total != null && total.greaterThan(cfDur)) {
                     Duration remaining = total.subtract(newTime);
                     if (remaining.lessThanOrEqualTo(cfDur)) {
