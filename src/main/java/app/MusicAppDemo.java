@@ -21,6 +21,9 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.beans.value.ChangeListener;
 import javafx.geometry.Insets;
@@ -114,6 +117,8 @@ public class MusicAppDemo extends Application {
     @SuppressWarnings("JdkObsolete")
     private final Queue<Song> playQueue = new LinkedList<>();
     private MediaPlayer currentPlayer;
+    private MediaPlayer crossfadeOutPlayer;
+    private boolean crossfadeTriggered;
 
 
     private boolean isUpdatingSelection = false;
@@ -530,6 +535,14 @@ public class MusicAppDemo extends Application {
             return;
         }
 
+        // Clean up any in-progress crossfade
+        if (crossfadeOutPlayer != null) {
+            crossfadeOutPlayer.stop();
+            crossfadeOutPlayer.dispose();
+            crossfadeOutPlayer = null;
+        }
+        crossfadeTriggered = false;
+
         if (currentPlayer != null) {
             currentPlayer.stop();
             currentPlayer.dispose(); // release OS resources
@@ -538,6 +551,10 @@ public class MusicAppDemo extends Application {
         // Reset progress slider and labels
         playerPanel.resetProgress();
 
+        setupAndPlayPlayer(song);
+    }
+
+    private void setupAndPlayPlayer(Song song) {
         Media media = new Media(Paths.get(song.getFilePath()).toUri().toString());
         currentPlayer = new MediaPlayer(media);
         currentPlayer.setVolume(playerPanel.getVolumeSlider().getValue() / 100.0);
@@ -548,6 +565,18 @@ public class MusicAppDemo extends Application {
                 if (total != null && total.greaterThan(Duration.ZERO)) {
                     playerPanel.getProgressSlider().setValue(newTime.toMillis() / total.toMillis());
                     playerPanel.getElapsedLabel().setText(formatTime(newTime));
+                }
+            }
+            // Crossfade detection
+            Duration crossfadeDur = Duration.seconds(playerPanel.getCrossfadeSlider().getValue());
+            if (crossfadeDur.greaterThan(Duration.ZERO) && !crossfadeTriggered) {
+                Duration total = currentPlayer.getTotalDuration();
+                if (total != null && total.greaterThan(crossfadeDur)) {
+                    Duration remaining = total.subtract(newTime);
+                    if (remaining.lessThanOrEqualTo(crossfadeDur)) {
+                        crossfadeTriggered = true;
+                        startCrossfade();
+                    }
                 }
             }
         });
@@ -583,6 +612,94 @@ public class MusicAppDemo extends Application {
             currentPlayer = null;
             playerPanel.resetProgress();
         }
+    }
+
+    private void startCrossfade() {
+        Song nextSong = playQueue.poll();
+        updateQueueDisplay();
+        if (nextSong == null) {
+            // Queue empty — let current song finish naturally
+            crossfadeTriggered = false;
+            return;
+        }
+
+        MediaPlayer oldPlayer = currentPlayer;
+        double targetVolume = playerPanel.getVolumeSlider().getValue() / 100.0;
+        Duration crossfadeDur = Duration.seconds(playerPanel.getCrossfadeSlider().getValue());
+
+        // Prevent old player from advancing when it ends
+        oldPlayer.setOnEndOfMedia(() -> {
+            oldPlayer.stop();
+            oldPlayer.dispose();
+            crossfadeOutPlayer = null;
+        });
+
+        // Create new player
+        Media media = new Media(Paths.get(nextSong.getFilePath()).toUri().toString());
+        MediaPlayer newPlayer = new MediaPlayer(media);
+        newPlayer.setVolume(0.0);
+
+        this.currentSong = nextSong;
+
+        // Progress listener for new player
+        newPlayer.currentTimeProperty().addListener((_, _, newTime) -> {
+            if (!playerPanel.getProgressSlider().isValueChanging()) {
+                Duration total = newPlayer.getTotalDuration();
+                if (total != null && total.greaterThan(Duration.ZERO)) {
+                    playerPanel.getProgressSlider().setValue(newTime.toMillis() / total.toMillis());
+                    playerPanel.getElapsedLabel().setText(formatTime(newTime));
+                }
+            }
+            // Crossfade detection for the new player
+            Duration cfDur = Duration.seconds(playerPanel.getCrossfadeSlider().getValue());
+            if (cfDur.greaterThan(Duration.ZERO) && !crossfadeTriggered) {
+                Duration total = newPlayer.getTotalDuration();
+                if (total != null && total.greaterThan(cfDur)) {
+                    Duration remaining = total.subtract(newTime);
+                    if (remaining.lessThanOrEqualTo(cfDur)) {
+                        crossfadeTriggered = true;
+                        startCrossfade();
+                    }
+                }
+            }
+        });
+
+        newPlayer.setOnReady(() -> {
+            Duration total = newPlayer.getTotalDuration();
+            if (total != null) {
+                playerPanel.getDurationLabel().setText(formatTime(total));
+            }
+        });
+
+        newPlayer.setOnEndOfMedia(() -> {
+            if (client != null && client.isConnected()) {
+                client.sendCheck(nextSong.getTitle());
+            }
+            playNextInQueue();
+        });
+
+        currentPlayer = newPlayer;
+        crossfadeOutPlayer = oldPlayer;
+        crossfadeTriggered = false;
+
+        newPlayer.play();
+        playerPanel.setCurrentSongLabel("Currently Playing: " + nextSong.getTitle());
+        highlightCurrentSong(nextSong.getTitle());
+
+        // Fade out old, fade in new
+        double fadeOutStart = oldPlayer.getVolume();
+        Timeline crossfadeTimeline = new Timeline(
+            new KeyFrame(crossfadeDur,
+                new KeyValue(oldPlayer.volumeProperty(), 0.0),
+                new KeyValue(newPlayer.volumeProperty(), targetVolume)
+            )
+        );
+        crossfadeTimeline.setOnFinished(_ -> {
+            oldPlayer.stop();
+            oldPlayer.dispose();
+            crossfadeOutPlayer = null;
+        });
+        crossfadeTimeline.play();
     }
 
     private void highlightCurrentSong(String songTitle) {

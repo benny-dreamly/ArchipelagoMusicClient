@@ -30,6 +30,7 @@ public class PlayerPanel extends VBox {
 
     private final HBox volumeBox;
     private final Slider volumeSlider;
+    private final Slider crossfadeSlider;
 
     private final ListView<Song> queueListView;
     private final ScrollPane queueScrollPane;
@@ -114,6 +115,17 @@ public class PlayerPanel extends VBox {
         volumeBox = new HBox(5, new Label("Volume:"), volumeSlider);
         volumeBox.setAlignment(Pos.CENTER);
 
+        crossfadeSlider = new Slider(0, 10, 0);
+        crossfadeSlider.setPrefWidth(120);
+        crossfadeSlider.setShowTickLabels(true);
+        crossfadeSlider.setShowTickMarks(true);
+        crossfadeSlider.setMajorTickUnit(2);
+        crossfadeSlider.setBlockIncrement(1);
+
+        Label crossfadeLabel = new Label("Crossfade:");
+        HBox crossfadeBox = new HBox(5, crossfadeLabel, crossfadeSlider);
+        crossfadeBox.setAlignment(Pos.CENTER);
+
         playerButtons = new HBox(6);
         playButton = new Button("▶");
         pauseButton = new Button("⏸");
@@ -129,7 +141,7 @@ public class PlayerPanel extends VBox {
         loadQueueBtn.setDisable(true);
         queueButtons.getChildren().addAll(removeSelectedBtn, clearQueueBtn, shuffleQueueBtn, saveQueueBtn, loadQueueBtn);
 
-        getChildren().addAll(currentSongLabel, enableSeekCheck , progressBox, volumeBox, playerButtons, new Label("Queue:"), queueScrollPane, queueButtons);
+        getChildren().addAll(currentSongLabel, enableSeekCheck , progressBox, volumeBox, crossfadeBox, playerButtons, new Label("Queue:"), queueScrollPane, queueButtons);
         setAlignment(Pos.CENTER_RIGHT);
         HBox.setHgrow(this, Priority.ALWAYS);
 
@@ -149,6 +161,7 @@ public class PlayerPanel extends VBox {
     public CheckBox getEnableSeekCheck() { return enableSeekCheck; }
     public Slider getProgressSlider() { return progressSlider; }
     public Slider getVolumeSlider() { return volumeSlider; }
+    public Slider getCrossfadeSlider() { return crossfadeSlider; }
 
     public Label getCurrentSongLabel() { return currentSongLabel; }
     public Label getElapsedLabel() { return elapsedLabel; }
