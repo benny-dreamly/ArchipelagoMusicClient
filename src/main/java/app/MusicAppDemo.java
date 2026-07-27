@@ -1065,7 +1065,12 @@ public class MusicAppDemo extends Application {
                     for (Album album : albums) {
                         for (Song song : album.getSongs()) {
                             if (song.getTitle().equals(title) && song.getType().equals(type)) {
-                                resolved.add(song);
+                                boolean typeEnabled = enabledSets.contains(type);
+                                boolean songUnlocked = unlockedSongs.contains(title);
+                                boolean albumUnlocked = unlockedAlbums.contains(album.getName());
+                                if (typeEnabled && (album.isFullAlbumUnlock() || (songUnlocked && albumUnlocked))) {
+                                    resolved.add(song);
+                                }
                             }
                         }
                     }
