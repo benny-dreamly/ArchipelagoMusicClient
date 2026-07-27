@@ -20,3 +20,11 @@ Add a "Browse Folder" button that imports local music without needing an Archipe
 - **Shuffle queue button** — randomize the play queue ✅
 - **Drag-to-reorder queue** — reorder songs by dragging (requires `ListView<Song>` + drag support; already changed to `ListView<Song>`) ✅
 - **Now-playing highlight in tree** — auto-scroll and highlight the currently playing song in the album tree ✅
+- **Repeat modes** — repeat song, repeat queue, repeat album
+- **Crossfade / gapless playback** — smooth transitions between songs
+
+## UI
+
+- **Dark mode** — presentable dark theme
+- **Album art** — display cover art from the file's metadata if available
+- **Search/filter tree** — filter the album tree by song or album name
