@@ -18,6 +18,7 @@ import app.util.AlbumLibrary;
 import app.util.AlbumOrderManager;
 import app.util.StateManager;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 import javafx.application.Application;
@@ -49,7 +50,9 @@ import javafx.util.Duration;
 
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.Reader;
+import java.io.Writer;
 import java.io.InputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -328,6 +331,8 @@ public class MusicAppDemo extends Application {
             if (offlineMode) {
                 applyOfflineUnlocks();
             }
+
+            playerPanel.getLoadQueueBtn().setDisable(false);
         });
 
         loadTask.setOnFailed(_ -> {
@@ -345,6 +350,8 @@ public class MusicAppDemo extends Application {
         unlockedSongs.clear();
         enabledSets.clear();
         albumOrderManager.clearAlbumOrderCache();
+
+        playerPanel.getLoadQueueBtn().setDisable(true);
 
         Task<List<Album>> loadTask = getLoadTask();
         new Thread(loadTask).start();
@@ -1021,6 +1028,61 @@ public class MusicAppDemo extends Application {
             playQueue.clear();
             playQueue.addAll(temp);
             updateQueueDisplay();
+        });
+
+        // Save queue
+        panel.getSaveQueueBtn().setOnAction(_ -> {
+            File queueFile = new File(getConfigDir(), "queue.json");
+            List<Map<String, String>> entries = new ArrayList<>();
+            for (Song song : playQueue) {
+                Map<String, String> entry = new HashMap<>();
+                entry.put("title", song.getTitle());
+                entry.put("type", song.getType());
+                entries.add(entry);
+            }
+            try (Writer writer = new FileWriter(queueFile, StandardCharsets.UTF_8)) {
+                new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create().toJson(entries, writer);
+                LOGGER.info("Queue saved to {}", queueFile.getAbsolutePath());
+            } catch (IOException e) {
+                LOGGER.error("Failed to save queue", e);
+            }
+        });
+
+        // Load queue
+        panel.getLoadQueueBtn().setOnAction(_ -> {
+            File queueFile = new File(getConfigDir(), "queue.json");
+            if (!queueFile.exists()) return;
+            try (Reader reader = new FileReader(queueFile, StandardCharsets.UTF_8)) {
+                Type listType = new TypeToken<List<Map<String, String>>>() {}.getType();
+                List<Map<String, String>> entries = new Gson().fromJson(reader, listType);
+                if (entries == null) return;
+
+                LinkedList<Song> resolved = new LinkedList<>();
+                for (Map<String, String> entry : entries) {
+                    String title = entry.get("title");
+                    String type = entry.get("type");
+                    if (title == null) continue;
+                    for (Album album : albums) {
+                        for (Song song : album.getSongs()) {
+                            if (song.getTitle().equals(title) && song.getType().equals(type)) {
+                                boolean typeEnabled = enabledSets.contains(type);
+                                boolean songUnlocked = unlockedSongs.contains(title);
+                                boolean albumUnlocked = unlockedAlbums.contains(album.getName());
+                                if (typeEnabled && (album.isFullAlbumUnlock() || (songUnlocked && albumUnlocked))) {
+                                    resolved.add(song);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                playQueue.clear();
+                playQueue.addAll(resolved);
+                updateQueueDisplay();
+                LOGGER.info("Queue loaded from {} ({} songs)", queueFile.getAbsolutePath(), playQueue.size());
+            } catch (Exception e) {
+                LOGGER.error("Failed to load queue from {}", queueFile.getAbsolutePath(), e);
+            }
         });
 
         // Volume slider updates live during playback
