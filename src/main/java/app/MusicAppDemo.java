@@ -91,6 +91,8 @@ public class MusicAppDemo extends Application {
 
     public static final Logger LOGGER = LoggerFactory.getLogger(MusicAppDemo.class);
 
+    private enum RepeatMode { OFF, QUEUE, SONG, ALBUM }
+
     private final List<Album> albums = new ArrayList<>();
     private final Set<String> unlockedAlbums = new HashSet<>();
     private final Set<String> unlockedSongs = new HashSet<>();
@@ -118,6 +120,9 @@ public class MusicAppDemo extends Application {
 
     private boolean isUpdatingSelection = false;
     private boolean suppressSelection = false;
+    private RepeatMode repeatMode = RepeatMode.OFF;
+    @SuppressWarnings("JdkObsolete")
+    private List<Song> queueSnapshot = null;
 
     // various fields and stuff for the UI (the others are above or locally defined)
     private ConnectionPanel connectionPanel;
@@ -524,6 +529,13 @@ public class MusicAppDemo extends Application {
 
         this.currentSong = song;
 
+        if (repeatMode == RepeatMode.QUEUE && queueSnapshot == null) {
+            LinkedList<Song> snapshot = new LinkedList<>();
+            snapshot.add(song);
+            snapshot.addAll(playQueue);
+            queueSnapshot = snapshot;
+        }
+
         if (song.getFilePath() == null || !new File(song.getFilePath()).exists()) {
             LOGGER.info("Song trying to be played ({})'s file path ({}) does not exist or is null.", song.getTitle(), song.getFilePath());
             showError("File Not Found", "Cannot play song", "File not found for: " + song.getTitle());
@@ -564,7 +576,11 @@ public class MusicAppDemo extends Application {
             if (client != null && client.isConnected()) {
                 client.sendCheck(song.getTitle());
             }
-            playNextInQueue();
+            if (repeatMode == RepeatMode.SONG) {
+                playSong(song);
+            } else {
+                playNextInQueue();
+            }
         });
 
         currentPlayer.play();
@@ -575,6 +591,19 @@ public class MusicAppDemo extends Application {
 
     private void playNextInQueue() {
         Song next = playQueue.poll();
+        if (next == null && repeatMode != RepeatMode.OFF) {
+            if (repeatMode == RepeatMode.QUEUE && queueSnapshot != null) {
+                playQueue.addAll(queueSnapshot);
+            } else if (repeatMode == RepeatMode.ALBUM && currentSong != null) {
+                Album album = library.getAlbumForSong(currentSong.getTitle());
+                if (album != null) {
+                    for (Song s : album.getSongs()) {
+                        playQueue.add(s);
+                    }
+                }
+            }
+            next = playQueue.poll();
+        }
         updateQueueDisplay();
         if (next != null) {
             playSong(next);
@@ -1003,6 +1032,27 @@ public class MusicAppDemo extends Application {
                     currentPlayer.play();
                     if (currentSong != null) playerPanel.setCurrentSongLabel("Currently Playing: " + currentSong.getTitle());
                 }
+            }
+        });
+
+        // Repeat button cycles: Off → Queue → Song → Album → Off
+        panel.getRepeatButton().setOnAction(_ -> {
+            repeatMode = switch (repeatMode) {
+                case OFF -> RepeatMode.QUEUE;
+                case QUEUE -> RepeatMode.SONG;
+                case SONG -> RepeatMode.ALBUM;
+                case ALBUM -> RepeatMode.OFF;
+            };
+            String label = switch (repeatMode) {
+                case OFF -> "No Repeat";
+                case QUEUE -> "Repeat Queue";
+                case SONG -> "Repeat Song";
+                case ALBUM -> "Repeat Album";
+            };
+            panel.getRepeatButton().setText(label);
+
+            if (repeatMode == RepeatMode.OFF) {
+                queueSnapshot = null;
             }
         });
 
