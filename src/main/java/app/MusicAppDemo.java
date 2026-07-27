@@ -119,6 +119,7 @@ public class MusicAppDemo extends Application {
     private MediaPlayer currentPlayer;
     private MediaPlayer crossfadeOutPlayer;
     private boolean crossfadeTriggered;
+    private Timeline crossfadeTimeline;
 
 
     private boolean isUpdatingSelection = false;
@@ -536,6 +537,10 @@ public class MusicAppDemo extends Application {
         }
 
         // Clean up any in-progress crossfade
+        if (crossfadeTimeline != null) {
+            crossfadeTimeline.stop();
+            crossfadeTimeline = null;
+        }
         if (crossfadeOutPlayer != null) {
             crossfadeOutPlayer.stop();
             crossfadeOutPlayer.dispose();
@@ -627,12 +632,8 @@ public class MusicAppDemo extends Application {
         double targetVolume = playerPanel.getVolumeSlider().getValue() / 100.0;
         Duration crossfadeDur = Duration.seconds(playerPanel.getCrossfadeSlider().getValue());
 
-        // Prevent old player from advancing when it ends
-        oldPlayer.setOnEndOfMedia(() -> {
-            oldPlayer.stop();
-            oldPlayer.dispose();
-            crossfadeOutPlayer = null;
-        });
+        // Prevent old player from advancing when it ends — Timeline handles cleanup
+        oldPlayer.setOnEndOfMedia(() -> {});
 
         // Create new player
         Media media = new Media(Paths.get(nextSong.getFilePath()).toUri().toString());
@@ -687,17 +688,18 @@ public class MusicAppDemo extends Application {
         highlightCurrentSong(nextSong.getTitle());
 
         // Fade out old, fade in new
-        double fadeOutStart = oldPlayer.getVolume();
-        Timeline crossfadeTimeline = new Timeline(
+        crossfadeTimeline = new Timeline(
             new KeyFrame(crossfadeDur,
                 new KeyValue(oldPlayer.volumeProperty(), 0.0),
                 new KeyValue(newPlayer.volumeProperty(), targetVolume)
             )
         );
         crossfadeTimeline.setOnFinished(_ -> {
-            oldPlayer.stop();
-            oldPlayer.dispose();
-            crossfadeOutPlayer = null;
+            if (crossfadeOutPlayer == oldPlayer) {
+                oldPlayer.stop();
+                oldPlayer.dispose();
+                crossfadeOutPlayer = null;
+            }
         });
         crossfadeTimeline.play();
     }
