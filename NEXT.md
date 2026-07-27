@@ -22,6 +22,7 @@ Add a "Browse Folder" button that imports local music without needing an Archipe
 - **Now-playing highlight in tree** — auto-scroll and highlight the currently playing song in the album tree ✅
 - **Repeat modes** — repeat song, repeat queue, repeat album
 - **Crossfade / gapless playback** — smooth transitions between songs
+- **Skip to next track button** — skips to next track in queue
 
 ## UI
 
