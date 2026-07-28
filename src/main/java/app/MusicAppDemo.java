@@ -569,6 +569,7 @@ public class MusicAppDemo extends Application {
 
         // Extract album art in background
         long requestId = ++artworkRequestId;
+        albumArtPanel.clearArtwork();
         String filePath = song.getFilePath();
         String trackInfo = song.getTitle();
         new Thread(() -> {
@@ -579,7 +580,7 @@ public class MusicAppDemo extends Application {
                     Artwork artwork = tag.getFirstArtwork();
                     if (artwork != null) {
                         byte[] data = artwork.getBinaryData();
-                        Image image = new Image(new ByteArrayInputStream(data));
+                        Image image = new Image(new ByteArrayInputStream(data), 180, 180, true, true);
                         Platform.runLater(() -> {
                             if (requestId == artworkRequestId) {
                                 albumArtPanel.setArtwork(image, trackInfo);
