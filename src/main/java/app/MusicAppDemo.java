@@ -192,6 +192,7 @@ public class MusicAppDemo extends Application {
         albumPanel = new HBox(10);
         albumPanel.getChildren().addAll(treeView, albumArtPanel);
         HBox.setHgrow(treeView, javafx.scene.layout.Priority.ALWAYS);
+        VBox.setVgrow(albumPanel, javafx.scene.layout.Priority.ALWAYS);
 
         root = new VBox(10, albumPanel, bottomBar);
         Scene scene = new Scene(root, 800, 600);
