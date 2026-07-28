@@ -569,6 +569,7 @@ public class MusicAppDemo extends Application {
 
         // Extract album art in background
         long requestId = ++artworkRequestId;
+        albumArtPanel.clearArtwork();
         String filePath = song.getFilePath();
         String trackInfo = song.getTitle();
         new Thread(() -> {
