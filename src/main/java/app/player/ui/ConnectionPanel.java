@@ -88,23 +88,23 @@ public class ConnectionPanel extends VBox {
         settingsToggleButton = new Button("\u2699 Settings");
         settingsToggleButton.setOnAction(_ -> toggleSettings());
 
-        // Settings box containing all the connection fields
+        // Settings box containing only editable connection fields
         settingsBox = new VBox(5);
         settingsBox.getChildren().addAll(
                 new Label("Game:"), gameField,
                 new Label("Host:"), hostField,
                 new Label("Port:"), portField,
                 new Label("Slot:"), slotField,
-                new Label("Password:"), passwordField,
-                connectButtonsBox,
-                offlineCheck,
-                statusLabel
+                new Label("Password:"), passwordField
         );
         settingsBox.setVisible(false);
         settingsBox.setManaged(false);
 
-        // Add the toggleable settings box
+        // Add always-visible elements alongside the toggleable settings box
         getChildren().addAll(
+                statusLabel,
+                offlineCheck,
+                connectButtonsBox,
                 settingsToggleButton,
                 settingsBox
         );
