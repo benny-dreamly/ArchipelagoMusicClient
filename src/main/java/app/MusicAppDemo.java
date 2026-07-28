@@ -131,6 +131,7 @@ public class MusicAppDemo extends Application {
     private RepeatMode repeatMode = RepeatMode.OFF;
     @SuppressWarnings("JdkObsolete")
     private List<Song> queueSnapshot = null;
+    private long artworkRequestId = 0;
 
     // various fields and stuff for the UI (the others are above or locally defined)
     private ConnectionPanel connectionPanel;
@@ -566,6 +567,7 @@ public class MusicAppDemo extends Application {
         playerPanel.resetProgress();
 
         // Extract album art in background
+        long requestId = ++artworkRequestId;
         String filePath = song.getFilePath();
         String trackInfo = song.getTitle();
         new Thread(() -> {
@@ -577,14 +579,22 @@ public class MusicAppDemo extends Application {
                     if (artwork != null) {
                         byte[] data = artwork.getBinaryData();
                         Image image = new Image(new ByteArrayInputStream(data));
-                        Platform.runLater(() -> albumArtPanel.setArtwork(image, trackInfo));
+                        Platform.runLater(() -> {
+                            if (requestId == artworkRequestId) {
+                                albumArtPanel.setArtwork(image, trackInfo);
+                            }
+                        });
                         return;
                     }
                 }
             } catch (Exception e) {
                 LOGGER.debug("Could not extract album art for {}: {}", trackInfo, e.getMessage());
             }
-            Platform.runLater(() -> albumArtPanel.clearArtwork());
+            Platform.runLater(() -> {
+                if (requestId == artworkRequestId) {
+                    albumArtPanel.clearArtwork();
+                }
+            });
         }).start();
 
         Media media = new Media(Paths.get(song.getFilePath()).toUri().toString());
@@ -647,6 +657,8 @@ public class MusicAppDemo extends Application {
         } else {
             playerPanel.setCurrentSongLabel("Currently Playing: None");
             currentPlayer = null;
+            artworkRequestId++;
+            Platform.runLater(() -> albumArtPanel.clearArtwork());
             playerPanel.resetProgress();
         }
     }
@@ -930,6 +942,8 @@ public class MusicAppDemo extends Application {
             currentPlayer.stop();
             currentPlayer = null;
         }
+        artworkRequestId++;
+        Platform.runLater(() -> albumArtPanel.clearArtwork());
         playerPanel.resetProgress();
     }
 
