@@ -74,6 +74,8 @@ import java.util.Queue;
 import java.util.Comparator;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -132,6 +134,7 @@ public class MusicAppDemo extends Application {
     @SuppressWarnings("JdkObsolete")
     private List<Song> queueSnapshot = null;
     private long artworkRequestId = 0;
+    private final ExecutorService artworkExecutor = Executors.newSingleThreadExecutor();
 
     // various fields and stuff for the UI (the others are above or locally defined)
     private ConnectionPanel connectionPanel;
@@ -235,6 +238,7 @@ public class MusicAppDemo extends Application {
     @Override
     public void stop() throws Exception {
         super.stop();
+        artworkExecutor.shutdownNow();
         if (client != null && client.isConnected()) {
             client.disconnect();
         }
@@ -572,7 +576,7 @@ public class MusicAppDemo extends Application {
         albumArtPanel.clearArtwork();
         String filePath = song.getFilePath();
         String trackInfo = song.getTitle();
-        new Thread(() -> {
+        artworkExecutor.execute(() -> {
             try {
                 AudioFile audioFile = AudioFileIO.read(new File(filePath));
                 Tag tag = audioFile.getTag();
@@ -597,7 +601,7 @@ public class MusicAppDemo extends Application {
                     albumArtPanel.clearArtwork();
                 }
             });
-        }).start();
+        });
 
         Media media = new Media(Paths.get(song.getFilePath()).toUri().toString());
         currentPlayer = new MediaPlayer(media);
