@@ -663,8 +663,12 @@ public class MusicAppDemo extends Application {
         } else {
             playerPanel.setCurrentSongLabel("Currently Playing: None");
             currentPlayer = null;
-            artworkRequestId++;
-            Platform.runLater(() -> albumArtPanel.clearArtwork());
+            long id = ++artworkRequestId;
+            Platform.runLater(() -> {
+                if (id == artworkRequestId) {
+                    albumArtPanel.clearArtwork();
+                }
+            });
             playerPanel.resetProgress();
         }
     }
@@ -948,8 +952,12 @@ public class MusicAppDemo extends Application {
             currentPlayer.stop();
             currentPlayer = null;
         }
-        artworkRequestId++;
-        Platform.runLater(() -> albumArtPanel.clearArtwork());
+        long id = ++artworkRequestId;
+        Platform.runLater(() -> {
+            if (id == artworkRequestId) {
+                albumArtPanel.clearArtwork();
+            }
+        });
         playerPanel.resetProgress();
     }
 
