@@ -95,16 +95,16 @@ public class ConnectionPanel extends VBox {
                 new Label("Host:"), hostField,
                 new Label("Port:"), portField,
                 new Label("Slot:"), slotField,
-                new Label("Password:"), passwordField
+                new Label("Password:"), passwordField,
+                connectButtonsBox,
+                offlineCheck,
+                statusLabel
         );
         settingsBox.setVisible(false);
         settingsBox.setManaged(false);
 
         // Add always-visible elements alongside the toggleable settings box
         getChildren().addAll(
-                statusLabel,
-                offlineCheck,
-                connectButtonsBox,
                 settingsToggleButton,
                 settingsBox
         );
