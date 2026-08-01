@@ -75,7 +75,9 @@ import java.util.Comparator;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -134,7 +136,10 @@ public class MusicAppDemo extends Application {
     @SuppressWarnings("JdkObsolete")
     private List<Song> queueSnapshot = null;
     private long artworkRequestId = 0;
-    private final ExecutorService artworkExecutor = Executors.newSingleThreadExecutor();
+    private final ExecutorService artworkExecutor = new ThreadPoolExecutor(
+            1, 1, 0L, TimeUnit.MILLISECONDS,
+            new ArrayBlockingQueue<>(1),
+            new ThreadPoolExecutor.DiscardOldestPolicy());
 
     // various fields and stuff for the UI (the others are above or locally defined)
     private ConnectionPanel connectionPanel;
