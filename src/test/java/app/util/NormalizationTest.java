@@ -1,4 +1,4 @@
-package app.util; // Match your actual package location
+package app.util;
 
 import org.junit.jupiter.api.Test;
 
@@ -11,7 +11,6 @@ class NormalizationTest {
         // Test filename cleaning like "07 Question..._.m4a"
         String rawFilename = "07 Question..._.m4a";
 
-        // Tweak the method call below to match Normalization's exact method name/signature
         String result = Normalization.normalizeFilename(rawFilename);
 
         assertEquals("Question...", result);
