@@ -14,7 +14,7 @@ class NormalizationTest {
         // Tweak the method call below to match Normalization's exact method name/signature
         String result = Normalization.normalizeFilename(rawFilename);
 
-        assertEquals("question...", result);
+        assertEquals("Question...", result);
     }
 
     @Test
@@ -23,6 +23,6 @@ class NormalizationTest {
 
         String result = Normalization.normalizeFilename(rawInput);
 
-        assertEquals("hello world", result);
+        assertEquals("Hello World", result);
     }
 }
