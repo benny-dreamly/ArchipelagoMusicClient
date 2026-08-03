@@ -38,4 +38,25 @@ public class AlbumLibraryTest {
         Album result = library.getAlbumByName("album one");
         assertNull(result);
     }
+
+    @Test
+    void getAlbumForSong_returnsAlbumWhenSongPresent() {
+        AlbumLibrary library = libraryWithTwoAlbums();
+        Album result = library.getAlbumForSong("Song A");
+        assertEquals("Album One", result.getName());
+    }
+
+    @Test
+    void getAlbumForSong_unknownSong_returnsNull() {
+        AlbumLibrary library = libraryWithTwoAlbums();
+        Album result = library.getAlbumForSong("Unknown Track");
+        assertNull(result);
+    }
+
+    @Test
+    void getAlbumForSong_duplicateTitle_returnsFirstAlbum() {
+        AlbumLibrary library = libraryWithTwoAlbums();
+        Album result = library.getAlbumForSong("Shared Song");
+        assertEquals("Album One", result.getName());
+    }
 }
