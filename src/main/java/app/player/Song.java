@@ -1,8 +1,11 @@
 package app.player;
 
-import static app.MusicAppDemo.LOGGER;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Song {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Song.class);
 
     private final String title;
     private final String type;
