@@ -18,7 +18,7 @@ class NormalizationTest {
     }
 
     @Test
-    void normalize_handlesBasicTrimmingAndLowercase() {
+    void normalize_trimsAndCollapsesWhitespace() {
         String rawInput = "  Hello World  ";
 
         String result = Normalization.normalizeFilename(rawInput);
