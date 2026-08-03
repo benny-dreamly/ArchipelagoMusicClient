@@ -33,7 +33,10 @@ public class ConnectionPanel extends VBox {
     private final Button showTextClientBtn;
     private final CheckBox offlineCheck;
     private final HBox connectButtonsBox;
+    private final VBox settingsBox;
+    private final Button settingsToggleButton;
     private TextClientWindow textClientWindow;
+    private boolean settingsExpanded = false;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionPanel.class);
 
@@ -81,18 +84,39 @@ public class ConnectionPanel extends VBox {
         connectButtonsBox.setAlignment(Pos.CENTER_LEFT);
         connectButtonsBox.getChildren().addAll(connectButton, showTextClientBtn);
 
-        getChildren().addAll(
+        // Settings toggle button
+        settingsToggleButton = new Button("\u2699 Settings");
+        settingsToggleButton.setOnAction(_ -> toggleSettings());
+
+        // Settings box containing only editable connection fields
+        settingsBox = new VBox(5);
+        settingsBox.getChildren().addAll(
                 new Label("Game:"), gameField,
                 new Label("Host:"), hostField,
                 new Label("Port:"), portField,
                 new Label("Slot:"), slotField,
-                new Label("Password:"), passwordField,
-                connectButtonsBox,
+                new Label("Password:"), passwordField
+        );
+        settingsBox.setVisible(false);
+        settingsBox.setManaged(false);
+
+        // Add always-visible elements alongside the toggleable settings box
+        getChildren().addAll(
+                statusLabel,
                 offlineCheck,
-                statusLabel
+                connectButtonsBox,
+                settingsToggleButton,
+                settingsBox
         );
         setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(this, Priority.ALWAYS);
+    }
+
+    private void toggleSettings() {
+        settingsExpanded = !settingsExpanded;
+        settingsBox.setVisible(settingsExpanded);
+        settingsBox.setManaged(settingsExpanded);
+        settingsToggleButton.setText(settingsExpanded ? "\u2699 Hide Settings" : "\u2699 Settings");
     }
 
     public Button getConnectButton() {

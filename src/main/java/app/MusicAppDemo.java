@@ -12,6 +12,7 @@ import app.player.json.AlbumMetadata;
 import app.player.json.AlbumMetadataLoader;
 import app.player.json.LibraryLoader;
 import app.player.json.SongJSON;
+import app.player.ui.AlbumArtPanel;
 import app.player.ui.ConnectionPanel;
 import app.player.ui.PlayerPanel;
 import app.util.AlbumLibrary;
@@ -22,6 +23,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -33,6 +35,7 @@ import javafx.scene.control.Slider;
 import javafx.scene.control.TreeView;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
+import javafx.scene.image.Image;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
@@ -55,6 +58,7 @@ import java.io.Reader;
 import java.io.Writer;
 import java.io.InputStream;
 import java.io.FileOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
@@ -70,9 +74,17 @@ import java.util.Queue;
 import java.util.Comparator;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.jaudiotagger.audio.AudioFileIO;
+import org.jaudiotagger.audio.AudioFile;
+import org.jaudiotagger.tag.Tag;
+import org.jaudiotagger.tag.images.Artwork;
 
 import static app.util.AlbumUtils.generateDefaultAlbumFolders;
 import static app.util.ConfigManager.saveConnectionSettings;
@@ -123,10 +135,17 @@ public class MusicAppDemo extends Application {
     private RepeatMode repeatMode = RepeatMode.OFF;
     @SuppressWarnings("JdkObsolete")
     private List<Song> queueSnapshot = null;
+    private long artworkRequestId = 0;
+    private final ExecutorService artworkExecutor = new ThreadPoolExecutor(
+            1, 1, 0L, TimeUnit.MILLISECONDS,
+            new ArrayBlockingQueue<>(1),
+            new ThreadPoolExecutor.DiscardOldestPolicy());
 
     // various fields and stuff for the UI (the others are above or locally defined)
     private ConnectionPanel connectionPanel;
     private PlayerPanel playerPanel;
+    private AlbumArtPanel albumArtPanel;
+    private HBox albumPanel;
     private final ContextMenu contextMenu = new ContextMenu();
     @SuppressWarnings("FieldCanBeLocal")
     private HBox bottomBar;
@@ -177,7 +196,13 @@ public class MusicAppDemo extends Application {
         // Add panels to bottom bar
         bottomBar.getChildren().addAll(connectionPanel, playerPanel);
 
-        root = new VBox(10, treeView, bottomBar);
+        albumArtPanel = new AlbumArtPanel();
+        albumPanel = new HBox(10);
+        albumPanel.getChildren().addAll(treeView, albumArtPanel);
+        HBox.setHgrow(treeView, javafx.scene.layout.Priority.ALWAYS);
+        VBox.setVgrow(albumPanel, javafx.scene.layout.Priority.ALWAYS);
+
+        root = new VBox(10, albumPanel, bottomBar);
         Scene scene = new Scene(root, 800, 600);
         stage.setScene(scene);
         stage.setTitle("Archipelago Music Client");
@@ -218,6 +243,7 @@ public class MusicAppDemo extends Application {
     @Override
     public void stop() throws Exception {
         super.stop();
+        artworkExecutor.shutdownNow();
         if (client != null && client.isConnected()) {
             client.disconnect();
         }
@@ -550,6 +576,38 @@ public class MusicAppDemo extends Application {
         // Reset progress slider and labels
         playerPanel.resetProgress();
 
+        // Extract album art in background
+        long requestId = ++artworkRequestId;
+        albumArtPanel.clearArtwork();
+        String filePath = song.getFilePath();
+        String trackInfo = song.getTitle();
+        artworkExecutor.execute(() -> {
+            try {
+                AudioFile audioFile = AudioFileIO.read(new File(filePath));
+                Tag tag = audioFile.getTag();
+                if (tag != null) {
+                    Artwork artwork = tag.getFirstArtwork();
+                    if (artwork != null) {
+                        byte[] data = artwork.getBinaryData();
+                        Image image = new Image(new ByteArrayInputStream(data), 180, 180, true, true);
+                        Platform.runLater(() -> {
+                            if (requestId == artworkRequestId) {
+                                albumArtPanel.setArtwork(image, trackInfo);
+                            }
+                        });
+                        return;
+                    }
+                }
+            } catch (Exception e) {
+                LOGGER.debug("Could not extract album art for {}: {}", trackInfo, e.getMessage());
+            }
+            Platform.runLater(() -> {
+                if (requestId == artworkRequestId) {
+                    albumArtPanel.clearArtwork();
+                }
+            });
+        });
+
         Media media = new Media(Paths.get(song.getFilePath()).toUri().toString());
         currentPlayer = new MediaPlayer(media);
         currentPlayer.setVolume(playerPanel.getVolumeSlider().getValue() / 100.0);
@@ -610,6 +668,12 @@ public class MusicAppDemo extends Application {
         } else {
             playerPanel.setCurrentSongLabel("Currently Playing: None");
             currentPlayer = null;
+            long id = ++artworkRequestId;
+            Platform.runLater(() -> {
+                if (id == artworkRequestId) {
+                    albumArtPanel.clearArtwork();
+                }
+            });
             playerPanel.resetProgress();
         }
     }
@@ -893,6 +957,12 @@ public class MusicAppDemo extends Application {
             currentPlayer.stop();
             currentPlayer = null;
         }
+        long id = ++artworkRequestId;
+        Platform.runLater(() -> {
+            if (id == artworkRequestId) {
+                albumArtPanel.clearArtwork();
+            }
+        });
         playerPanel.resetProgress();
     }
 
