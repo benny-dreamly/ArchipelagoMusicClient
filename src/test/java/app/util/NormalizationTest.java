@@ -24,4 +24,40 @@ class NormalizationTest {
 
         assertEquals("Hello World", result);
     }
+
+    @Test
+    void normalizeFilename_expandsTaylorVersionAbbreviation() {
+        String rawInput = "01 Style (Taylor's Ver).mp3";
+
+        String result = Normalization.normalizeFilename(rawInput);
+
+        assertEquals("Style (Taylor's Version)", result);
+    }
+
+    @Test
+    void normalizeFilename_standardizesFeatAbbreviation() {
+        String rawInput = "Karma ft. Ice Spice.flac";
+
+        String result = Normalization.normalizeFilename(rawInput);
+
+        assertEquals("Karma feat. Ice Spice", result);
+    }
+
+    @Test
+    void normalizeFilename_stripsCdAndTrackPrefix() {
+        String rawInput = "CD1 02 Clean.m4a";
+
+        String result = Normalization.normalizeFilename(rawInput);
+
+        assertEquals("Clean", result);
+    }
+
+    @Test
+    void normalizeFilename_preservesFilenameWithoutExtension() {
+        String rawInput = "Mastermind";
+
+        String result = Normalization.normalizeFilename(rawInput);
+
+        assertEquals("Mastermind", result);
+    }
 }
