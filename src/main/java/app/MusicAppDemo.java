@@ -5,6 +5,7 @@ import app.archipelago.ConnectionListener;
 import app.archipelago.ItemListener;
 import app.archipelago.PrintJsonListener;
 import app.archipelago.SlotDataHelper;
+import app.logic.SongFileMatcher;
 import app.player.Album;
 import app.player.Song;
 import app.player.AlbumConverter;
@@ -72,7 +73,6 @@ import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.Queue;
 import java.util.Comparator;
-import java.util.Locale;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -91,9 +91,6 @@ import static app.util.ConfigManager.saveConnectionSettings;
 import static app.util.ConfigPaths.getConfigDir;
 import static app.util.ConfigPaths.getAlbumConfigFile;
 import static app.util.ConfigPaths.checkIfGameFolderExists;
-import static app.util.Normalization.normalizeFilename;
-import static app.util.Normalization.normalizeSongTitle;
-import static app.util.Normalization.levenshteinDistance;
 import static app.util.Dialogs.showError;
 import static app.util.SlotDataUtils.parseBooleanSlot;
 import static app.util.SlotDataUtils.parseSlotData;
@@ -752,51 +749,7 @@ public class MusicAppDemo extends Application {
     }
 
     private void assignFilesToSongs() {
-        for (Album album : albums) {
-            String folderPath = album.getFolderPath();
-            if (folderPath == null) continue;
-
-            File albumDirectory = new File(folderPath);
-            if (!albumDirectory.exists() || !albumDirectory.isDirectory()) continue;
-
-            File[] files = albumDirectory.listFiles((_, name) ->
-                    name.toLowerCase(Locale.ROOT).endsWith(".mp3") ||
-                            name.toLowerCase(Locale.ROOT).endsWith(".m4a") ||
-                            name.toLowerCase(Locale.ROOT).endsWith(".wav")
-            );
-
-            if (files == null) continue;
-
-            for (File file : files) {
-                String normalizedFile = normalizeFilename(file.getName());
-                Song matchedSong = null;
-                int bestDistance = Integer.MAX_VALUE;
-
-                for (Song song : album.getSongs()) {
-                    String normalizedSong = normalizeSongTitle(song.getTitle());
-
-                    // exact or substring match first
-                    if (normalizedFile.equalsIgnoreCase(normalizedSong)) {
-                        matchedSong = song;
-                        break;
-                    }
-
-                    // fallback fuzzy match if close enough
-                    int dist = levenshteinDistance(normalizedFile.toLowerCase(Locale.ROOT), normalizedSong.toLowerCase(Locale.ROOT));
-                    if (dist < 5 && dist < bestDistance) { // tweak threshold if needed
-                        matchedSong = song;
-                        bestDistance = dist;
-                    }
-                }
-
-                if (matchedSong != null) {
-                    matchedSong.setFilePath(file.getAbsolutePath());
-                    LOGGER.info("Matched: {} -> {} | path: {}", file.getName(), matchedSong.getTitle(), matchedSong.getFilePath());
-                } else {
-                    LOGGER.warn("Could not match file to song: {} in album {}", file.getName(), album.getName());
-                }
-            }
-        }
+        SongFileMatcher.assignFilesToSongs(albums);
     }
 
     private void ensureGameDefaults(File gameFolder) {
