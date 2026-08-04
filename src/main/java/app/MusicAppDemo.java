@@ -1247,6 +1247,9 @@ public class MusicAppDemo extends Application {
     private void handleTreeSelection(TreeItem<String> newSel) {
         if (newSel == null) return;
 
+        // Only song (leaf) nodes are queueable; ignore album and root nodes
+        if (!newSel.isLeaf()) return;
+
         String songTitle = newSel.getValue();
         Song song = library.getSongByTitle(songTitle);
 
