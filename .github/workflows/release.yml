@@ -59,10 +59,7 @@ jobs:
             To run, edit this template command:
 
             ```
-            java \
-              --module-path /path/to/javafx-sdk/lib \
-              --add-modules javafx.controls,javafx.media \
-              -jar ArchipelagoMusicClient-${{ steps.jarinfo.outputs.version }}-all.jar
+            java -jar ArchipelagoMusicClient-${{ steps.jarinfo.outputs.version }}-all.jar
             ```
           draft: true
           files: ./artifacts/*.jar
