@@ -23,7 +23,7 @@ application {
         "-Dorg.slf4j.simpleLogger.logFile=System.out",
     )
     // fully qualified name of your main Application class
-    mainClass.set("app.MusicAppDemo")
+    mainClass.set("app.Main")
 }
 
 javafx {
