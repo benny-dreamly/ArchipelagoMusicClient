@@ -83,4 +83,13 @@ public class AlbumLibraryTest {
 
         assertEquals("/path/to/song.mp3", library.getSongByTitle("Song A").getFilePath());
     }
+
+    @Test
+    void emptyLibrary_returnsNullForLookups() {
+        AlbumLibrary emptyLibrary = new AlbumLibrary(List.of());
+
+        assertNull(emptyLibrary.getAlbumByName("Album One"));
+        assertNull(emptyLibrary.getAlbumForSong("Song A"));
+        assertNull(emptyLibrary.getSongByTitle("Song A"));
+    }
 }
