@@ -16,10 +16,22 @@ class AlbumTest {
         album.addSong(new Song("Song B", "standard"));
 
         List<Song> result = album.getQueueableSongs(
-                Set.of("standard"), Set.of(), Set.of()
+                Set.of("standard"), Set.of(), Set.of("Test Album")
         );
 
         assertEquals(2, result.size());
+    }
+
+    @Test
+    void getQueueableSongs_returnsNothing_whenFullAlbumUnlockButAlbumLocked() {
+        Album album = new Album("Test Album", "standard", true);
+        album.addSong(new Song("Song A", "standard"));
+
+        List<Song> result = album.getQueueableSongs(
+                Set.of("standard"), Set.of("Song A"), Set.of()
+        );
+
+        assertTrue(result.isEmpty());
     }
 
     @Test
@@ -79,7 +91,7 @@ class AlbumTest {
         album.addSong(new Song("Song C", "short"));
 
         List<Song> result = album.getQueueableSongs(
-                Set.of("standard", "short"), Set.of(), Set.of()
+                Set.of("standard", "short"), Set.of(), Set.of("Test Album")
         );
 
         assertEquals(2, result.size());

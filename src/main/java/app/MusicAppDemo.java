@@ -6,6 +6,7 @@ import app.archipelago.ItemListener;
 import app.archipelago.PrintJsonListener;
 import app.archipelago.SlotDataHelper;
 import app.logic.SongFileMatcher;
+import app.logic.UnlockManager;
 import app.player.Album;
 import app.player.Song;
 import app.player.AlbumConverter;
@@ -68,7 +69,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.LinkedList;
 import java.util.Map;
-import java.util.HashSet;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.Queue;
@@ -92,7 +92,6 @@ import static app.util.ConfigPaths.getConfigDir;
 import static app.util.ConfigPaths.getAlbumConfigFile;
 import static app.util.ConfigPaths.checkIfGameFolderExists;
 import static app.util.Dialogs.showError;
-import static app.util.SlotDataUtils.parseBooleanSlot;
 import static app.util.SlotDataUtils.parseSlotData;
 import static app.util.TimeUtils.formatTime;
 
@@ -103,10 +102,7 @@ public class MusicAppDemo extends Application {
     private enum RepeatMode { OFF, QUEUE, SONG, ALBUM }
 
     private final List<Album> albums = new ArrayList<>();
-    private final Set<String> unlockedAlbums = new HashSet<>();
-    private final Set<String> unlockedSongs = new HashSet<>();
-    private final Set<String> enabledSets = new HashSet<>();
-    private final Set<String> enabledAlbums = new HashSet<>();
+    private final UnlockManager unlockManager = new UnlockManager(this::refreshTree);
     private boolean offlineMode = false;
     private boolean volumeAdjustMode = false;
     private final StringBuilder volumeInput = new StringBuilder();
@@ -294,7 +290,7 @@ public class MusicAppDemo extends Application {
                         if (treeItem != null && treeItem.isLeaf()) {
                             // Song nodes
                             Song song = library.getSongByTitle(item);
-                            if (song != null && unlockedSongs.contains(song.getTitle())) {
+                            if (song != null && unlockManager.isSongUnlocked(song.getTitle())) {
                                 setStyle("-fx-font-weight: bold; -fx-text-fill: green;");
                             } else {
                                 setStyle("-fx-font-weight: normal; -fx-text-fill: black;");
@@ -307,7 +303,7 @@ public class MusicAppDemo extends Application {
                             } else {
                                 // Regular album node
                                 Album album = library.getAlbumByName(item);
-                                if (album != null && unlockedAlbums.contains(album.getName())) {
+                                if (album != null && unlockManager.isAlbumUnlocked(album.getName())) {
                                     // unlocked → bold black
                                     setStyle("-fx-font-weight: bold; -fx-text-fill: black;");
                                 } else {
@@ -337,8 +333,8 @@ public class MusicAppDemo extends Application {
             // add fallback album to unlocked albums
             for (Album album : albums) {
                 if ("Songs".equals(album.getName())) {
-                    unlockedAlbums.add("Songs");
-                    enabledSets.add(album.getType()); // optional: allow its songs to appear
+                    unlockManager.getUnlockedAlbums().add("Songs");
+                    unlockManager.getEnabledSets().add(album.getType()); // optional: allow its songs to appear
                     break;
                 }
             }
@@ -374,9 +370,9 @@ public class MusicAppDemo extends Application {
     private void reloadGameLibrary(File gameFolder) {
         // clear old state before reloading
         albums.clear();
-        unlockedAlbums.clear();
-        unlockedSongs.clear();
-        enabledSets.clear();
+        unlockManager.getUnlockedAlbums().clear();
+        unlockManager.getUnlockedSongs().clear();
+        unlockManager.getEnabledSets().clear();
         albumOrderManager.clearAlbumOrderCache();
 
         playerPanel.getLoadQueueBtn().setDisable(true);
@@ -400,13 +396,13 @@ public class MusicAppDemo extends Application {
 
         for (Album album : albums) {
             // Skip albums not unlocked in slot data
-            if (!enabledAlbums.contains(album.getName())) continue;
+            if (!unlockManager.getEnabledAlbums().contains(album.getName())) continue;
 
             TreeItem<String> albumItem = new TreeItem<>(album.getName());
             boolean hasSongs = false;
 
             for (Song song : album.getSongs()) {
-                if (enabledSets.contains(song.getType())) {
+                if (unlockManager.getEnabledSets().contains(song.getType())) {
                     TreeItem<String> songItem = new TreeItem<>(song.getTitle());
                     albumItem.getChildren().add(songItem);
                     hasSongs = true;
@@ -450,7 +446,7 @@ public class MusicAppDemo extends Application {
         Album album = library.getAlbumByName(albumName);
         if (album == null) return;
 
-        List<Song> queueable = album.getQueueableSongs(enabledSets, unlockedSongs, unlockedAlbums);
+        List<Song> queueable = album.getQueueableSongs(unlockManager.getEnabledSets(), unlockManager.getUnlockedSongs(), unlockManager.getUnlockedAlbums());
         if (queueable.isEmpty()) {
             LOGGER.info("No queueable songs in album '{}'", albumName);
             return;
@@ -475,10 +471,7 @@ public class MusicAppDemo extends Application {
         if (song == null) return;
 
         Album album = library.getAlbumForSong(songTitle);
-        boolean songUnlocked = unlockedSongs.contains(songTitle);
-        boolean albumUnlocked = album != null && unlockedAlbums.contains(album.getName());
-        boolean canPlay = album == null || album.isFullAlbumUnlock() || (songUnlocked && albumUnlocked);
-        if (!canPlay) return;
+        if (!unlockManager.canPlay(song, album)) return;
 
         // insert at front
         LinkedList<Song> temp = new LinkedList<>(playQueue);
@@ -498,45 +491,23 @@ public class MusicAppDemo extends Application {
     }
 
     public void unlockSong(String songTitle) {
-        if (!unlockedSongs.contains(songTitle)) {
-            unlockedSongs.add(songTitle);
-            refreshTree();
-        }
+        unlockManager.unlockSong(songTitle);
     }
 
     public void unlockAlbum(String albumName) {
-        for (Album album : albums) {
-            if (album.getName().equals(albumName)) {
-                // Enable this album’s type so songs will show
-                enabledSets.add(album.getType());
-
-                for (Song song : album.getSongs()) {
-                    unlockSong(song.getTitle());
-                }
-                break;
-            }
-        }
+        unlockManager.unlockAlbum(albumName, albums);
     }
 
     public Set<String> getEnabledSets() {
-        return enabledSets;
+        return unlockManager.getEnabledSets();
     }
 
     private void playSong(Song song) {
         if (song == null) return;
 
-        boolean canPlay;
         Album album = library.getAlbumForSong(song.getTitle());
-        boolean albumUnlocked = album != null && unlockedAlbums.contains(album.getName());
-        boolean songUnlocked = unlockedSongs.contains(song.getTitle());
-
-        if (album != null) {
-            // For songs in an album: must either be full-album unlocked OR both the song and album unlocked
-            canPlay = album.isFullAlbumUnlock() || (songUnlocked && albumUnlocked);
-        } else {
-            // Song not in an album: just check if the song is unlocked
-            canPlay = songUnlocked;
-        }
+        boolean albumUnlocked = album != null && unlockManager.isAlbumUnlocked(album.getName());
+        boolean canPlay = unlockManager.canPlay(song, album);
 
         if (!canPlay) {
             String msg;
@@ -783,11 +754,11 @@ public class MusicAppDemo extends Application {
     }
 
     public Set<String> getUnlockedSongs() {
-        return unlockedSongs;
+        return unlockManager.getUnlockedSongs();
     }
 
     public Set<String> getUnlockedAlbums() {
-        return unlockedAlbums;
+        return unlockManager.getUnlockedAlbums();
     }
 
     public void applySlotData() {
@@ -796,60 +767,7 @@ public class MusicAppDemo extends Application {
         JsonElement json = client.getSlotData();
         Map<String, Object> slotMap = parseSlotData(json);
 
-        applyAlbumUnlocks(slotMap);
-        filterSongCategories(slotMap);
-
-        refreshTree(); // update the UI
-    }
-
-    private void applyAlbumUnlocks(Map<String, Object> slotMap) {
-        // Get enabled albums dynamically from SlotDataHelper
-        Set<String> enabledAlbumsFromSlotData = SlotDataHelper.getEnabledAlbums(slotMap);
-
-        // Clear previously enabled sets and albums
-        enabledSets.clear();
-        enabledAlbums.clear();
-
-        // Enable only the albums in slot data
-        for (Album album : albums) {
-            if (enabledAlbumsFromSlotData.contains(album.getName())) {
-                enabledAlbums.add(album.getName());   // mark album as enabled
-                enabledSets.add(album.getType());      // enable album type for tree filtering
-            }
-        }
-
-        // 2. Unlock albums by type if the corresponding slot is enabled
-        if (enabledAlbumsFromSlotData.contains("Re-recordings")) {
-            for (Album album : albums) {
-                if ("re-recording".equalsIgnoreCase(album.getType())) {
-                    enabledAlbums.add(album.getName());
-                    enabledSets.add(album.getType());
-                }
-            }
-        }
-    }
-
-    private void filterSongCategories(Map<String, Object> slotMap) {
-        boolean shortSongsEnabled = parseBooleanSlot(slotMap, "include_short_songs");
-        boolean vaultSongsEnabled = parseBooleanSlot(slotMap, "include_vault_songs");
-
-        // Now remove any songs that should not be visible
-        for (Album album : albums) {
-            for (Song s : new ArrayList<>(album.getSongs())) { // avoid ConcurrentModification
-                String type = s.getType();
-
-                // Skip short songs if disabled
-                if (!shortSongsEnabled && "short".equalsIgnoreCase(type)) {
-                    unlockedSongs.remove(s.getTitle());
-                    continue;
-                }
-
-                // Skip vault tracks if disabled
-                if (!vaultSongsEnabled && "vault".equalsIgnoreCase(type)) {
-                    unlockedSongs.remove(s.getTitle());
-                }
-            }
-        }
+        unlockManager.applySlotData(slotMap, albums);
     }
 
     private void enableOfflineMode() {
@@ -882,27 +800,12 @@ public class MusicAppDemo extends Application {
         }
 
         stateManager.clearUnlocks();
-        enabledAlbums.clear();
+        unlockManager.getEnabledAlbums().clear();
         refreshTree();
     }
 
     private void applyOfflineUnlocks() {
-        enabledSets.clear();
-        enabledAlbums.clear();
-        unlockedAlbums.clear();
-        unlockedSongs.clear();
-
-        for (Album album : albums) {
-            enabledAlbums.add(album.getName());
-            enabledSets.add(album.getType());
-            unlockedAlbums.add(album.getName());
-
-            for (Song song : album.getSongs()) {
-                unlockedSongs.add(song.getTitle());
-            }
-        }
-
-        refreshTree();
+        unlockManager.applyOfflineUnlocks(albums);
     }
 
     public void stopCurrentSong() {
@@ -1138,10 +1041,7 @@ public class MusicAppDemo extends Application {
                     for (Album album : albums) {
                         for (Song song : album.getSongs()) {
                             if (song.getTitle().equals(title) && song.getType().equals(type)) {
-                                boolean typeEnabled = enabledSets.contains(type);
-                                boolean songUnlocked = unlockedSongs.contains(title);
-                                boolean albumUnlocked = unlockedAlbums.contains(album.getName());
-                                if (typeEnabled && (album.isFullAlbumUnlock() || (songUnlocked && albumUnlocked))) {
+                                if (unlockManager.canQueue(song, album)) {
                                     resolved.add(song);
                                 }
                             }
@@ -1347,6 +1247,9 @@ public class MusicAppDemo extends Application {
     private void handleTreeSelection(TreeItem<String> newSel) {
         if (newSel == null) return;
 
+        // Only song (leaf) nodes are queueable; ignore album and root nodes
+        if (!newSel.isLeaf()) return;
+
         String songTitle = newSel.getValue();
         Song song = library.getSongByTitle(songTitle);
 
@@ -1356,8 +1259,8 @@ public class MusicAppDemo extends Application {
         if (song == currentSong) return;
 
         Album album = library.getAlbumForSong(songTitle);
-        boolean songUnlocked = unlockedSongs.contains(song.getTitle());
-        boolean albumUnlocked = album != null && unlockedAlbums.contains(album.getName());
+        boolean songUnlocked = unlockManager.isSongUnlocked(song.getTitle());
+        boolean albumUnlocked = album != null && unlockManager.isAlbumUnlocked(album.getName());
 
         // Check unlocking rules
         if (!songUnlocked || !albumUnlocked) {

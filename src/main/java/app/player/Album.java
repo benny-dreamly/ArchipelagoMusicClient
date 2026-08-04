@@ -77,7 +77,7 @@ public class Album {
             if (!enabledSets.contains(song.getType())) continue;
 
             boolean songUnlocked = unlockedSongs.contains(song.getTitle());
-            boolean canPlay = fullAlbumUnlock || (songUnlocked && albumUnlocked);
+            boolean canPlay = albumUnlocked && (fullAlbumUnlock || songUnlocked);
 
             if (!canPlay) continue;
 
