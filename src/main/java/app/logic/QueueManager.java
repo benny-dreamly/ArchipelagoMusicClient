@@ -14,7 +14,30 @@ import java.util.Queue;
 
 public class QueueManager {
 
-    public enum RepeatMode { OFF, QUEUE, SONG, ALBUM }
+    public enum RepeatMode {
+        OFF,
+        QUEUE,
+        SONG,
+        ALBUM;
+
+        public RepeatMode next() {
+            return switch (this) {
+                case OFF -> QUEUE;
+                case QUEUE -> SONG;
+                case SONG -> ALBUM;
+                case ALBUM -> OFF;
+            };
+        }
+
+        public String label() {
+            return switch (this) {
+                case OFF -> "No Repeat";
+                case QUEUE -> "Repeat Queue";
+                case SONG -> "Repeat Song";
+                case ALBUM -> "Repeat Album";
+            };
+        }
+    }
 
     @SuppressWarnings("JdkObsolete")
     private final Queue<Song> playQueue = new LinkedList<>();

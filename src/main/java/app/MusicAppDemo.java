@@ -934,20 +934,9 @@ public class MusicAppDemo extends Application {
 
         // Repeat button cycles: Off → Queue → Song → Album → Off
         panel.getRepeatButton().setOnAction(_ -> {
-            QueueManager.RepeatMode nextMode = switch (queueManager.getRepeatMode()) {
-                case OFF -> QueueManager.RepeatMode.QUEUE;
-                case QUEUE -> QueueManager.RepeatMode.SONG;
-                case SONG -> QueueManager.RepeatMode.ALBUM;
-                case ALBUM -> QueueManager.RepeatMode.OFF;
-            };
+            QueueManager.RepeatMode nextMode = queueManager.getRepeatMode().next();
             queueManager.setRepeatMode(nextMode);
-            String label = switch (nextMode) {
-                case OFF -> "No Repeat";
-                case QUEUE -> "Repeat Queue";
-                case SONG -> "Repeat Song";
-                case ALBUM -> "Repeat Album";
-            };
-            panel.getRepeatButton().setText(label);
+            panel.getRepeatButton().setText(nextMode.label());
         });
 
         // Remove selected from the queue (both ListView and underlying queue)
