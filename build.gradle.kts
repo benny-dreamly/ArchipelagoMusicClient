@@ -32,6 +32,19 @@ javafx {
 }
 
 dependencies {
+    // --- Multi-Platform JavaFX Classifiers ---
+    // Explicitly pulls native binaries for Windows x64, Linux x64, and macOS Apple Silicon
+    val javafxVersion = "25"
+    val javafxModules = listOf("base", "graphics", "controls", "media")
+    val platforms = listOf("win", "linux", "mac-aarch64")
+
+    for (platform in platforms) {
+        for (module in javafxModules) {
+            implementation("org.openjfx:javafx-$module:$javafxVersion:$platform")
+        }
+    }
+
+    // --- Standard Dependencies ---
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
