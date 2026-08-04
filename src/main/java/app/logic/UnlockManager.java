@@ -54,17 +54,19 @@ public class UnlockManager {
     }
 
     public boolean canPlay(Song song, Album album) {
-        if (album != null) {
-            // For songs in an album: must either be full-album unlocked OR both the song and album unlocked
-            return album.isFullAlbumUnlock() || (isSongUnlocked(song.getTitle()) && isAlbumUnlocked(album.getName()));
+        if (album == null) {
+            // Song not in an album: just check if the song is unlocked
+            return isSongUnlocked(song.getTitle());
         }
-        // Song not in an album: just check if the song is unlocked
-        return isSongUnlocked(song.getTitle());
+        // For songs in an album: the album itself must be unlocked, then either
+        // full-album unlocked OR the song itself unlocked
+        return isAlbumUnlocked(album.getName()) && (album.isFullAlbumUnlock() || isSongUnlocked(song.getTitle()));
     }
 
     public boolean canQueue(Song song, Album album) {
         return enabledSets.contains(song.getType())
-                && (album.isFullAlbumUnlock() || (isSongUnlocked(song.getTitle()) && isAlbumUnlocked(album.getName())));
+                && isAlbumUnlocked(album.getName())
+                && (album.isFullAlbumUnlock() || isSongUnlocked(song.getTitle()));
     }
 
     public void unlockSong(String songTitle) {

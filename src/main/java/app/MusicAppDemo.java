@@ -471,10 +471,7 @@ public class MusicAppDemo extends Application {
         if (song == null) return;
 
         Album album = library.getAlbumForSong(songTitle);
-        boolean songUnlocked = unlockManager.isSongUnlocked(songTitle);
-        boolean albumUnlocked = album != null && unlockManager.isAlbumUnlocked(album.getName());
-        boolean canPlay = album == null || album.isFullAlbumUnlock() || (songUnlocked && albumUnlocked);
-        if (!canPlay) return;
+        if (!unlockManager.canPlay(song, album)) return;
 
         // insert at front
         LinkedList<Song> temp = new LinkedList<>(playQueue);
@@ -508,18 +505,9 @@ public class MusicAppDemo extends Application {
     private void playSong(Song song) {
         if (song == null) return;
 
-        boolean canPlay;
         Album album = library.getAlbumForSong(song.getTitle());
         boolean albumUnlocked = album != null && unlockManager.isAlbumUnlocked(album.getName());
-        boolean songUnlocked = unlockManager.isSongUnlocked(song.getTitle());
-
-        if (album != null) {
-            // For songs in an album: must either be full-album unlocked OR both the song and album unlocked
-            canPlay = album.isFullAlbumUnlock() || (songUnlocked && albumUnlocked);
-        } else {
-            // Song not in an album: just check if the song is unlocked
-            canPlay = songUnlocked;
-        }
+        boolean canPlay = unlockManager.canPlay(song, album);
 
         if (!canPlay) {
             String msg;
