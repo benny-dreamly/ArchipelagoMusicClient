@@ -50,6 +50,35 @@ class SongFileMatcherTest {
     }
 
     @Test
+    void testFindBestMatchFileOmittingFeatCreditMatches() {
+        Song song = new Song("Snow On The Beach (feat. Lana Del Rey)", "normal");
+        List<Song> songs = List.of(song);
+
+        Song matched = SongFileMatcher.findBestMatch("Snow On The Beach", songs);
+        assertNotNull(matched);
+        assertEquals("Snow On The Beach (feat. Lana Del Rey)", matched.getTitle());
+    }
+
+    @Test
+    void testFindBestMatchFileWithFeatCreditStillMatches() {
+        Song song = new Song("Karma (feat. Ice Spice)", "normal");
+        List<Song> songs = List.of(song);
+
+        Song matched = SongFileMatcher.findBestMatch("Karma (feat. Ice Spice)", songs);
+        assertNotNull(matched);
+        assertEquals("Karma (feat. Ice Spice)", matched.getTitle());
+    }
+
+    @Test
+    void testFindBestMatchFeatCreditNotStrippedFromVaultSuffix() {
+        Song song = new Song("Is It Over Now? (Taylor's Version) (From The Vault)", "vault");
+        List<Song> songs = List.of(song);
+
+        Song matched = SongFileMatcher.findBestMatch("Is It Over Now? (Taylor's Version)", songs);
+        assertNull(matched);
+    }
+
+    @Test
     void testFindBestMatchTooDistantReturnsNull() {
         Song song = new Song("Shake It Off", "normal");
         List<Song> songs = List.of(song);

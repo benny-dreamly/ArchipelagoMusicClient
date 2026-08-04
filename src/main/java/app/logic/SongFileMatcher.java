@@ -12,6 +12,7 @@ import java.util.Locale;
 import static app.util.Normalization.levenshteinDistance;
 import static app.util.Normalization.normalizeFilename;
 import static app.util.Normalization.normalizeSongTitle;
+import static app.util.Normalization.stripFeatCredit;
 
 public class SongFileMatcher {
 
@@ -51,6 +52,10 @@ public class SongFileMatcher {
             String normalizedSong = normalizeSongTitle(song.getTitle());
 
             if (normalizedFileEquals(normalizedFilename, normalizedSong)) {
+                return song;
+            }
+
+            if (normalizedFileEquals(stripFeatCredit(normalizedFilename), stripFeatCredit(normalizedSong))) {
                 return song;
             }
 

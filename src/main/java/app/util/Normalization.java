@@ -27,6 +27,11 @@ public class Normalization {
         return base.trim();
     }
 
+    public static String stripFeatCredit(String s) {
+        String result = s.replaceAll("(?i)\\(\\s*(?:feat\\.?|ft\\.?)\\b[^)]*\\)", "");
+        return result.replaceAll("\\s+", " ").trim();
+    }
+
     // Levenshtein distance helper
     public static int levenshteinDistance(String a, String b) {
         int[] costs = new int[b.length() + 1];

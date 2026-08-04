@@ -60,4 +60,18 @@ class NormalizationTest {
 
         assertEquals("Mastermind", result);
     }
+
+    @Test
+    void stripFeatCredit_removesFeatParenthetical() {
+        assertEquals("Snow On The Beach", Normalization.stripFeatCredit("Snow On The Beach (feat. Lana Del Rey)"));
+        assertEquals("Karma", Normalization.stripFeatCredit("Karma (ft. Ice Spice)"));
+        assertEquals("The Last Time", Normalization.stripFeatCredit("The Last Time (Feat. Gary Lightbody)"));
+    }
+
+    @Test
+    void stripFeatCredit_leavesNonFeatParentheticals() {
+        assertEquals("Is It Over Now? (Taylor's Version) (From The Vault)",
+                Normalization.stripFeatCredit("Is It Over Now? (Taylor's Version) (From The Vault)"));
+        assertEquals("No Parenthetical", Normalization.stripFeatCredit("No Parenthetical"));
+    }
 }
