@@ -5,6 +5,7 @@ import app.archipelago.ConnectionListener;
 import app.archipelago.ItemListener;
 import app.archipelago.PrintJsonListener;
 import app.archipelago.SlotDataHelper;
+import app.logic.QueueManager;
 import app.logic.SongFileMatcher;
 import app.logic.UnlockManager;
 import app.player.Album;
@@ -71,7 +72,6 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.ArrayList;
-import java.util.Queue;
 import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.ExecutorService;
@@ -99,8 +99,6 @@ public class MusicAppDemo extends Application {
 
     public static final Logger LOGGER = LoggerFactory.getLogger(MusicAppDemo.class);
 
-    private enum RepeatMode { OFF, QUEUE, SONG, ALBUM }
-
     private final List<Album> albums = new ArrayList<>();
     private final UnlockManager unlockManager = new UnlockManager(this::refreshTree);
     private boolean offlineMode = false;
@@ -117,17 +115,14 @@ public class MusicAppDemo extends Application {
 
     private Song currentSong;
 
-    // queue UI + data
-    @SuppressWarnings("JdkObsolete")
-    private final Queue<Song> playQueue = new LinkedList<>();
+    private QueueManager queueManager;
+
+    // playback
     private MediaPlayer currentPlayer;
 
 
     private boolean isUpdatingSelection = false;
     private boolean suppressSelection = false;
-    private RepeatMode repeatMode = RepeatMode.OFF;
-    @SuppressWarnings("JdkObsolete")
-    private List<Song> queueSnapshot = null;
     private long artworkRequestId = 0;
     private final ExecutorService artworkExecutor = new ThreadPoolExecutor(
             1, 1, 0L, TimeUnit.MILLISECONDS,
@@ -273,6 +268,7 @@ public class MusicAppDemo extends Application {
 
             // initialize AlbumLibrary now we've added the albums and they exist
             library = new AlbumLibrary(albums);
+            queueManager = new QueueManager(library);
 
             treeView.setCellFactory(tv -> new TreeCell<>() {
                 @Override
@@ -452,13 +448,13 @@ public class MusicAppDemo extends Application {
             return;
         }
 
-        playQueue.addAll(queueable);
+        queueManager.addAll(queueable);
         LOGGER.info("Queued {} songs from album '{}'", queueable.size(), albumName);
         updateQueueDisplay();
 
         // If nothing is playing, start the first queued song
-        if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) && !playQueue.isEmpty()) {
-            Song next = playQueue.poll();
+        if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) && !queueManager.isEmpty()) {
+            Song next = queueManager.poll();
             updateQueueDisplay();
             if (next != null) {
                 playSong(next);
@@ -474,15 +470,12 @@ public class MusicAppDemo extends Application {
         if (!unlockManager.canPlay(song, album)) return;
 
         // insert at front
-        LinkedList<Song> temp = new LinkedList<>(playQueue);
-        temp.addFirst(song);
-        playQueue.clear();
-        playQueue.addAll(temp);
+        queueManager.addFirst(song);
         updateQueueDisplay();
 
         // If nothing is playing, start the first queued song
-        if (currentPlayer == null && !playQueue.isEmpty()) {
-            Song next = playQueue.poll();
+        if (currentPlayer == null && !queueManager.isEmpty()) {
+            Song next = queueManager.poll();
             updateQueueDisplay();
             if (next != null) {
                 playSong(next);
@@ -523,12 +516,7 @@ public class MusicAppDemo extends Application {
 
         this.currentSong = song;
 
-        if (repeatMode == RepeatMode.QUEUE && queueSnapshot == null) {
-            LinkedList<Song> snapshot = new LinkedList<>();
-            snapshot.add(song);
-            snapshot.addAll(playQueue);
-            queueSnapshot = snapshot;
-        }
+        queueManager.recordSnapshot(song);
 
         if (song.getFilePath() == null || !new File(song.getFilePath()).exists()) {
             LOGGER.info("Song trying to be played ({})'s file path ({}) does not exist or is null.", song.getTitle(), song.getFilePath());
@@ -603,7 +591,7 @@ public class MusicAppDemo extends Application {
             if (client != null && client.isConnected()) {
                 client.sendCheck(song.getTitle());
             }
-            if (repeatMode == RepeatMode.SONG) {
+            if (queueManager.getRepeatMode() == QueueManager.RepeatMode.SONG) {
                 playSong(song);
             } else {
                 playNextInQueue();
@@ -626,20 +614,7 @@ public class MusicAppDemo extends Application {
     }
 
     private void playNextInQueue() {
-        Song next = playQueue.poll();
-        if (next == null && repeatMode != RepeatMode.OFF) {
-            if (repeatMode == RepeatMode.QUEUE && queueSnapshot != null) {
-                playQueue.addAll(queueSnapshot);
-            } else if (repeatMode == RepeatMode.ALBUM && currentSong != null) {
-                Album album = library.getAlbumForSong(currentSong.getTitle());
-                if (album != null) {
-                    for (Song s : album.getSongs()) {
-                        playQueue.add(s);
-                    }
-                }
-            }
-            next = playQueue.poll();
-        }
+        Song next = queueManager.nextSong(currentSong);
         updateQueueDisplay();
         if (next != null) {
             playSong(next);
@@ -685,31 +660,17 @@ public class MusicAppDemo extends Application {
 
     private void updateQueueDisplay() {
         playerPanel.clearQueueDisplay();
-        for (Song s : playQueue) {
+        for (Song s : queueManager.asList()) {
             playerPanel.addToQueueDisplay(s);
         }
     }
 
     private void removeFromQueue(Song song) {
-        playQueue.remove(song);
+        queueManager.remove(song);
     }
 
     private void moveInQueue(int fromIndex, int toIndex) {
-        int i = 0;
-        Song song = null;
-        for (Song s : playQueue) {
-            if (i == fromIndex) { song = s; break; }
-            i++;
-        }
-        if (song == null) return;
-        playQueue.remove(song);
-        // reinsert at toIndex, adjusting if removing shifted the position
-        int adjusted = toIndex > fromIndex ? toIndex - 1 : toIndex;
-        i = 0;
-        LinkedList<Song> temp = new LinkedList<>(playQueue);
-        temp.add(adjusted, song);
-        playQueue.clear();
-        playQueue.addAll(temp);
+        queueManager.move(fromIndex, toIndex);
         updateQueueDisplay();
     }
 
@@ -951,8 +912,8 @@ public class MusicAppDemo extends Application {
                 } else {
                     showError("File Not Found", "Cannot play song", "File not found for: " + currentSong.getTitle());
                 }
-            } else if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) && !playQueue.isEmpty()) {
-                Song next = playQueue.poll();
+            } else if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) && !queueManager.isEmpty()) {
+                Song next = queueManager.poll();
                 updateQueueDisplay();
                 if (next != null) playSong(next);
             }
@@ -973,23 +934,20 @@ public class MusicAppDemo extends Application {
 
         // Repeat button cycles: Off → Queue → Song → Album → Off
         panel.getRepeatButton().setOnAction(_ -> {
-            repeatMode = switch (repeatMode) {
-                case OFF -> RepeatMode.QUEUE;
-                case QUEUE -> RepeatMode.SONG;
-                case SONG -> RepeatMode.ALBUM;
-                case ALBUM -> RepeatMode.OFF;
+            QueueManager.RepeatMode nextMode = switch (queueManager.getRepeatMode()) {
+                case OFF -> QueueManager.RepeatMode.QUEUE;
+                case QUEUE -> QueueManager.RepeatMode.SONG;
+                case SONG -> QueueManager.RepeatMode.ALBUM;
+                case ALBUM -> QueueManager.RepeatMode.OFF;
             };
-            String label = switch (repeatMode) {
+            queueManager.setRepeatMode(nextMode);
+            String label = switch (nextMode) {
                 case OFF -> "No Repeat";
                 case QUEUE -> "Repeat Queue";
                 case SONG -> "Repeat Song";
                 case ALBUM -> "Repeat Album";
             };
             panel.getRepeatButton().setText(label);
-
-            if (repeatMode == RepeatMode.OFF) {
-                queueSnapshot = null;
-            }
         });
 
         // Remove selected from the queue (both ListView and underlying queue)
@@ -1003,29 +961,20 @@ public class MusicAppDemo extends Application {
 
         // Clear queue
         panel.getClearQueueBtn().setOnAction(_ -> {
-            playQueue.clear();
+            queueManager.clear();
             updateQueueDisplay();
         });
 
         // Shuffle queue
         panel.getShuffleQueueBtn().setOnAction(_ -> {
-            LinkedList<Song> temp = new LinkedList<>(playQueue);
-            java.util.Collections.shuffle(temp);
-            playQueue.clear();
-            playQueue.addAll(temp);
+            queueManager.shuffle();
             updateQueueDisplay();
         });
 
         // Save queue
         panel.getSaveQueueBtn().setOnAction(_ -> {
             File queueFile = new File(getConfigDir(), "queue.json");
-            List<Map<String, String>> entries = new ArrayList<>();
-            for (Song song : playQueue) {
-                Map<String, String> entry = new HashMap<>();
-                entry.put("title", song.getTitle());
-                entry.put("type", song.getType());
-                entries.add(entry);
-            }
+            List<Map<String, String>> entries = queueManager.toEntries();
             try (Writer writer = new FileWriter(queueFile, StandardCharsets.UTF_8)) {
                 new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create().toJson(entries, writer);
                 LOGGER.info("Queue saved to {}", queueFile.getAbsolutePath());
@@ -1059,10 +1008,9 @@ public class MusicAppDemo extends Application {
                     }
                 }
 
-                playQueue.clear();
-                playQueue.addAll(resolved);
+                queueManager.replaceAll(resolved);
                 updateQueueDisplay();
-                LOGGER.info("Queue loaded from {} ({} songs)", queueFile.getAbsolutePath(), playQueue.size());
+                LOGGER.info("Queue loaded from {} ({} songs)", queueFile.getAbsolutePath(), queueManager.size());
             } catch (Exception e) {
                 LOGGER.error("Failed to load queue from {}", queueFile.getAbsolutePath(), e);
             }
@@ -1178,8 +1126,8 @@ public class MusicAppDemo extends Application {
                 currentPlayer.play();
                 if (currentSong != null) playerPanel.setCurrentSongLabel("Currently Playing: " + currentSong.getTitle());
             }
-        } else if (!playQueue.isEmpty()) {
-            Song next = playQueue.poll();
+        } else if (!queueManager.isEmpty()) {
+            Song next = queueManager.poll();
             updateQueueDisplay();
             if (next != null) playSong(next);
         }
@@ -1283,12 +1231,12 @@ public class MusicAppDemo extends Application {
         }
 
         // Add to queue, song has passed checks
-        playQueue.add(song);
+        queueManager.add(song);
         updateQueueDisplay();
 
         // If nothing is playing, start immediately
         if (currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) {
-            Song next = playQueue.poll();
+            Song next = queueManager.poll();
             updateQueueDisplay();
             if (next != null) {
                 playSong(next);
