@@ -533,6 +533,7 @@ public class MusicAppDemo extends Application {
         if (song.getFilePath() == null || !new File(song.getFilePath()).exists()) {
             LOGGER.info("Song trying to be played ({})'s file path ({}) does not exist or is null.", song.getTitle(), song.getFilePath());
             showError("File Not Found", "Cannot play song", "File not found for: " + song.getTitle());
+            playNextInQueue();
             return;
         }
 
@@ -607,6 +608,15 @@ public class MusicAppDemo extends Application {
             } else {
                 playNextInQueue();
             }
+        });
+
+        currentPlayer.setOnError(() -> {
+            MediaPlayer player = currentPlayer;
+            String errorMessage = player != null && player.getError() != null
+                    ? player.getError().getMessage() : "Unknown error";
+            LOGGER.error("Error playing '{}': {}", song.getTitle(), errorMessage);
+            showError("Playback Error", "Cannot play song", "Error playing " + song.getTitle() + ": " + errorMessage);
+            playNextInQueue();
         });
 
         currentPlayer.play();
