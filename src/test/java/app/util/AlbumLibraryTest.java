@@ -59,4 +59,28 @@ public class AlbumLibraryTest {
         Album result = library.getAlbumForSong("Shared Song");
         assertEquals("Album One", result.getName());
     }
+
+    @Test
+    void getSongByTitle_returnsSongWhenTitleMatches() {
+        AlbumLibrary library = libraryWithTwoAlbums();
+        Song result = library.getSongByTitle("Song A");
+        assertEquals("Song A", result.getTitle());
+    }
+
+    @Test
+    void getSongByTitle_unknownTitle_returnsNull() {
+        AlbumLibrary library = libraryWithTwoAlbums();
+        Song result = library.getSongByTitle("Unknown Track");
+        assertNull(result);
+    }
+
+    @Test
+    void getSongByTitle_returnsSameInstance() {
+        AlbumLibrary library = libraryWithTwoAlbums();
+        Song result = library.getSongByTitle("Song A");
+
+        result.setFilePath("/path/to/song.mp3");
+
+        assertEquals("/path/to/song.mp3", library.getSongByTitle("Song A").getFilePath());
+    }
 }
