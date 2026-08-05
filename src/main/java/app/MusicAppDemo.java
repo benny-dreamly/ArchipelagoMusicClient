@@ -35,6 +35,7 @@ import javafx.scene.control.ContextMenu;
 import javafx.scene.control.ListView;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.Slider;
+import javafx.scene.control.TextInputControl;
 import javafx.scene.control.TreeView;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
@@ -1064,6 +1065,10 @@ public class MusicAppDemo extends Application {
     }
 
     private void handleKeyPress(KeyEvent event) {
+        if (event.getTarget() instanceof TextInputControl) {
+            return;
+        }
+
         if (volumeAdjustMode) {
             handleVolumeModeKey(event.getCode());
             event.consume();
