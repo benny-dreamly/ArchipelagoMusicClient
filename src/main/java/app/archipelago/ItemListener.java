@@ -29,6 +29,7 @@ public class ItemListener {
     public void onReceiveItem(ReceiveItemEvent event) {
         String itemName = event.getItemName();
         String locationName = event.getLocationName();
+        String playerName = event.getPlayerName();
 
         Platform.runLater(() -> {
             switch (itemName) {
@@ -88,7 +89,7 @@ public class ItemListener {
 
             app.refreshTree();
 
-            LOGGER.info("Received item: {} from {}", itemName, locationName);
+            LOGGER.info("Received item: {} from {}'s {}", itemName, playerName, locationName);
         });
     }
 
