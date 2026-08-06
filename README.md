@@ -18,20 +18,19 @@ any music streaming services such as Spotify and Apple Music will not work with 
 
 This client makes use of JavaFX, which you will need to make sure you have installed alongside your JDK.
 
-Before running or building the client, make sure you have the following installed:
+### For End Users (Running a Release)
+Simply download the latest release for your operating system from the [**Releases**](releases/latest) tab.
+* **Java:** Requires **Java 25** (or newer) installed on your system.
+* **JavaFX:** No manual installation needed! JavaFX is bundled directly with the release executable.
 
-- **Java Development Kit (JDK) 25 or newer**  
-  Make sure your environment variables (`JAVA_HOME`, `PATH`) are configured correctly.
+### For Developers (Building from Source)
+If you want to modify the code or run the latest source directly:
 
-- **JavaFX SDK (matching your JDK version)**  
-  JavaFX is required for the UI to function properly.  
-  You can download it from [https://openjfx.io](https://openjfx.io).
-
-- **Maven or Gradle (optional, for dependency management)**  
-  If you’re building from source before a release build is available, you’ll need a way to download dependencies automatically.
-
-    - Maven: `mvn clean install`
-    - Gradle: `gradle build`
+1. **Clone the repository:**
+   ```bash
+   git clone [https://github.com/benny-dreamly/ArchipelagoMusicClient.git](https://github.com/benny-dreamly/ArchipelagoMusicClient.git)
+   cd ArchipelagoMusicClient
+   ```
 
 ## How the heck do I configure this?
 
