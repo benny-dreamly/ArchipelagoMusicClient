@@ -32,6 +32,18 @@ If you want to modify the code or run the latest source directly:
    cd ArchipelagoMusicClient
    ```
 
+2. **Requirements:**
+    - **JDK 25** (or newer) installed and configured in your environment.
+    - **JavaFX**: You do not need to install JavaFX manually. The included Gradle build script handles JavaFX dependencies automatically.
+
+3. **Run the app from source:**
+   - macOS / Linux: `./gradlew run`
+   - Windows: `gradlew.bat run`
+
+4. **Build a runnable executable:**
+    - macOS / Linux: `./gradlew build`
+    - Windows: `gradlew.bat build`
+
 ## How the heck do I configure this?
 
 Well, you're in luck. If you go to the docs/ folder, you should be able to find a schema and detailed documentation about where the configuration folders are.
