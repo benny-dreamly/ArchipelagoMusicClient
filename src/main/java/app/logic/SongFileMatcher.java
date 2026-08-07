@@ -59,6 +59,17 @@ public class SongFileMatcher {
                 return song;
             }
 
+            // --- Catch iTunes/OS truncated filenames ---
+            // If the filename was cut off at the end but shares a long prefix (e.g. >= 15 chars)
+            String lowerFile = normalizedFilename.toLowerCase(Locale.ROOT);
+            String lowerSong = normalizedSong.toLowerCase(Locale.ROOT);
+
+            if (lowerFile.length() >= 15 && lowerSong.length() >= 15) {
+                if (lowerSong.startsWith(lowerFile) || lowerFile.startsWith(lowerSong)) {
+                    return song;
+                }
+            }
+
             int dist = levenshteinDistance(normalizedFilename.toLowerCase(Locale.ROOT), normalizedSong.toLowerCase(Locale.ROOT));
             if (dist < 5 && dist < bestDistance) { // tweak threshold if needed
                 matchedSong = song;
