@@ -11,7 +11,7 @@ Configuration is simple enough, but I will elaborate more on the schema of the r
 and the structure of the configuration folder in the `docs` folder of this repository. This will include every file you need and examples.
 
 You do need to have the songs locally on your computer, either by ripping them from a CD or obtaining them from iTunes or a similar online music marketplace.
-Streaming will not work with this client. I was considering implementing it in the future, however it looks like that approach is not actually possible. As of right now,
+Streaming will not work with this client. I was considering implementing it in the future, however Spotify's API won't let me do this, and I'm assuming the rest of the streaming apps are the same. As of right now,
 any music streaming services such as Spotify and Apple Music will not work with this client, and will likely never work with it. 
 
 ## How can I get started using the client?
@@ -26,21 +26,21 @@ Simply download the latest release for your operating system from the [**Release
 ### For Developers (Building from Source)
 If you want to modify the code or run the latest source directly:
 
-1. **Clone the repository:**
+1. **Clone the repository**:
    ```bash
-   git clone [https://github.com/benny-dreamly/ArchipelagoMusicClient.git](https://github.com/benny-dreamly/ArchipelagoMusicClient.git)
+   git clone https://github.com/benny-dreamly/ArchipelagoMusicClient.git
    cd ArchipelagoMusicClient
    ```
 
-2. **Requirements:**
-    - **JDK 25** (or newer) installed and configured in your environment.
+2. **Requirements**:
+    - Java 25 or newer
     - **JavaFX**: You do not need to install JavaFX manually. The included Gradle build script handles JavaFX dependencies automatically.
 
-3. **Run the app from source:**
+3. **Run the app from source**:
    - macOS / Linux: `./gradlew run`
    - Windows: `gradlew.bat run`
 
-4. **Build a runnable executable:**
+4. **Build a runnable executable**:
     - macOS / Linux: `./gradlew build`
     - Windows: `gradlew.bat build`
 
@@ -51,7 +51,7 @@ See the [Configuration & File Reference](#configuration--file-reference) section
 
 # Configuration & File Reference
 
-This folder contains detailed information about how the Music Player for Archipelago handles its configuration and metadata files.
+This folder is a breakdown of how the configuration and metadata files work.
 
 If you’re setting up your own music manual (or modifying an existing one), you’ll find here:
 - File schemas describing each JSON config file.
