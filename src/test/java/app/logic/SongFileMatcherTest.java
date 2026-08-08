@@ -79,6 +79,16 @@ class SongFileMatcherTest {
     }
 
     @Test
+    void testFindBestMatchMidWordTruncatedFilenameMatches() {
+        Song song = new Song("We Are Never Ever Getting Back Together", "normal");
+        List<Song> songs = List.of(song);
+
+        Song matched = SongFileMatcher.findBestMatch("We Are Never Ever Getting Back To", songs);
+        assertNotNull(matched);
+        assertEquals("We Are Never Ever Getting Back Together", matched.getTitle());
+    }
+
+    @Test
     void testFindBestMatchTooDistantReturnsNull() {
         Song song = new Song("Shake It Off", "normal");
         List<Song> songs = List.of(song);

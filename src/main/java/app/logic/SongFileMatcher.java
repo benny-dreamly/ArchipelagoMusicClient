@@ -60,12 +60,15 @@ public class SongFileMatcher {
             }
 
             // --- Catch iTunes/OS truncated filenames ---
-            // If the filename was cut off at the end but shares a long prefix (e.g. >= 15 chars)
+            // If the filename was cut off at the end but shares a long prefix (e.g. >= 15 chars).
+            // Only treat it as truncation when the cut is mid-word; a clean prefix that ends at
+            // a word boundary is a distinct complete title, not a truncated one
+            // (e.g. "Is It Over Now? (Taylor's Version)" vs "... (From The Vault)").
             String lowerFile = normalizedFilename.toLowerCase(Locale.ROOT);
             String lowerSong = normalizedSong.toLowerCase(Locale.ROOT);
 
             if (lowerFile.length() >= 15 && lowerSong.length() >= 15) {
-                if (lowerSong.startsWith(lowerFile) || lowerFile.startsWith(lowerSong)) {
+                if (isMidWordPrefix(lowerFile, lowerSong) || isMidWordPrefix(lowerSong, lowerFile)) {
                     return song;
                 }
             }
@@ -82,6 +85,12 @@ public class SongFileMatcher {
 
     private static boolean normalizedFileEquals(String normalizedFilename, String normalizedSong) {
         return normalizedFilename.equalsIgnoreCase(normalizedSong);
+    }
+
+    private static boolean isMidWordPrefix(String shorter, String longer) {
+        return longer.length() > shorter.length()
+                && longer.startsWith(shorter)
+                && !Character.isWhitespace(longer.charAt(shorter.length()));
     }
 
     static boolean isAudioFile(String name) {
