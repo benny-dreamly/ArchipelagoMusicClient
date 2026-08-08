@@ -838,9 +838,8 @@ public class MusicAppDemo extends Application {
         String slot = connectionPanel.getSlot();
         String password = connectionPanel.getPassword();
 
-        saveConnectionSettings(host, port, slot, password);
-
         String gameName = connectionPanel.getGameName();
+        saveConnectionSettings(host, port, slot, password, gameName);
         APClient.saveGameNameStatic(gameName);
 
         client = new APClient(host, port, slot, password);

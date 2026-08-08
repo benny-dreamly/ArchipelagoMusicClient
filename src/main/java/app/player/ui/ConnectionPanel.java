@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
+import static app.util.ConfigManager.getSlotForGame;
 import static app.util.ConfigManager.loadConnectionSettings;
 import static app.util.ConfigPaths.checkIfGameFolderExists;
 
@@ -59,8 +60,20 @@ public class ConnectionPanel extends VBox {
 
         hostField.setText(saved.getOrDefault("host", "localhost"));
         portField.setText(saved.getOrDefault("port", "38281"));
-        slotField.setText(saved.getOrDefault("slot", "Player1"));
+        String savedSlot = getSlotForGame(savedGameName);
+        slotField.setText(savedSlot.isEmpty() ? "Player1" : savedSlot);
         passwordField.setText(saved.getOrDefault("password", ""));
+
+        gameField.focusedProperty().addListener((_, _, focused) -> {
+            if (focused) return;
+            String name = getGameName();
+            if (name.isEmpty()) return;
+            APClient.saveGameNameStatic(name);
+            String slot = getSlotForGame(name);
+            if (!slot.isEmpty()) {
+                slotField.setText(slot);
+            }
+        });
 
         connectButton = new Button("Connect");
         statusLabel = new Label("Not connected");
