@@ -1080,12 +1080,16 @@ public class MusicAppDemo extends Application {
                 event.consume();
             }
             case LEFT -> {
-                seekRelative(-5);
-                event.consume();
+                if (playerPanel.getEnableSeekCheck().isSelected()) {
+                    seekRelative(-5);
+                    event.consume();
+                }
             }
             case RIGHT -> {
-                seekRelative(5);
-                event.consume();
+                if (playerPanel.getEnableSeekCheck().isSelected()) {
+                    seekRelative(5);
+                    event.consume();
+                }
             }
             case T -> {
                 connectionPanel.getTextClientWindow().show();
