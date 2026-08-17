@@ -1235,14 +1235,10 @@ public class MusicAppDemo extends Application {
         if (song == currentSong) return;
 
         Album album = library.getAlbumForSong(songTitle);
-        boolean songUnlocked = unlockManager.isSongUnlocked(song.getTitle());
-        boolean albumUnlocked = album != null && unlockManager.isAlbumUnlocked(album.getName());
-
-        // Check unlocking rules
-        if (!songUnlocked || !albumUnlocked) {
-            if (!songUnlocked) {
+        if (!unlockManager.canPlay(song, album)) {
+            if (album == null || !unlockManager.isAlbumUnlocked(album.getName())) {
                 showError("Locked Song", "Cannot play song", song.getTitle() + " is not unlocked yet!");
-            } else if (!albumUnlocked && album != null) {
+            } else {
                 showError("Locked Song", "Cannot queue song", song.getTitle() + " requires album " + album.getName() + " to be unlocked!");
             }
             return;
