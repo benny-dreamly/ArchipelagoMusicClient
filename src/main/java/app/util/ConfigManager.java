@@ -152,6 +152,9 @@ public class ConfigManager {
         } catch (IOException e) {
             LOGGER.error("Failed to load connection settings from {}", file.getAbsolutePath(), e);
             return new HashMap<>();
+        } catch (com.google.gson.JsonSyntaxException e) {
+            LOGGER.error("Malformed connection settings in {}", file.getAbsolutePath(), e);
+            return new HashMap<>();
         }
     }
 
@@ -176,6 +179,9 @@ public class ConfigManager {
             return new Gson().fromJson(reader, type);
         } catch (IOException e) {
             LOGGER.error("Failed to read legacy connection settings from {}", file.getAbsolutePath(), e);
+            return null;
+        } catch (com.google.gson.JsonSyntaxException e) {
+            LOGGER.error("Malformed legacy connection settings in {}", file.getAbsolutePath(), e);
             return null;
         }
     }
