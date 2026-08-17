@@ -35,9 +35,9 @@ public class ConfigManager {
         Map<String, Object> data = loadAllSettings();
         data.put("host", host);
         data.put("port", String.valueOf(port));
-        data.put("password", password);
         slotsMap(data).put(gameName, slot);
         write(data);
+        storePassword(password);
     }
 
     public static String getSlotForGame(String gameName) {
@@ -63,6 +63,10 @@ public class ConfigManager {
             if (entry.getValue() instanceof String value) {
                 flat.put(entry.getKey(), value);
             }
+        }
+        String password = loadPassword();
+        if (password != null) {
+            flat.put("password", password);
         }
         return flat;
     }
@@ -121,7 +125,6 @@ public class ConfigManager {
             }
             copyIfPresent(preferred, data, "host");
             copyIfPresent(preferred, data, "port");
-            copyIfPresent(preferred, data, "password");
         }
         data.remove("slot");
 
@@ -187,5 +190,17 @@ public class ConfigManager {
         } catch (IOException e) {
             LOGGER.error("Failed to save connection settings to {}", file.getAbsolutePath(), e);
         }
+    }
+
+    private static void storePassword(String password) {
+        // TODO: implement OS credential store (e.g. macOS Keychain via `security` CLI)
+        if (password != null && !password.isEmpty()) {
+            LOGGER.warn("No credential store available; password not persisted");
+        }
+    }
+
+    private static String loadPassword() {
+        // TODO: implement OS credential store (e.g. macOS Keychain via `security` CLI)
+        return null;
     }
 }
