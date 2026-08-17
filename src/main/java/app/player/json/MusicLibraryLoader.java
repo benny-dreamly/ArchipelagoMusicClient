@@ -29,9 +29,9 @@ public class MusicLibraryLoader {
 
     public List<Album> loadFromReader(Reader reader) {
         MusicLibraryJSON library = gson.fromJson(reader, MusicLibraryJSON.class);
-        if (library == null || library.albums == null) {
+        if (library == null || library.albums == null || library.albums.isEmpty()) {
             LOGGER.warn("Empty or invalid music library file");
-            return List.of();
+            throw new IllegalArgumentException("Empty or invalid music library file");
         }
 
         List<Album> albums = new ArrayList<>();
