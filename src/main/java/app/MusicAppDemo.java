@@ -614,7 +614,7 @@ public class MusicAppDemo extends Application {
 
         currentPlayer.setOnEndOfMedia(() -> {
             if (client != null && client.isConnected()) {
-                client.sendCheck(song.getTitle());
+                client.sendCheck(song.getLocation());
                 Album songAlbum = library.getAlbumForSong(song.getTitle());
                 if (goalManager != null && songAlbum != null) {
                     goalManager.markPlayed(song.getTitle(), songAlbum.getName(), client);

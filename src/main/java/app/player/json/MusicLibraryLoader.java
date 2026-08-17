@@ -48,7 +48,8 @@ public class MusicLibraryLoader {
 
             for (MusicLibraryJSON.SongJSON songJSON : albumJSON.songs) {
                 String songType = songJSON.type != null ? songJSON.type : "normal";
-                Song song = new Song(songJSON.title, songType);
+                String location = songJSON.location != null ? songJSON.location : songJSON.title;
+                Song song = new Song(songJSON.title, songType, location);
 
                 if (songJSON.path != null) {
                     song.setFilePath(songJSON.path);
