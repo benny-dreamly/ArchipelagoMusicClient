@@ -115,7 +115,7 @@ public class UnlockManager {
         // 2. Unlock albums by type if the corresponding slot is enabled
         if (enabledAlbumsFromSlotData.contains("Re-recordings")) {
             for (Album album : albums) {
-                if ("re-recording".equalsIgnoreCase(album.getType())) {
+                if ("rerecording".equalsIgnoreCase(album.getType())) {
                     enabledAlbums.add(album.getName());
                     enabledSets.add(album.getType());
                 }

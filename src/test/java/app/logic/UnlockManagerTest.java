@@ -244,7 +244,7 @@ class UnlockManagerTest {
 
     @Test
     void applySlotData_rerecordingsSlot_enablesRerecordingTypeAlbums() {
-        Album rerecording = new Album("1989 (Taylor's Version)", "re-recording");
+        Album rerecording = new Album("1989 (Taylor's Version)", "rerecording");
         Album folklore = new Album("folklore", "standard");
         List<Album> albums = List.of(rerecording, folklore);
 
