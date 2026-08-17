@@ -128,7 +128,10 @@ public class ConfigManager {
         }
         data.remove("slot");
 
-        write(data);
+        if (!write(data)) {
+            LOGGER.error("Write failed; preserving legacy connection files");
+            return data;
+        }
         for (File legacy : migratedFiles) {
             if (legacy.delete()) {
                 LOGGER.info("Migrated and removed legacy connection settings {}", legacy.getAbsolutePath());
@@ -177,7 +180,7 @@ public class ConfigManager {
         }
     }
 
-    private static void write(Map<String, Object> data) {
+    private static boolean write(Map<String, Object> data) {
         File file = getConnectionConfigFile();
         File parent = file.getParentFile();
         if (parent != null) {
@@ -187,8 +190,10 @@ public class ConfigManager {
         try (Writer writer = new FileWriter(file, StandardCharsets.UTF_8)) {
             new GsonBuilder().setPrettyPrinting().create().toJson(data, writer);
             LOGGER.info("Saved connection settings to {}", file.getAbsolutePath());
+            return true;
         } catch (IOException e) {
             LOGGER.error("Failed to save connection settings to {}", file.getAbsolutePath(), e);
+            return false;
         }
     }
 
