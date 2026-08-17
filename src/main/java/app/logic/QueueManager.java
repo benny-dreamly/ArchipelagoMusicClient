@@ -48,9 +48,11 @@ public class QueueManager {
     private RepeatMode repeatMode = RepeatMode.OFF;
 
     private final AlbumLibrary library;
+    private final UnlockManager unlockManager;
 
-    public QueueManager(AlbumLibrary library) {
+    public QueueManager(AlbumLibrary library, UnlockManager unlockManager) {
         this.library = library;
+        this.unlockManager = unlockManager;
     }
 
     public RepeatMode getRepeatMode() {
@@ -76,9 +78,10 @@ public class QueueManager {
             } else if (repeatMode == RepeatMode.ALBUM && currentSong != null) {
                 Album album = library.getAlbumForSong(currentSong.getTitle());
                 if (album != null) {
-                    for (Song s : album.getSongs()) {
-                        playQueue.add(s);
-                    }
+                    playQueue.addAll(album.getQueueableSongs(
+                            unlockManager.getEnabledSets(),
+                            unlockManager.getUnlockedSongs(),
+                            unlockManager.getUnlockedAlbums()));
                 }
             }
             next = playQueue.poll();

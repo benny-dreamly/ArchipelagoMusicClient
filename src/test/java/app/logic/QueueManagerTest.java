@@ -13,13 +13,18 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class QueueManagerTest {
 
+    private final UnlockManager unlockManager = new UnlockManager(() -> {});
     private final Song songA = new Song("Song A", "standard");
     private final Song songB = new Song("Song B", "standard");
     private final Song songC = new Song("Song C", "standard");
 
+    {
+        unlockManager.getEnabledSets().add("standard");
+    }
+
     @Test
     void nextSong_drainsQueueAndReturnsNullWhenEmpty() {
-        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()));
+        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()), unlockManager);
 
         qm.add(songA);
         qm.add(songB);
@@ -31,7 +36,7 @@ class QueueManagerTest {
 
     @Test
     void nextSong_repeatOff_doesNotRefillEmptyQueue() {
-        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()));
+        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()), unlockManager);
 
         qm.add(songA);
 
@@ -41,7 +46,7 @@ class QueueManagerTest {
 
     @Test
     void nextSong_repeatQueue_refillsFromSnapshot() {
-        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()));
+        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()), unlockManager);
         qm.setRepeatMode(RepeatMode.QUEUE);
         qm.add(songA);
         qm.add(songB);
@@ -55,7 +60,7 @@ class QueueManagerTest {
 
     @Test
     void recordSnapshot_capturedOnlyOnce() {
-        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()));
+        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()), unlockManager);
         qm.setRepeatMode(RepeatMode.QUEUE);
         qm.add(songA);
         qm.add(songB);
@@ -72,7 +77,7 @@ class QueueManagerTest {
 
     @Test
     void recordSnapshot_ignoredWhenNotQueueMode() {
-        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()));
+        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()), unlockManager);
         qm.setRepeatMode(RepeatMode.OFF);
         qm.recordSnapshot(songA);
 
@@ -86,7 +91,11 @@ class QueueManagerTest {
         album.getSongs().add(songA);
         album.getSongs().add(songB);
         album.getSongs().add(songC);
-        QueueManager qm = new QueueManager(new AlbumLibrary(List.of(album)));
+        unlockManager.getUnlockedAlbums().add("Album");
+        unlockManager.getUnlockedSongs().add("Song A");
+        unlockManager.getUnlockedSongs().add("Song B");
+        unlockManager.getUnlockedSongs().add("Song C");
+        QueueManager qm = new QueueManager(new AlbumLibrary(List.of(album)), unlockManager);
         qm.setRepeatMode(RepeatMode.ALBUM);
         qm.add(songA);
         qm.add(songB);
@@ -102,7 +111,7 @@ class QueueManagerTest {
     void nextSong_repeatAlbum_unknownCurrentSong_doesNotRefill() {
         Album album = new Album("Album", "standard");
         album.getSongs().add(songA);
-        QueueManager qm = new QueueManager(new AlbumLibrary(List.of(album)));
+        QueueManager qm = new QueueManager(new AlbumLibrary(List.of(album)), unlockManager);
         qm.setRepeatMode(RepeatMode.ALBUM);
         qm.add(songA);
 
@@ -112,7 +121,7 @@ class QueueManagerTest {
 
     @Test
     void setRepeatModeOff_clearsSnapshot() {
-        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()));
+        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()), unlockManager);
         qm.setRepeatMode(RepeatMode.QUEUE);
         qm.add(songA);
         qm.recordSnapshot(qm.poll());
@@ -129,7 +138,7 @@ class QueueManagerTest {
 
     @Test
     void addFirst_insertsAtFront() {
-        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()));
+        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()), unlockManager);
         qm.add(songA);
         qm.add(songB);
         qm.addFirst(songC);
@@ -139,7 +148,7 @@ class QueueManagerTest {
 
     @Test
     void move_toLowerIndex() {
-        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()));
+        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()), unlockManager);
         qm.add(songA);
         qm.add(songB);
         qm.add(songC);
@@ -151,7 +160,7 @@ class QueueManagerTest {
 
     @Test
     void move_toHigherIndexWithinBounds() {
-        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()));
+        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()), unlockManager);
         qm.add(songA);
         qm.add(songB);
         qm.add(songC);
@@ -163,7 +172,7 @@ class QueueManagerTest {
 
     @Test
     void move_toEndBoundary() {
-        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()));
+        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()), unlockManager);
         qm.add(songA);
         qm.add(songB);
         qm.add(songC);
@@ -175,7 +184,7 @@ class QueueManagerTest {
 
     @Test
     void move_outOfBoundsSource_isNoOp() {
-        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()));
+        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()), unlockManager);
         qm.add(songA);
         qm.add(songB);
 
@@ -186,7 +195,7 @@ class QueueManagerTest {
 
     @Test
     void shuffle_preservesAllElements() {
-        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()));
+        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()), unlockManager);
         qm.add(songA);
         qm.add(songB);
         qm.add(songC);
@@ -199,7 +208,7 @@ class QueueManagerTest {
 
     @Test
     void toEntries_exportsTitleAndType() {
-        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()));
+        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()), unlockManager);
         qm.add(songA);
         qm.add(songB);
 
@@ -214,7 +223,7 @@ class QueueManagerTest {
 
     @Test
     void replaceAll_swapsQueueContents() {
-        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()));
+        QueueManager qm = new QueueManager(new AlbumLibrary(List.of()), unlockManager);
         qm.add(songA);
 
         qm.replaceAll(List.of(songB, songC));

@@ -285,7 +285,7 @@ public class MusicAppDemo extends Application {
 
             // initialize AlbumLibrary now we've added the albums and they exist
             library = new AlbumLibrary(albums);
-            queueManager = new QueueManager(library);
+            queueManager = new QueueManager(library, unlockManager);
             goalManager = new GoalManager(unlockManager, albums);
 
             treeView.setCellFactory(tv -> new TreeCell<>() {
