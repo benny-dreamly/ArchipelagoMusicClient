@@ -89,7 +89,7 @@ public class ConnectionListener {
         Platform.runLater(() -> {
             GoalManager goalManager = app.getGoalManager();
             if (goalManager != null) {
-                goalManager.loadFromServer(playedSongs);
+                goalManager.loadFromServer(playedSongs, client);
             }
         });
     }

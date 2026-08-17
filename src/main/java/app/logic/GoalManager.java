@@ -111,7 +111,7 @@ public class GoalManager {
         }
     }
 
-    public void loadFromServer(Set<String> savedPlayedSongs) {
+    public void loadFromServer(Set<String> savedPlayedSongs, Client client) {
         playedSongs.addAll(savedPlayedSongs);
         playedAlbums.clear();
 
@@ -122,6 +122,7 @@ public class GoalManager {
         }
 
         LOGGER.info("Loaded {} played songs from server (merged, total={})", savedPlayedSongs.size(), playedSongs.size());
+        checkGoal(client);
     }
 
     public void reset() {
