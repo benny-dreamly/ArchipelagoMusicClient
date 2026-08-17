@@ -34,7 +34,8 @@ public class GoalManager {
     public void markPlayed(String songTitle, String albumName, Client client) {
         if (goalSent) return;
 
-        boolean isNew = playedSongs.add(songTitle);
+        String key = albumName + "::" + songTitle;
+        boolean isNew = playedSongs.add(key);
         LOGGER.info("Marked song as played: {} (album: {}) [new={}]", songTitle, albumName, isNew);
 
         persistToServer(client);
@@ -77,7 +78,7 @@ public class GoalManager {
         for (Song song : album.getSongs()) {
             if (!unlockManager.getEnabledSets().contains(song.getType())) continue;
             totalSongs++;
-            if (playedSongs.contains(song.getTitle())) playedCount++;
+            if (playedSongs.contains(album.getName() + "::" + song.getTitle())) playedCount++;
         }
         if (totalSongs > 0 && playedCount % 5 == 0 && playedCount > 0) {
             LOGGER.info("Album '{}' progress: {}/{} songs played", album.getName(), playedCount, totalSongs);
@@ -138,8 +139,8 @@ public class GoalManager {
         return playedAlbums;
     }
 
-    public boolean isSongPlayed(String songTitle) {
-        return playedSongs.contains(songTitle);
+    public boolean isSongPlayed(String songTitle, String albumName) {
+        return playedSongs.contains(albumName + "::" + songTitle);
     }
 
     public boolean isAlbumPlayed(String albumName) {
