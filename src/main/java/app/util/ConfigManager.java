@@ -3,6 +3,7 @@ package app.util;
 import app.archipelago.APClient;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -152,7 +153,7 @@ public class ConfigManager {
         } catch (IOException e) {
             LOGGER.error("Failed to load connection settings from {}", file.getAbsolutePath(), e);
             return new HashMap<>();
-        } catch (com.google.gson.JsonSyntaxException e) {
+        } catch (JsonSyntaxException e) {
             LOGGER.error("Malformed connection settings in {}", file.getAbsolutePath(), e);
             return new HashMap<>();
         }
@@ -180,7 +181,7 @@ public class ConfigManager {
         } catch (IOException e) {
             LOGGER.error("Failed to read legacy connection settings from {}", file.getAbsolutePath(), e);
             return null;
-        } catch (com.google.gson.JsonSyntaxException e) {
+        } catch (JsonSyntaxException e) {
             LOGGER.error("Malformed legacy connection settings in {}", file.getAbsolutePath(), e);
             return null;
         }
