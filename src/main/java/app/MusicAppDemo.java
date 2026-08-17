@@ -14,6 +14,7 @@ import app.player.AlbumConverter;
 import app.player.json.AlbumMetadata;
 import app.player.json.AlbumMetadataLoader;
 import app.player.json.LibraryLoader;
+import app.player.json.MusicLibraryLoader;
 import app.player.json.SongJSON;
 import app.player.ui.AlbumArtPanel;
 import app.player.ui.ConnectionPanel;
@@ -243,17 +244,30 @@ public class MusicAppDemo extends Application {
         Task<List<Album>> loadTask = new Task<>() {
             @Override
             protected List<Album> call() throws Exception {
-                LibraryLoader loader = new LibraryLoader();
                 File gameFolder = getConfigDir();
+                File musicLibraryFile = new File(gameFolder, "music_library.json");
+
+                // Primary: music_library.json (new hierarchical format)
+                if (musicLibraryFile.exists()) {
+                    MusicLibraryLoader musicLoader = new MusicLibraryLoader();
+                    try {
+                        return musicLoader.loadFromFile(musicLibraryFile);
+                    } catch (Exception e) {
+                        LOGGER.warn("Failed to load music_library.json, falling back to locations.json", e);
+                    }
+                }
+
+                // Fallback: locations.json (legacy flat format)
+                LibraryLoader loader = new LibraryLoader();
                 File localLocations = new File(gameFolder, "locations.json");
                 List<SongJSON> rawSongs;
 
                 if (localLocations.exists()) {
                     try (Reader reader = new FileReader(localLocations, StandardCharsets.UTF_8)) {
-                        rawSongs = loader.loadSongsFromReader(reader); // new method
+                        rawSongs = loader.loadSongsFromReader(reader);
                     }
                 } else {
-                    rawSongs = loader.loadSongs("/locations.json"); // fallback to bundled
+                    rawSongs = loader.loadSongs("/locations.json");
                 }
 
                 Map<String, AlbumMetadata> metadata = AlbumMetadataLoader.loadAlbumMetadata(gameFolder);

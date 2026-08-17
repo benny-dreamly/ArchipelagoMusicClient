@@ -88,7 +88,56 @@ Defines unlock behavior for each album.
 }
 ```
 
+## `music_library.json`
+
+Defines the complete music library: albums, songs, file paths, and Archipelago location mappings.
+This is the primary format for defining your library. If present, it replaces `locations.json`, `album_metadata.json`, and `albumFolders.json`.
+
+```json
+{
+  "artist": "Taylor Swift",
+  "albums": [
+    {
+      "name": "Fearless (Taylor's Version)",
+      "type": "re-recording",
+      "full_album_unlock": true,
+      "songs": [
+        {
+          "title": "Love Story (Taylor's Version)",
+          "location": "Love Story",
+          "type": "normal"
+        },
+        {
+          "title": "You Belong with Me (Taylor's Version)",
+          "type": "normal"
+        }
+      ]
+    },
+    {
+      "name": "Midnights",
+      "type": "standard",
+      "full_album_unlock": false,
+      "songs": [
+        {
+          "title": "Anti-Hero",
+          "type": "normal"
+        },
+        {
+          "title": "Lavender Haze",
+          "type": "normal"
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
 ## `locations.json`
+
+> **Legacy format.** If `music_library.json` exists in the game folder, it takes precedence.
+> `locations.json` is still supported as a fallback for backwards compatibility.
 
 This file is defined by the manual itself (not the music player).
 See the corresponding manual's repository or schema for structure and examples.
