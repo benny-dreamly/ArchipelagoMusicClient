@@ -21,7 +21,7 @@ public class AlbumMetadataLoader {
     public static Map<String, AlbumMetadata> loadAlbumMetadata(File configDir) {
         File file = new File(configDir, "album_metadata.json");
         if (!file.exists()) {
-            System.err.println("No album_metadata.json found in " + configDir.getAbsolutePath());
+            LOGGER.warn("No album_metadata.json found in {}", configDir.getAbsolutePath());
             return Collections.emptyMap();
         }
 
@@ -31,8 +31,7 @@ public class AlbumMetadataLoader {
             LOGGER.info("Loaded album metadata for {} albums.", metadata.size());
             return metadata;
         } catch (IOException e) {
-            //noinspection CallToPrintStackTrace
-            e.printStackTrace();
+            LOGGER.error("Failed to load album_metadata.json", e);
             return Collections.emptyMap();
         }
     }
