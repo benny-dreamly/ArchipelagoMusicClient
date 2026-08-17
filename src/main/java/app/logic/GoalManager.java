@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -132,11 +133,11 @@ public class GoalManager {
     }
 
     public Set<String> getPlayedSongs() {
-        return playedSongs;
+        return Collections.unmodifiableSet(playedSongs);
     }
 
     public Set<String> getPlayedAlbums() {
-        return playedAlbums;
+        return Collections.unmodifiableSet(playedAlbums);
     }
 
     public boolean isSongPlayed(String songTitle, String albumName) {
