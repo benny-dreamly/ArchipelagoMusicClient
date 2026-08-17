@@ -26,6 +26,7 @@ public class GoalManager {
     private final List<Album> albums;
 
     private boolean goalSent = false;
+    private boolean serverDataLoaded = false;
 
     public GoalManager(UnlockManager unlockManager, List<Album> albums) {
         this.unlockManager = unlockManager;
@@ -39,7 +40,11 @@ public class GoalManager {
         boolean isNew = playedSongs.add(key);
         LOGGER.info("Marked song as played: {} (album: {}) [new={}]", songTitle, albumName, isNew);
 
-        persistToServer(client);
+        if (serverDataLoaded) {
+            persistToServer(client);
+        } else {
+            LOGGER.debug("Deferring persist until server data is loaded");
+        }
         checkAlbumProgress(albumName);
         checkGoal(client);
     }
@@ -122,7 +127,9 @@ public class GoalManager {
             }
         }
 
+        serverDataLoaded = true;
         LOGGER.info("Loaded {} played songs from server (merged, total={})", savedPlayedSongs.size(), playedSongs.size());
+        persistToServer(client);
         checkGoal(client);
     }
 
@@ -130,6 +137,7 @@ public class GoalManager {
         playedSongs.clear();
         playedAlbums.clear();
         goalSent = false;
+        serverDataLoaded = false;
     }
 
     public Set<String> getPlayedSongs() {
