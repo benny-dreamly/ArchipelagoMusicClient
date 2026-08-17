@@ -40,3 +40,7 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+### Logs ###
+logs/
+MusicAppDemo.log
