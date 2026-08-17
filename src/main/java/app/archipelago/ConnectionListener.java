@@ -1,18 +1,30 @@
 package app.archipelago;
 
 import app.MusicAppDemo;
+import app.logic.GoalManager;
 import com.google.gson.JsonElement;
+import com.google.gson.reflect.TypeToken;
 import io.github.archipelagomw.events.ConnectionResultEvent;
 import io.github.archipelagomw.events.ArchipelagoEventListener;
+import io.github.archipelagomw.events.RetrievedEvent;
 import io.github.archipelagomw.network.ConnectionResult;
 import javafx.application.Platform;
 import javafx.scene.control.Label;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 
 import static app.util.Dialogs.showError;
 
 
 @SuppressWarnings("ClassCanBeRecord")
 public class ConnectionListener {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionListener.class);
+    private static final String PLAYED_SONGS_KEY = "musictools/played_songs_";
 
     private final Label statusLabel;
 
@@ -33,12 +45,15 @@ public class ConnectionListener {
 
             if (result == io.github.archipelagomw.network.ConnectionResult.Success) {
                 JsonElement slotData = event.getSlotData(JsonElement.class);
-                //app.addTextToOutputArea(slotData.getAsString() + "\n");
-                //System.out.println(slotData);
                 client.setSlotData(slotData);
                 statusLabel.setText("Connected!");
 
                 app.applySlotData();
+
+                // Load played songs from server data storage
+                String key = PLAYED_SONGS_KEY + client.getSlot();
+                LOGGER.info("Requesting played songs from data storage: key={}", key);
+                client.dataStorageGet(List.of(key));
             } else {
                 // Prevent duplicate error alerts if a socket error already happened
                 if (statusLabel.getText().equals("Connection failed")) return;
@@ -52,6 +67,29 @@ public class ConnectionListener {
 
                 app.setConnectButtonText("Connect");
                 app.setGameFieldDisabled(false);
+            }
+        });
+    }
+
+    @SuppressWarnings("unused")
+    @ArchipelagoEventListener
+    public void onRetrieved(RetrievedEvent event) {
+        String key = PLAYED_SONGS_KEY + client.getSlot();
+        if (!event.containsKey(key)) {
+            LOGGER.info("No played songs found in data storage for key={}", key);
+            return;
+        }
+
+        List<String> playedList = event.getValueAsObject(key, new TypeToken<List<String>>(){}.getType());
+        if (playedList == null) playedList = Collections.emptyList();
+
+        Set<String> playedSongs = Set.copyOf(playedList);
+        LOGGER.info("Retrieved {} played songs from data storage", playedSongs.size());
+
+        Platform.runLater(() -> {
+            GoalManager goalManager = app.getGoalManager();
+            if (goalManager != null) {
+                goalManager.loadFromServer(playedSongs);
             }
         });
     }

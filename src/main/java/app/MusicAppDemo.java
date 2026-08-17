@@ -5,6 +5,7 @@ import app.archipelago.ConnectionListener;
 import app.archipelago.ItemListener;
 import app.archipelago.PrintJsonListener;
 import app.archipelago.SlotDataHelper;
+import app.logic.GoalManager;
 import app.logic.QueueManager;
 import app.logic.SongFileMatcher;
 import app.logic.UnlockManager;
@@ -103,6 +104,7 @@ public class MusicAppDemo extends Application {
 
     private final List<Album> albums = new ArrayList<>();
     private final UnlockManager unlockManager = new UnlockManager(this::refreshTree);
+    private GoalManager goalManager;
     private boolean offlineMode = false;
     private boolean volumeAdjustMode = false;
     private final StringBuilder volumeInput = new StringBuilder();
@@ -284,6 +286,7 @@ public class MusicAppDemo extends Application {
             // initialize AlbumLibrary now we've added the albums and they exist
             library = new AlbumLibrary(albums);
             queueManager = new QueueManager(library);
+            goalManager = new GoalManager(unlockManager, albums);
 
             treeView.setCellFactory(tv -> new TreeCell<>() {
                 @Override
@@ -605,6 +608,10 @@ public class MusicAppDemo extends Application {
         currentPlayer.setOnEndOfMedia(() -> {
             if (client != null && client.isConnected()) {
                 client.sendCheck(song.getTitle());
+                Album songAlbum = library.getAlbumForSong(song.getTitle());
+                if (goalManager != null && songAlbum != null) {
+                    goalManager.markPlayed(song.getTitle(), songAlbum.getName(), client);
+                }
             }
             if (queueManager.getRepeatMode() == QueueManager.RepeatMode.SONG) {
                 playSong(song);
@@ -1261,5 +1268,9 @@ public class MusicAppDemo extends Application {
 
     public AlbumLibrary getLibrary() {
         return library;
+    }
+
+    public GoalManager getGoalManager() {
+        return goalManager;
     }
 }
