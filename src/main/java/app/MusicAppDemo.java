@@ -105,6 +105,7 @@ public class MusicAppDemo extends Application {
     private final List<Album> albums = new ArrayList<>();
     private final UnlockManager unlockManager = new UnlockManager(this::refreshTree);
     private GoalManager goalManager;
+    private boolean usingMusicLibrary = false;
     private boolean offlineMode = false;
     private boolean volumeAdjustMode = false;
     private final StringBuilder volumeInput = new StringBuilder();
@@ -253,8 +254,10 @@ public class MusicAppDemo extends Application {
                 if (musicLibraryFile.exists()) {
                     MusicLibraryLoader musicLoader = new MusicLibraryLoader();
                     try {
+                        usingMusicLibrary = true;
                         return musicLoader.loadFromFile(musicLibraryFile);
                     } catch (Exception e) {
+                        usingMusicLibrary = false;
                         LOGGER.warn("Failed to load music_library.json, falling back to locations.json", e);
                     }
                 }
@@ -281,7 +284,9 @@ public class MusicAppDemo extends Application {
         loadTask.setOnSucceeded(_ -> {
             albums.addAll(loadTask.getValue());
 
-            generateDefaultAlbumFolders(albums);
+            if (!usingMusicLibrary) {
+                generateDefaultAlbumFolders(albums);
+            }
 
             // initialize AlbumLibrary now we've added the albums and they exist
             library = new AlbumLibrary(albums);
@@ -330,18 +335,27 @@ public class MusicAppDemo extends Application {
                 }
             });
 
-            Map<String, String> albumFolders = new HashMap<>();
-            File configFile = getAlbumConfigFile();
+            if (!usingMusicLibrary) {
+                Map<String, String> albumFolders = new HashMap<>();
+                File configFile = getAlbumConfigFile();
 
-            if (configFile.exists()) {
-                try (Reader reader = new FileReader(configFile, StandardCharsets.UTF_8)) {
-                    Type type = new TypeToken<Map<String, String>>(){}.getType();
-                    albumFolders = new Gson().fromJson(reader, type);
-                } catch (Exception ex) {
-                    LOGGER.error("Error loading album folders configuration", ex);
+                if (configFile.exists()) {
+                    try (Reader reader = new FileReader(configFile, StandardCharsets.UTF_8)) {
+                        Type type = new TypeToken<Map<String, String>>(){}.getType();
+                        albumFolders = new Gson().fromJson(reader, type);
+                    } catch (Exception ex) {
+                        LOGGER.error("Error loading album folders configuration", ex);
+                    }
+                } else {
+                    LOGGER.info("No config file found at {}, skipping album folder assignment", configFile.getAbsolutePath());
                 }
-            } else {
-                LOGGER.info("No config file found at {}, skipping album folder assignment", configFile.getAbsolutePath());
+
+                // assign folder paths to albums from legacy albumFolders.json
+                for (Album album : albums) {
+                    if (albumFolders.containsKey(album.getName())) {
+                        album.setFolderPath(albumFolders.get(album.getName()));
+                    }
+                }
             }
 
             // add fallback album to unlocked albums
@@ -350,13 +364,6 @@ public class MusicAppDemo extends Application {
                     unlockManager.getUnlockedAlbums().add("Songs");
                     unlockManager.getEnabledSets().add(album.getType()); // optional: allow its songs to appear
                     break;
-                }
-            }
-
-            // assign folder paths to albums
-            for (Album album : albums) {
-                if (albumFolders.containsKey(album.getName())) {
-                    album.setFolderPath(albumFolders.get(album.getName()));
                 }
             }
 

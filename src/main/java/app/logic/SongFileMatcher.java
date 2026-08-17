@@ -35,7 +35,9 @@ public class SongFileMatcher {
                 Song matchedSong = findBestMatch(normalizedFile, album.getSongs());
 
                 if (matchedSong != null) {
-                    matchedSong.setFilePath(file.getAbsolutePath());
+                    if (matchedSong.getFilePath() == null) {
+                        matchedSong.setFilePath(file.getAbsolutePath());
+                    }
                     LOGGER.info("Matched: {} -> {} | path: {}", file.getName(), matchedSong.getTitle(), matchedSong.getFilePath());
                 } else {
                     LOGGER.warn("Could not match file to song: {} in album {}", file.getName(), album.getName());
