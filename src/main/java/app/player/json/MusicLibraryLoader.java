@@ -37,6 +37,13 @@ public class MusicLibraryLoader {
         List<Album> albums = new ArrayList<>();
 
         for (MusicLibraryJSON.AlbumJSON albumJSON : library.albums) {
+            if (albumJSON == null) {
+                throw new IllegalArgumentException("Null album entry in music library");
+            }
+            if (albumJSON.songs == null) {
+                throw new IllegalArgumentException("Album '" + albumJSON.name + "' has null songs list");
+            }
+
             String albumType = albumJSON.type != null ? albumJSON.type : "standard";
             boolean fullUnlock = albumJSON.full_album_unlock;
 
@@ -47,6 +54,10 @@ public class MusicLibraryLoader {
             }
 
             for (MusicLibraryJSON.SongJSON songJSON : albumJSON.songs) {
+                if (songJSON == null) {
+                    throw new IllegalArgumentException("Null song entry in album '" + albumJSON.name + "'");
+                }
+
                 String songType = songJSON.type != null ? songJSON.type : "normal";
                 String location = songJSON.location != null ? songJSON.location : songJSON.title;
                 Song song = new Song(songJSON.title, songType, location);
