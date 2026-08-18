@@ -389,25 +389,66 @@ public class MusicAppDemo extends Application {
             }
 
             playerPanel.getLoadQueueBtn().setDisable(false);
+            playerPanel.getPlayButton().setDisable(false);
+            playerPanel.getPauseButton().setDisable(false);
+            playerPanel.getRepeatButton().setDisable(false);
+            playerPanel.getSaveQueueBtn().setDisable(false);
+            playerPanel.getShuffleQueueBtn().setDisable(false);
+            playerPanel.getClearQueueBtn().setDisable(false);
+            playerPanel.getRemoveSelectedBtn().setDisable(false);
+            treeView.setDisable(false);
         });
 
         loadTask.setOnFailed(_ -> {
             //noinspection CallToPrintStackTrace
             loadTask.getException().printStackTrace();
+            // Re-enable controls on failure so UI doesn't get stuck
+            playerPanel.getLoadQueueBtn().setDisable(false);
+            playerPanel.getPlayButton().setDisable(false);
+            playerPanel.getPauseButton().setDisable(false);
+            playerPanel.getRepeatButton().setDisable(false);
+            playerPanel.getSaveQueueBtn().setDisable(false);
+            playerPanel.getShuffleQueueBtn().setDisable(false);
+            playerPanel.getClearQueueBtn().setDisable(false);
+            playerPanel.getRemoveSelectedBtn().setDisable(false);
+            treeView.setDisable(false);
         });
         return loadTask;
     }
 
     @SuppressWarnings("unused")
     private void reloadGameLibrary(File gameFolder) {
-        // clear old state before reloading
+        // Stop and dispose current playback
+        if (currentPlayer != null) {
+            currentPlayer.stop();
+            currentPlayer.dispose();
+            currentPlayer = null;
+        }
+        currentSong = null;
+
+        // Clear old state before reloading
         albums.clear();
         unlockManager.getUnlockedAlbums().clear();
         unlockManager.getUnlockedSongs().clear();
         unlockManager.getEnabledSets().clear();
         albumOrderManager.clearAlbumOrderCache();
+        if (queueManager != null) {
+            queueManager.clear();
+        }
+        playerPanel.clearQueueDisplay();
+        playerPanel.clearPlaybackState();
+        playerPanel.setCurrentSongLabel("Loading...");
 
+        // Disable tree and playback controls during load
+        treeView.setDisable(true);
+        playerPanel.getPlayButton().setDisable(true);
+        playerPanel.getPauseButton().setDisable(true);
+        playerPanel.getRepeatButton().setDisable(true);
+        playerPanel.getSaveQueueBtn().setDisable(true);
         playerPanel.getLoadQueueBtn().setDisable(true);
+        playerPanel.getShuffleQueueBtn().setDisable(true);
+        playerPanel.getClearQueueBtn().setDisable(true);
+        playerPanel.getRemoveSelectedBtn().setDisable(true);
 
         Task<List<Album>> loadTask = getLoadTask();
         new Thread(loadTask).start();
