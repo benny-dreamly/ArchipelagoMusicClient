@@ -659,6 +659,7 @@ public class MusicAppDemo extends Application {
     }
 
     private void playNextInQueue() {
+        if (queueManager == null) return;
         Song next = queueManager.nextSong(currentSong);
         updateQueueDisplay();
         if (next != null) {
@@ -1167,7 +1168,7 @@ public class MusicAppDemo extends Application {
                 currentPlayer.play();
                 if (currentSong != null) playerPanel.setCurrentSongLabel("Currently Playing: " + currentSong.getTitle());
             }
-        } else if (!queueManager.isEmpty()) {
+        } else if (queueManager != null && !queueManager.isEmpty()) {
             Song next = queueManager.poll();
             updateQueueDisplay();
             if (next != null) playSong(next);
