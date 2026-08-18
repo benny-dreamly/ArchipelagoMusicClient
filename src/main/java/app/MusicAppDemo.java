@@ -360,7 +360,8 @@ public class MusicAppDemo extends Application {
                     if (configFile.exists()) {
                         try (Reader reader = new FileReader(configFile, StandardCharsets.UTF_8)) {
                             Type type = new TypeToken<Map<String, String>>(){}.getType();
-                            albumFolders = new Gson().fromJson(reader, type);
+                            Map<String, String> parsed = new Gson().fromJson(reader, type);
+                            if (parsed != null) albumFolders = parsed;
                         } catch (Exception ex) {
                             LOGGER.error("Error loading album folders configuration", ex);
                         }
