@@ -2,6 +2,9 @@ package app.player.json;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 
 import java.io.InputStream;
@@ -13,36 +16,43 @@ import java.util.List;
 
 public class LibraryLoader {
 
-    public List<SongJSON> loadSongs(String resourcePath) throws Exception {
-        Gson gson = new GsonBuilder()
-                .registerTypeAdapter(
-                        new TypeToken<List<String>>(){}.getType(),
-                        new RequiresDeserializer()
-                )
+    private static final Type SONG_LIST_TYPE = new TypeToken<List<SongJSON>>() {}.getType();
+    private static final Type REQUIRES_TYPE = new TypeToken<List<String>>(){}.getType();
+
+    private Gson createGson() {
+        return new GsonBuilder()
+                .registerTypeAdapter(REQUIRES_TYPE, new RequiresDeserializer())
                 .create();
+    }
 
-        Type listType = new TypeToken<List<SongJSON>>() {}.getType();
-
-        // Load JSON from resources
+    public List<SongJSON> loadSongs(String resourcePath) throws Exception {
         InputStream is = getClass().getResourceAsStream(resourcePath);
         if (is == null) {
             throw new IllegalArgumentException("Resource not found: " + resourcePath);
         }
 
         try (InputStreamReader reader = new InputStreamReader(is, StandardCharsets.UTF_8)) {
-            return gson.fromJson(reader, listType);
+            return loadSongsFromReader(reader);
         }
     }
 
     public List<SongJSON> loadSongsFromReader(Reader reader) {
-        Gson gson = new GsonBuilder()
-                .registerTypeAdapter(
-                        new TypeToken<List<String>>(){}.getType(),
-                        new RequiresDeserializer()
-                )
-                .create();
+        Gson gson = createGson();
+        JsonElement root = gson.fromJson(reader, JsonElement.class);
 
-        Type type = new TypeToken<List<SongJSON>>(){}.getType();
-        return gson.fromJson(reader, type);
+        JsonArray array;
+        if (root.isJsonArray()) {
+            array = root.getAsJsonArray();
+        } else if (root.isJsonObject()) {
+            JsonElement data = root.getAsJsonObject().get("data");
+            if (data == null || !data.isJsonArray()) {
+                throw new IllegalArgumentException("locations JSON has no 'data' array");
+            }
+            array = data.getAsJsonArray();
+        } else {
+            throw new IllegalArgumentException("Unexpected locations JSON root type");
+        }
+
+        return gson.fromJson(array, SONG_LIST_TYPE);
     }
 }
