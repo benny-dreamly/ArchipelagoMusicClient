@@ -12,11 +12,12 @@ The Music Player automatically creates a configuration directory per manual/game
 
 Each manual folder contains:
 
-- albumFolders.json
+- music_library.json (primary format — replaces locations.json, album_metadata.json, and albumFolders.json when present)
+- locations.json (legacy fallback)
+- albumFolders.json (fallback for album file paths when not specified in music_library.json)
 - albumOrder.json
-- locations.json
 - slot_data.json
-- album_metadata.json
+- album_metadata.json (legacy, superseded by music_library.json)
 
 If any file is missing, the client will generate a default version automatically for most files except for the locations.json and metadata files.
 
