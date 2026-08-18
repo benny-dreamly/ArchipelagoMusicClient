@@ -248,6 +248,7 @@ public class MusicAppDemo extends Application {
         Task<List<Album>> loadTask = new Task<>() {
             @Override
             protected List<Album> call() throws Exception {
+                usingMusicLibrary = false;
                 File gameFolder = getConfigDir();
                 File musicLibraryFile = new File(gameFolder, "music_library.json");
 
