@@ -6,6 +6,7 @@ public class MusicLibraryJSON {
 
     public String artist;
     public List<AlbumJSON> albums;
+    public List<String> bonus_locations;
 
     public static class AlbumJSON {
         public String name;

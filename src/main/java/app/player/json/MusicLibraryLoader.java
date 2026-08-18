@@ -76,4 +76,14 @@ public class MusicLibraryLoader {
         LOGGER.info("Loaded music library: {} albums from music_library.json", albums.size());
         return albums;
     }
+
+    public List<String> loadBonusLocations(File file) throws Exception {
+        try (Reader reader = new FileReader(file, StandardCharsets.UTF_8)) {
+            MusicLibraryJSON library = gson.fromJson(reader, MusicLibraryJSON.class);
+            if (library == null || library.bonus_locations == null) {
+                return List.of();
+            }
+            return new ArrayList<>(library.bonus_locations);
+        }
+    }
 }

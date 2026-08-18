@@ -103,6 +103,7 @@ public class MusicAppDemo extends Application {
     public static final Logger LOGGER = LoggerFactory.getLogger(MusicAppDemo.class);
 
     private final List<Album> albums = new ArrayList<>();
+    private final List<String> bonusLocations = new ArrayList<>();
     private final UnlockManager unlockManager = new UnlockManager(this::refreshTree);
     private GoalManager goalManager;
     private boolean usingMusicLibrary = false;
@@ -255,6 +256,8 @@ public class MusicAppDemo extends Application {
                     MusicLibraryLoader musicLoader = new MusicLibraryLoader();
                     try {
                         usingMusicLibrary = true;
+                        bonusLocations.clear();
+                        bonusLocations.addAll(musicLoader.loadBonusLocations(musicLibraryFile));
                         return musicLoader.loadFromFile(musicLibraryFile);
                     } catch (Exception e) {
                         usingMusicLibrary = false;
@@ -277,7 +280,10 @@ public class MusicAppDemo extends Application {
 
                 Map<String, AlbumMetadata> metadata = AlbumMetadataLoader.loadAlbumMetadata(gameFolder);
                 AlbumConverter converter = new AlbumConverter(metadata);
-                return converter.convert(rawSongs);
+                List<Album> result = converter.convert(rawSongs);
+                bonusLocations.clear();
+                bonusLocations.addAll(converter.getBonusLocations());
+                return result;
             }
         };
 
@@ -431,6 +437,14 @@ public class MusicAppDemo extends Application {
             }
 
             if (hasSongs) rootItem.getChildren().add(albumItem);
+        }
+
+        if (!bonusLocations.isEmpty()) {
+            TreeItem<String> bonusItem = new TreeItem<>("Bonus");
+            for (String location : bonusLocations) {
+                bonusItem.getChildren().add(new TreeItem<>(location));
+            }
+            rootItem.getChildren().add(bonusItem);
         }
 
         treeView.setRoot(rootItem);
@@ -1227,21 +1241,37 @@ public class MusicAppDemo extends Application {
         }
     }
 
+    private void sendBonusCheck(String location) {
+        if (client != null && client.isConnected()) {
+            client.sendCheck(location);
+            bonusLocations.remove(location);
+            refreshTree();
+            LOGGER.info("Sent bonus check: {}", location);
+        }
+    }
+
     private void handleTreeSelection(TreeItem<String> newSel) {
         if (newSel == null) return;
 
-        // Only song (leaf) nodes are queueable; ignore album and root nodes
+        // Only leaf nodes are actionable; ignore album and root nodes
         if (!newSel.isLeaf()) return;
 
-        String songTitle = newSel.getValue();
-        Song song = library.getSongByTitle(songTitle);
+        String value = newSel.getValue();
+
+        // Bonus locations: send check, remove from tree
+        if (bonusLocations.contains(value)) {
+            sendBonusCheck(value);
+            return;
+        }
+
+        Song song = library.getSongByTitle(value);
 
         if (song == null) return;
 
         // Don't re-queue the currently playing song (e.g. from highlightCurrentSong)
         if (song == currentSong) return;
 
-        Album album = library.getAlbumForSong(songTitle);
+        Album album = library.getAlbumForSong(value);
         if (!unlockManager.canPlay(song, album)) {
             if (album == null || !unlockManager.isAlbumUnlocked(album.getName())) {
                 showError("Locked Song", "Cannot play song", song.getTitle() + " is not unlocked yet!");

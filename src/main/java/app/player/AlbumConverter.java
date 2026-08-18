@@ -12,6 +12,7 @@ import java.util.HashMap;
 public class AlbumConverter {
 
     private final Map<String, AlbumMetadata> albumMetadata;
+    private final List<String> bonusLocations = new ArrayList<>();
 
     public AlbumConverter(Map<String, AlbumMetadata> albumMetadata) {
         this.albumMetadata = albumMetadata;
@@ -21,8 +22,9 @@ public class AlbumConverter {
         Map<String, Album> albums = new HashMap<>();
 
         for (SongJSON raw : rawSongs) {
-            // Skip bonus locations
+            // Collect bonus locations as separate sendable checks
             if ("Bonus Locations".equalsIgnoreCase(raw.region)) {
+                bonusLocations.add(raw.name);
                 continue;
             }
 
@@ -65,5 +67,9 @@ public class AlbumConverter {
     private String detectAlbumType(List<String> categories) {
         if (categories.contains("Re-recordings")) return "rerecording";
         return "standard";
+    }
+
+    public List<String> getBonusLocations() {
+        return bonusLocations;
     }
 }
