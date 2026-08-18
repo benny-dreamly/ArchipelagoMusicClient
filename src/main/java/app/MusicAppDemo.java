@@ -1263,8 +1263,9 @@ public class MusicAppDemo extends Application {
 
         String value = newSel.getValue();
 
-        // Bonus locations: send check, remove from tree
-        if (bonusLocations.contains(value)) {
+        // Bonus locations: send check if selected leaf is under the "Bonus" branch
+        TreeItem<String> parent = newSel.getParent();
+        if (parent != null && "Bonus".equals(parent.getValue())) {
             sendBonusCheck(value);
             return;
         }
