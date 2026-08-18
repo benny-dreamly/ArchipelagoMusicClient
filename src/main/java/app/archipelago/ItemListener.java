@@ -19,6 +19,8 @@ public class ItemListener {
     private final Set<String> receivedItems = new HashSet<>();
     private final Set<String> receivedVaultTracks = new HashSet<>();
     private final Set<String> receivedRerecordings = new HashSet<>();
+    private final Set<String> receivedSongItems = new HashSet<>();
+    private final Set<String> receivedAlbumItems = new HashSet<>();
 
     public ItemListener(MusicAppDemo app) {
         this.app = app;
@@ -55,6 +57,7 @@ public class ItemListener {
                     if (album != null && album.isFullAlbumUnlock()) {
                         // Full-album unlock: only if item name matches album
                         if (normalizedItemName.equalsIgnoreCase(album.getName())) {
+                            receivedAlbumItems.add(album.getName());
                             for (Song s : album.getSongs()) {
                                 if (s.requiresMet(receivedItems)) {
                                     app.getUnlockedSongs().add(s.getTitle());
@@ -74,6 +77,7 @@ public class ItemListener {
                     // 3. Song item (single-song unlock)
                     else if (song != null) {
                         // Single-song unlock: only if requirements are met
+                        receivedSongItems.add(song.getTitle());
                         if (song.requiresMet(receivedItems)) {
                             app.getUnlockedSongs().add(song.getTitle());
                         }
@@ -104,7 +108,10 @@ public class ItemListener {
 
     private void unlockRequirementsSatisfied() {
         for (Album album : app.getLibrary().getAlbums()) {
+            boolean albumItemReceived = receivedAlbumItems.contains(album.getName());
             for (Song song : album.getSongs()) {
+                boolean songItemReceived = receivedSongItems.contains(song.getTitle());
+                if (!songItemReceived && !albumItemReceived) continue;
                 if (!app.getUnlockedSongs().contains(song.getTitle()) && song.requiresMet(receivedItems)) {
                     app.getUnlockedSongs().add(song.getTitle());
                     app.getEnabledSets().add(song.getType());
