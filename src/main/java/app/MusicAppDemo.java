@@ -341,25 +341,27 @@ public class MusicAppDemo extends Application {
                 }
             });
 
-            if (!usingMusicLibrary) {
-                Map<String, String> albumFolders = new HashMap<>();
-                File configFile = getAlbumConfigFile();
+            // Fallback: load albumFolders.json for albums without a path from music_library.json
+            {
+                boolean anyMissingPaths = albums.stream().anyMatch(a -> a.getFolderPath() == null || a.getFolderPath().isEmpty());
+                if (anyMissingPaths) {
+                    Map<String, String> albumFolders = new HashMap<>();
+                    File configFile = getAlbumConfigFile();
 
-                if (configFile.exists()) {
-                    try (Reader reader = new FileReader(configFile, StandardCharsets.UTF_8)) {
-                        Type type = new TypeToken<Map<String, String>>(){}.getType();
-                        albumFolders = new Gson().fromJson(reader, type);
-                    } catch (Exception ex) {
-                        LOGGER.error("Error loading album folders configuration", ex);
+                    if (configFile.exists()) {
+                        try (Reader reader = new FileReader(configFile, StandardCharsets.UTF_8)) {
+                            Type type = new TypeToken<Map<String, String>>(){}.getType();
+                            albumFolders = new Gson().fromJson(reader, type);
+                        } catch (Exception ex) {
+                            LOGGER.error("Error loading album folders configuration", ex);
+                        }
                     }
-                } else {
-                    LOGGER.info("No config file found at {}, skipping album folder assignment", configFile.getAbsolutePath());
-                }
 
-                // assign folder paths to albums from legacy albumFolders.json
-                for (Album album : albums) {
-                    if (albumFolders.containsKey(album.getName())) {
-                        album.setFolderPath(albumFolders.get(album.getName()));
+                    for (Album album : albums) {
+                        String path = albumFolders.get(album.getName());
+                        if (path != null && !path.isEmpty()) {
+                            album.setFolderPath(path);
+                        }
                     }
                 }
             }

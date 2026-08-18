@@ -104,6 +104,18 @@ public class UnlockManager {
         enabledSets.clear();
         enabledAlbums.clear();
 
+        // If no slot data mapping exists, enable all albums (games without slot_data.json)
+        if (enabledAlbumsFromSlotData.isEmpty()) {
+            for (Album album : albums) {
+                enabledAlbums.add(album.getName());
+                enabledSets.add(album.getType());
+                for (Song song : album.getSongs()) {
+                    enabledSets.add(song.getType());
+                }
+            }
+            return;
+        }
+
         // Enable only the albums in slot data
         for (Album album : albums) {
             if (enabledAlbumsFromSlotData.contains(album.getName())) {
