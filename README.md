@@ -62,8 +62,8 @@ If you’re setting up your own music manual (or modifying an existing one), you
 ## Configuration files overview
 | File                                     | Purpose                                                                                                            |
 |------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
-| `music_library.json` *(primary)*         | Defines albums, songs, file paths, bonus locations, and item requirements. Replaces legacy files when present.      |
-| `albumFolders.json` *(fallback)*         | Maps album names to folder paths for local music files. Used when `music_library.json` doesn't specify paths.       |
+| `music_library.json` *(primary)*         | Defines albums, songs, file paths, bonus locations, and item requirements. Replaces `locations.json` and `album_metadata.json` when present. |
+| `albumFolders.json` *(fallback)*         | Maps album names to folder paths for local music files. Provides a per-album fallback for albums that omit `path` in `music_library.json`.   |
 | `albumOrder.json`                        | Controls the display order of albums in the music library tree.                                                     |
 | `locations.json` *(legacy)*              | Defines all available songs, albums, and their relationships. Superseded by `music_library.json`.                   |
 | `slot_data.json`                         | Describes what is unlocked or available to the player in randomizer/Archipelago mode.                               |

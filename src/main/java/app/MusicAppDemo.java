@@ -358,9 +358,11 @@ public class MusicAppDemo extends Application {
                     }
 
                     for (Album album : albums) {
-                        String path = albumFolders.get(album.getName());
-                        if (path != null && !path.isEmpty()) {
-                            album.setFolderPath(path);
+                        if (album.getFolderPath() == null || album.getFolderPath().isEmpty()) {
+                            String path = albumFolders.get(album.getName());
+                            if (path != null && !path.isEmpty()) {
+                                album.setFolderPath(path);
+                            }
                         }
                     }
                 }
