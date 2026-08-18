@@ -1247,7 +1247,7 @@ public class MusicAppDemo extends Application {
         if (client != null && client.isConnected()) {
             client.sendCheck(location);
             bonusLocations.remove(location);
-            refreshTree();
+            Platform.runLater(this::refreshTree);
             LOGGER.info("Sent bonus check: {}", location);
         }
     }

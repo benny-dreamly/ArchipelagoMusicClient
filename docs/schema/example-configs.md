@@ -96,11 +96,16 @@ This is the primary format for defining your library. If present, it replaces `l
 ```json
 {
   "artist": "Taylor Swift",
+  "bonus_locations": [
+    "First Listen",
+    "Encore"
+  ],
   "albums": [
     {
       "name": "Fearless (Taylor's Version)",
       "type": "re-recording",
       "full_album_unlock": true,
+      "path": "/Users/example/Music/Taylor Swift/Fearless (Taylor's Version)",
       "songs": [
         {
           "title": "Love Story (Taylor's Version)",
@@ -109,7 +114,8 @@ This is the primary format for defining your library. If present, it replaces `l
         },
         {
           "title": "You Belong with Me (Taylor's Version)",
-          "type": "normal"
+          "type": "normal",
+          "requires": "|Disc 1|"
         }
       ]
     },
@@ -131,6 +137,34 @@ This is the primary format for defining your library. If present, it replaces `l
   ]
 }
 ```
+
+### Top-level fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `artist` | string | Artist name for display purposes. |
+| `bonus_locations` | string[] | Non-song locations to send as checks. Appears in a "Bonus" section in the tree; clicking sends the check and removes the entry. |
+| `albums` | AlbumJSON[] | List of albums in the library. |
+
+### Album fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Album name. Must match the `display_name` in `slot_data.json` if slot data is used. |
+| `type` | string | Album type: `"standard"`, `"re-recording"`, or `"rerecording"`. |
+| `full_album_unlock` | boolean | If `true`, receiving the album item unlocks all songs at once. If `false`, songs unlock individually. |
+| `path` | string | Optional. Absolute path to the folder containing audio files for this album. If omitted, falls back to `albumFolders.json`. |
+| `songs` | SongJSON[] | List of songs in the album. |
+
+### Song fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `title` | string | Song title. |
+| `location` | string | Optional. Archipelago location name for `sendCheck()`. Defaults to `title` if omitted. |
+| `path` | string | Optional. Absolute path to the audio file. Overrides fuzzy file matching. |
+| `type` | string | Song type: `"normal"`, `"short"`, `"vault"`, `"re-recording"`. Controls visibility based on slot options. |
+| `requires` | string | Optional. Pipe-delimited item names required before this song can be played (e.g. `"|Disc 1|"` or `"|Disc 1|Disc 2|"`). Empty string means no requirement. |
 
 ---
 
