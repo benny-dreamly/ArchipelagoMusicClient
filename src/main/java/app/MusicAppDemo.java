@@ -71,6 +71,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Set;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.HashMap;
@@ -106,6 +107,7 @@ public class MusicAppDemo extends Application {
     private final List<String> bonusLocations = new ArrayList<>();
     private final UnlockManager unlockManager = new UnlockManager(this::refreshTree);
     private GoalManager goalManager;
+    private Set<String> pendingPlayedSongs = Collections.emptySet();
     private boolean usingMusicLibrary = false;
     private boolean offlineMode = false;
     private boolean volumeAdjustMode = false;
@@ -299,6 +301,12 @@ public class MusicAppDemo extends Application {
             library = new AlbumLibrary(albums);
             queueManager = new QueueManager(library, unlockManager);
             goalManager = new GoalManager(unlockManager, albums);
+
+            // Apply any played songs that arrived before GoalManager was ready
+            if (!pendingPlayedSongs.isEmpty()) {
+                goalManager.loadFromServer(pendingPlayedSongs, client);
+                pendingPlayedSongs = Collections.emptySet();
+            }
 
             treeView.setCellFactory(tv -> new TreeCell<>() {
                 @Override
@@ -1353,5 +1361,9 @@ public class MusicAppDemo extends Application {
 
     public GoalManager getGoalManager() {
         return goalManager;
+    }
+
+    public void setPendingPlayedSongs(Set<String> songs) {
+        this.pendingPlayedSongs = songs;
     }
 }

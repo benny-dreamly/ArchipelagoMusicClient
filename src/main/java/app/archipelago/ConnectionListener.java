@@ -90,6 +90,10 @@ public class ConnectionListener {
             GoalManager goalManager = app.getGoalManager();
             if (goalManager != null) {
                 goalManager.loadFromServer(playedSongs, client);
+            } else {
+                // GoalManager not yet initialized — store for deferred restoration
+                app.setPendingPlayedSongs(playedSongs);
+                LOGGER.info("Stored {} played songs for deferred GoalManager restoration", playedSongs.size());
             }
         });
     }
