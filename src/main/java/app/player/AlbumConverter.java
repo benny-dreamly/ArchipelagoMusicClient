@@ -45,7 +45,18 @@ public class AlbumConverter {
                 songType = "standard";
             }
 
-            album.addSong(new Song(raw.name, songType));
+            String requires = "";
+            if (raw.requires != null && !raw.requires.isEmpty()) {
+                // If single element already contains pipes, use as-is (new format)
+                // Otherwise join with pipes (old format)
+                if (raw.requires.size() == 1 && raw.requires.get(0).contains("|")) {
+                    requires = raw.requires.get(0);
+                } else {
+                    requires = String.join("|", raw.requires);
+                }
+            }
+
+            album.addSong(new Song(raw.name, songType, "", requires));
         }
 
         return new ArrayList<>(albums.values());

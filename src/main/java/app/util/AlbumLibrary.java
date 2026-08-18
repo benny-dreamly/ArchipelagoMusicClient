@@ -13,6 +13,10 @@ public class AlbumLibrary {
         this.albums = albums;
     }
 
+    public List<Album> getAlbums() {
+        return albums;
+    }
+
     public Album getAlbumByName(String name) {
         for (Album album : albums) {
             if (album.getName().equals(name)) return album;

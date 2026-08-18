@@ -16,7 +16,7 @@ public class ItemListener {
 
     private final MusicAppDemo app;
 
-
+    private final Set<String> receivedItems = new HashSet<>();
     private final Set<String> receivedVaultTracks = new HashSet<>();
     private final Set<String> receivedRerecordings = new HashSet<>();
 
@@ -32,6 +32,8 @@ public class ItemListener {
         String playerName = event.getPlayerName();
 
         Platform.runLater(() -> {
+            receivedItems.add(itemName);
+
             switch (itemName) {
                 case "Vault Tracks" -> // Optionally unlock the vault songs if you want immediate access
                     app.getEnabledSets().add("vault");
@@ -54,7 +56,9 @@ public class ItemListener {
                         // Full-album unlock: only if item name matches album
                         if (normalizedItemName.equalsIgnoreCase(album.getName())) {
                             for (Song s : album.getSongs()) {
-                                app.getUnlockedSongs().add(s.getTitle());
+                                if (s.requiresMet(receivedItems)) {
+                                    app.getUnlockedSongs().add(s.getTitle());
+                                }
                             }
                             app.getUnlockedAlbums().add(album.getName());
                         }
@@ -69,8 +73,10 @@ public class ItemListener {
                     }
                     // 3. Song item (single-song unlock)
                     else if (song != null) {
-                        // Single-song unlock (Glass Animals style)
-                        app.getUnlockedSongs().add(song.getTitle());
+                        // Single-song unlock: only if requirements are met
+                        if (song.requiresMet(receivedItems)) {
+                            app.getUnlockedSongs().add(song.getTitle());
+                        }
 
                         // Also mark the parent album as "unlocked" for play checks
                         Album parentAlbum = app.getLibrary().getAlbumForSong(song.getTitle());
@@ -87,10 +93,24 @@ public class ItemListener {
                 }
             }
 
+            // After processing the item, check all songs for newly satisfied requirements
+            unlockRequirementsSatisfied();
+
             app.refreshTree();
 
             LOGGER.info("Received item: {} from {}'s {}", itemName, playerName, locationName);
         });
+    }
+
+    private void unlockRequirementsSatisfied() {
+        for (Album album : app.getLibrary().getAlbums()) {
+            for (Song song : album.getSongs()) {
+                if (!app.getUnlockedSongs().contains(song.getTitle()) && song.requiresMet(receivedItems)) {
+                    app.getUnlockedSongs().add(song.getTitle());
+                    app.getEnabledSets().add(song.getType());
+                }
+            }
+        }
     }
 
         @SuppressWarnings("unused")
