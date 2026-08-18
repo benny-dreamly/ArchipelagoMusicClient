@@ -462,7 +462,7 @@ public class MusicAppDemo extends Application {
 
             contextMenu.getItems().clear(); // reset the context menu
 
-            if (item.isLeaf() && item.getParent().getParent() != null) {
+            if (item.isLeaf() && item.getParent().getParent() != null && !"Bonus".equals(item.getParent().getValue())) {
                 MenuItem queueNext = new MenuItem("Play Next");
                 queueNext.setOnAction(_ -> queueSongNext(item.getValue()));
                 contextMenu.getItems().add(queueNext);
@@ -470,8 +470,8 @@ public class MusicAppDemo extends Application {
                 event.consume();
             }
 
-            // Only show for album nodes (non-leaf, child of root)
-            if (!item.isLeaf() && item.getParent().getParent() == null) {
+            // Only show for album nodes (non-leaf, child of root, not Bonus)
+            if (!item.isLeaf() && item.getParent().getParent() == null && !"Bonus".equals(item.getValue())) {
                 MenuItem queueAll = new MenuItem("Queue All Songs");
                 queueAll.setOnAction(_ -> queueAlbum(item.getValue()));
                 contextMenu.getItems().add(queueAll);
