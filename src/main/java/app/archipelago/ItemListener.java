@@ -27,6 +27,7 @@ public class ItemListener {
     private final Deque<Runnable> bufferedEvents = new ArrayDeque<>();
     private final Object bufferLock = new Object();
     private volatile boolean libraryLoading = true;
+    private volatile boolean failedLoad;
 
     public ItemListener(MusicAppDemo app) {
         this.app = app;
@@ -34,6 +35,9 @@ public class ItemListener {
 
     public void setLibraryLoading(boolean loading) {
         this.libraryLoading = loading;
+        if (loading) {
+            this.failedLoad = false;
+        }
     }
 
     public void drainBuffer() {
@@ -59,6 +63,7 @@ public class ItemListener {
             count = bufferedEvents.size();
             bufferedEvents.clear();
             libraryLoading = false;
+            failedLoad = true;
         }
         if (count > 0) {
             LOGGER.warn("Discarded {} buffered item events due to library load failure", count);
@@ -75,6 +80,10 @@ public class ItemListener {
         Runnable processEvent = () -> processItem(itemName, locationName, playerName);
 
         synchronized (bufferLock) {
+            if (failedLoad) {
+                LOGGER.debug("Dropping item event after failed library load: {}", itemName);
+                return;
+            }
             if (libraryLoading || app.getLibrary() == null) {
                 bufferedEvents.addLast(processEvent);
                 return;
