@@ -112,7 +112,7 @@ public class MusicAppDemo extends Application {
     private boolean pendingPlayedSnapshotReceived;
     private boolean usingMusicLibrary = false;
     private boolean offlineMode = false;
-    private int loadGeneration = 0;
+    private volatile int loadGeneration = 0;
     private boolean volumeAdjustMode = false;
     private final StringBuilder volumeInput = new StringBuilder();
     private AlbumLibrary library;
