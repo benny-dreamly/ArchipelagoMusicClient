@@ -210,7 +210,7 @@ public class MusicAppDemo extends Application {
 
         setupKeyboardShortcuts(scene);
 
-        Task<List<Album>> loadTask = getLoadTask();
+        Task<LoadResult> loadTask = getLoadTask();
 
         new Thread(loadTask).start();
 
@@ -250,12 +250,13 @@ public class MusicAppDemo extends Application {
         System.exit(0); // ensures all threads are killed
     }
 
-    private Task<List<Album>> getLoadTask() {
+    private record LoadResult(List<Album> albums, boolean usingMusicLibrary, List<String> bonusLocations) {}
+
+    private Task<LoadResult> getLoadTask() {
         final int generation = loadGeneration;
-        Task<List<Album>> loadTask = new Task<>() {
+        Task<LoadResult> loadTask = new Task<>() {
             @Override
-            protected List<Album> call() throws Exception {
-                usingMusicLibrary = false;
+            protected LoadResult call() throws Exception {
                 File gameFolder = getConfigDir();
                 File musicLibraryFile = new File(gameFolder, "music_library.json");
 
@@ -263,12 +264,10 @@ public class MusicAppDemo extends Application {
                 if (musicLibraryFile.exists()) {
                     MusicLibraryLoader musicLoader = new MusicLibraryLoader();
                     try {
-                        usingMusicLibrary = true;
-                        bonusLocations.clear();
-                        bonusLocations.addAll(musicLoader.loadBonusLocations(musicLibraryFile));
-                        return musicLoader.loadFromFile(musicLibraryFile);
+                        List<Album> loaded = musicLoader.loadFromFile(musicLibraryFile);
+                        List<String> bonus = new ArrayList<>(musicLoader.loadBonusLocations(musicLibraryFile));
+                        return new LoadResult(loaded, true, bonus);
                     } catch (Exception e) {
-                        usingMusicLibrary = false;
                         LOGGER.warn("Failed to load music_library.json, falling back to locations.json", e);
                     }
                 }
@@ -289,15 +288,19 @@ public class MusicAppDemo extends Application {
                 Map<String, AlbumMetadata> metadata = AlbumMetadataLoader.loadAlbumMetadata(gameFolder);
                 AlbumConverter converter = new AlbumConverter(metadata);
                 List<Album> result = converter.convert(rawSongs);
-                bonusLocations.clear();
-                bonusLocations.addAll(converter.getBonusLocations());
-                return result;
+                List<String> bonus = new ArrayList<>(converter.getBonusLocations());
+                return new LoadResult(result, false, bonus);
             }
         };
 
         loadTask.setOnSucceeded(_ -> {
+            LoadResult result = loadTask.getValue();
             if (generation != loadGeneration) return; // stale load — discard
-            albums.addAll(loadTask.getValue());
+
+            albums.addAll(result.albums());
+            usingMusicLibrary = result.usingMusicLibrary();
+            bonusLocations.clear();
+            bonusLocations.addAll(result.bonusLocations());
 
             if (!usingMusicLibrary) {
                 generateDefaultAlbumFolders(albums);
@@ -490,7 +493,7 @@ public class MusicAppDemo extends Application {
             itemListener.setLibraryLoading(true);
         }
 
-        Task<List<Album>> loadTask = getLoadTask();
+        Task<LoadResult> loadTask = getLoadTask();
         new Thread(loadTask).start();
     }
 
