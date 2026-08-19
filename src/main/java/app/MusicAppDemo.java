@@ -462,6 +462,7 @@ public class MusicAppDemo extends Application {
         unlockManager.getUnlockedSongs().clear();
         unlockManager.getEnabledSets().clear();
         albumOrderManager.clearAlbumOrderCache();
+        goalManager = null;
         if (queueManager != null) {
             queueManager.clear();
         }
