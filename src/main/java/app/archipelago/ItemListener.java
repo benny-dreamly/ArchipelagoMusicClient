@@ -34,9 +34,11 @@ public class ItemListener {
     }
 
     public void setLibraryLoading(boolean loading) {
-        this.libraryLoading = loading;
-        if (loading) {
-            this.failedLoad = false;
+        synchronized (bufferLock) {
+            this.libraryLoading = loading;
+            if (loading) {
+                this.failedLoad = false;
+            }
         }
     }
 
