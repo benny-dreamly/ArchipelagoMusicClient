@@ -404,6 +404,7 @@ public class MusicAppDemo extends Application {
             for (Album album : albums) {
                 if ("Songs".equals(album.getName())) {
                     unlockManager.getUnlockedAlbums().add("Songs");
+                    unlockManager.getEnabledAlbums().add("Songs");
                     unlockManager.getEnabledSets().add(album.getType()); // optional: allow its songs to appear
                     break;
                 }
