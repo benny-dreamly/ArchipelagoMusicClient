@@ -110,6 +110,7 @@ public class MusicAppDemo extends Application {
     private Set<String> pendingPlayedSongs = Collections.emptySet();
     private String pendingPlayedSlot;
     private boolean pendingPlayedSnapshotReceived;
+    private int pendingPlayedGeneration = -1;
     private boolean usingMusicLibrary = false;
     private boolean offlineMode = false;
     private volatile int loadGeneration = 0;
@@ -321,7 +322,7 @@ public class MusicAppDemo extends Application {
             }
 
             // Apply any played-songs snapshot that arrived before GoalManager was ready
-            if (pendingPlayedSnapshotReceived) {
+            if (pendingPlayedSnapshotReceived && pendingPlayedGeneration == loadGeneration) {
                 if (client != null && client.isConnected() && pendingPlayedSlot != null
                         && pendingPlayedSlot.equals(String.valueOf(client.getSlot()))) {
                     goalManager.loadFromServer(pendingPlayedSongs, client);
@@ -332,6 +333,7 @@ public class MusicAppDemo extends Application {
                 pendingPlayedSongs = Collections.emptySet();
                 pendingPlayedSlot = null;
                 pendingPlayedSnapshotReceived = false;
+                pendingPlayedGeneration = -1;
             }
 
             treeView.setCellFactory(tv -> new TreeCell<>() {
@@ -479,6 +481,10 @@ public class MusicAppDemo extends Application {
         goalManager = null;
         library = null;
         queueManager = null;
+        pendingPlayedSongs = Collections.emptySet();
+        pendingPlayedSlot = null;
+        pendingPlayedSnapshotReceived = false;
+        pendingPlayedGeneration = -1;
         playerPanel.clearQueueDisplay();
         playerPanel.clearPlaybackState();
         playerPanel.setCurrentSongLabel("Loading...");
@@ -1409,9 +1415,10 @@ public class MusicAppDemo extends Application {
         return goalManager;
     }
 
-    public void setPendingPlayedSongs(Set<String> songs, String slot) {
+    public void setPendingPlayedSongs(Set<String> songs, String slot, int generation) {
         this.pendingPlayedSongs = songs;
         this.pendingPlayedSlot = slot;
         this.pendingPlayedSnapshotReceived = (slot != null);
+        this.pendingPlayedGeneration = generation;
     }
 }

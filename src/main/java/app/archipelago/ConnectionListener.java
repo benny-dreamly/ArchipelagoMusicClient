@@ -84,7 +84,7 @@ public class ConnectionListener {
                     goalManager.reset();
                     LOGGER.info("Reset GoalManager for slot {} (no server data)", client.getSlot());
                 }
-                app.setPendingPlayedSongs(Collections.emptySet(), null);
+                app.setPendingPlayedSongs(Collections.emptySet(), null, app.getLoadGeneration());
             });
             return;
         }
@@ -108,7 +108,7 @@ public class ConnectionListener {
                 goalManager.loadFromServer(playedSongs, client);
             } else {
                 // GoalManager not yet initialized — store for deferred restoration
-                app.setPendingPlayedSongs(playedSongs, String.valueOf(client.getSlot()));
+                app.setPendingPlayedSongs(playedSongs, String.valueOf(client.getSlot()), app.getLoadGeneration());
                 LOGGER.info("Stored {} played songs for deferred GoalManager restoration (slot={})", playedSongs.size(), client.getSlot());
             }
         });
