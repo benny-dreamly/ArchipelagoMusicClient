@@ -429,16 +429,19 @@ public class MusicAppDemo extends Application {
             if (itemListener != null) {
                 itemListener.discardBuffer();
             }
-            // Re-enable controls on failure so UI doesn't get stuck
+            // Re-enable safe controls on failure; keep playback/queue controls
+            // disabled when queueManager is null to avoid NPE on dereference
             playerPanel.getLoadQueueBtn().setDisable(false);
-            playerPanel.getPlayButton().setDisable(false);
-            playerPanel.getPauseButton().setDisable(false);
-            playerPanel.getRepeatButton().setDisable(false);
-            playerPanel.getSaveQueueBtn().setDisable(false);
-            playerPanel.getShuffleQueueBtn().setDisable(false);
-            playerPanel.getClearQueueBtn().setDisable(false);
-            playerPanel.getRemoveSelectedBtn().setDisable(false);
             treeView.setDisable(false);
+            if (queueManager != null) {
+                playerPanel.getPlayButton().setDisable(false);
+                playerPanel.getPauseButton().setDisable(false);
+                playerPanel.getRepeatButton().setDisable(false);
+                playerPanel.getSaveQueueBtn().setDisable(false);
+                playerPanel.getShuffleQueueBtn().setDisable(false);
+                playerPanel.getClearQueueBtn().setDisable(false);
+                playerPanel.getRemoveSelectedBtn().setDisable(false);
+            }
         });
         return loadTask;
     }
