@@ -307,7 +307,7 @@ public class MusicAppDemo extends Application {
             // Apply any played songs that arrived before GoalManager was ready
             if (!pendingPlayedSongs.isEmpty()) {
                 if (client != null && client.isConnected() && pendingPlayedSlot != null
-                        && pendingPlayedSlot.equals(client.getSlot())) {
+                        && pendingPlayedSlot.equals(String.valueOf(client.getSlot()))) {
                     goalManager.loadFromServer(pendingPlayedSongs, client);
                 } else {
                     LOGGER.warn("Discarding deferred played songs: slot mismatch (expected={}, current={})",
