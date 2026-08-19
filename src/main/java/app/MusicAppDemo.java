@@ -111,6 +111,7 @@ public class MusicAppDemo extends Application {
     private String pendingPlayedSlot;
     private boolean usingMusicLibrary = false;
     private boolean offlineMode = false;
+    private int loadGeneration = 0;
     private boolean volumeAdjustMode = false;
     private final StringBuilder volumeInput = new StringBuilder();
     private AlbumLibrary library;
@@ -249,6 +250,7 @@ public class MusicAppDemo extends Application {
     }
 
     private Task<List<Album>> getLoadTask() {
+        final int generation = loadGeneration;
         Task<List<Album>> loadTask = new Task<>() {
             @Override
             protected List<Album> call() throws Exception {
@@ -293,6 +295,7 @@ public class MusicAppDemo extends Application {
         };
 
         loadTask.setOnSucceeded(_ -> {
+            if (generation != loadGeneration) return; // stale load — discard
             albums.addAll(loadTask.getValue());
 
             if (!usingMusicLibrary) {
@@ -423,6 +426,7 @@ public class MusicAppDemo extends Application {
         });
 
         loadTask.setOnFailed(_ -> {
+            if (generation != loadGeneration) return; // stale load — discard
             //noinspection CallToPrintStackTrace
             loadTask.getException().printStackTrace();
             // Discard buffered item events — library failed to load
@@ -446,6 +450,7 @@ public class MusicAppDemo extends Application {
 
     @SuppressWarnings("unused")
     private void reloadGameLibrary(File gameFolder) {
+        loadGeneration++; // invalidate any in-flight load task
         // Stop and dispose current playback
         if (currentPlayer != null) {
             currentPlayer.stop();
