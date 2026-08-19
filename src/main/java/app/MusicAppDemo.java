@@ -430,18 +430,16 @@ public class MusicAppDemo extends Application {
                 itemListener.discardBuffer();
             }
             // Re-enable safe controls on failure; keep playback/queue controls
-            // disabled when queueManager is null to avoid NPE on dereference
+            // disabled when library or queueManager is null to avoid NPE on dereference
             playerPanel.getLoadQueueBtn().setDisable(false);
-            treeView.setDisable(false);
-            if (queueManager != null) {
-                playerPanel.getPlayButton().setDisable(false);
-                playerPanel.getPauseButton().setDisable(false);
-                playerPanel.getRepeatButton().setDisable(false);
-                playerPanel.getSaveQueueBtn().setDisable(false);
-                playerPanel.getShuffleQueueBtn().setDisable(false);
-                playerPanel.getClearQueueBtn().setDisable(false);
-                playerPanel.getRemoveSelectedBtn().setDisable(false);
-            }
+            treeView.setDisable(library == null || queueManager == null);
+            playerPanel.getPlayButton().setDisable(library == null || queueManager == null);
+            playerPanel.getPauseButton().setDisable(library == null || queueManager == null);
+            playerPanel.getRepeatButton().setDisable(library == null || queueManager == null);
+            playerPanel.getSaveQueueBtn().setDisable(library == null || queueManager == null);
+            playerPanel.getShuffleQueueBtn().setDisable(library == null || queueManager == null);
+            playerPanel.getClearQueueBtn().setDisable(library == null || queueManager == null);
+            playerPanel.getRemoveSelectedBtn().setDisable(library == null || queueManager == null);
         });
         return loadTask;
     }
@@ -463,9 +461,8 @@ public class MusicAppDemo extends Application {
         unlockManager.getEnabledSets().clear();
         albumOrderManager.clearAlbumOrderCache();
         goalManager = null;
-        if (queueManager != null) {
-            queueManager.clear();
-        }
+        library = null;
+        queueManager = null;
         playerPanel.clearQueueDisplay();
         playerPanel.clearPlaybackState();
         playerPanel.setCurrentSongLabel("Loading...");
