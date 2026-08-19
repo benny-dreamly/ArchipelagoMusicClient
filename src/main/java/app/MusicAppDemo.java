@@ -380,7 +380,7 @@ public class MusicAppDemo extends Application {
 
             // Fallback: load albumFolders.json for albums without a path from music_library.json
             {
-                boolean anyMissingPaths = albums.stream().anyMatch(a -> a.getFolderPath() == null || a.getFolderPath().isEmpty());
+                boolean anyMissingPaths = albums.stream().anyMatch(a -> a.getFolderPath() == null || a.getFolderPath().isBlank());
                 if (anyMissingPaths) {
                     Map<String, String> albumFolders = new HashMap<>();
                     File configFile = getAlbumConfigFile();
@@ -396,9 +396,9 @@ public class MusicAppDemo extends Application {
                     }
 
                     for (Album album : albums) {
-                        if (album.getFolderPath() == null || album.getFolderPath().isEmpty()) {
+                        if (album.getFolderPath() == null || album.getFolderPath().isBlank()) {
                             String path = albumFolders.get(album.getName());
-                            if (path != null && !path.isEmpty()) {
+                            if (path != null && !path.isBlank()) {
                                 album.setFolderPath(path);
                             }
                         }
