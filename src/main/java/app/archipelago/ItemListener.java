@@ -25,6 +25,7 @@ public class ItemListener {
     private final Set<String> receivedAlbumItems = new HashSet<>();
 
     private final Deque<Runnable> bufferedEvents = new ArrayDeque<>();
+    private final Object bufferLock = new Object();
     private volatile boolean libraryLoading = true;
 
     public ItemListener(MusicAppDemo app) {
@@ -36,10 +37,14 @@ public class ItemListener {
     }
 
     public void drainBuffer() {
-        libraryLoading = false;
-        Runnable event;
+        Deque<Runnable> snapshot;
+        synchronized (bufferLock) {
+            libraryLoading = false;
+            snapshot = new ArrayDeque<>(bufferedEvents);
+            bufferedEvents.clear();
+        }
         int count = 0;
-        while ((event = bufferedEvents.poll()) != null) {
+        for (Runnable event : snapshot) {
             event.run();
             count++;
         }
@@ -49,9 +54,12 @@ public class ItemListener {
     }
 
     public void discardBuffer() {
-        int count = bufferedEvents.size();
-        bufferedEvents.clear();
-        libraryLoading = false;
+        int count;
+        synchronized (bufferLock) {
+            count = bufferedEvents.size();
+            bufferedEvents.clear();
+            libraryLoading = false;
+        }
         if (count > 0) {
             LOGGER.warn("Discarded {} buffered item events due to library load failure", count);
         }
@@ -66,9 +74,11 @@ public class ItemListener {
 
         Runnable processEvent = () -> processItem(itemName, locationName, playerName);
 
-        if (libraryLoading || app.getLibrary() == null) {
-            bufferedEvents.addLast(processEvent);
-            return;
+        synchronized (bufferLock) {
+            if (libraryLoading || app.getLibrary() == null) {
+                bufferedEvents.addLast(processEvent);
+                return;
+            }
         }
 
         Platform.runLater(processEvent);
