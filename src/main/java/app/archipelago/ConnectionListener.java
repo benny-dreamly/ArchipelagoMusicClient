@@ -76,9 +76,11 @@ public class ConnectionListener {
     @ArchipelagoEventListener
     public void onRetrieved(RetrievedEvent event) {
         String key = PLAYED_SONGS_KEY + client.getSlot();
+        final int generation = app.getLoadGeneration();
         if (!event.containsKey(key)) {
             LOGGER.info("No played songs found in data storage for key={}", key);
             Platform.runLater(() -> {
+                if (generation != app.getLoadGeneration()) return;
                 GoalManager goalManager = app.getGoalManager();
                 if (goalManager != null) {
                     goalManager.reset();
@@ -103,6 +105,7 @@ public class ConnectionListener {
         LOGGER.info("Retrieved {} played songs from data storage", playedSongs.size());
 
         Platform.runLater(() -> {
+            if (generation != app.getLoadGeneration()) return;
             GoalManager goalManager = app.getGoalManager();
             if (goalManager != null) {
                 goalManager.loadFromServer(playedSongs, client);
