@@ -3,6 +3,7 @@ package app.archipelago;
 import app.MusicAppDemo;
 import app.logic.GoalManager;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import io.github.archipelagomw.events.ConnectionResultEvent;
 import io.github.archipelagomw.events.ArchipelagoEventListener;
@@ -80,8 +81,15 @@ public class ConnectionListener {
             return;
         }
 
-        List<String> playedList = event.getValueAsObject(key, new TypeToken<List<String>>(){}.getType());
+        List<String> playedList;
+        try {
+            playedList = event.getValueAsObject(key, new TypeToken<List<String>>(){}.getType());
+        } catch (JsonSyntaxException e) {
+            LOGGER.error("Failed to deserialize played songs from data storage for key={}", key, e);
+            playedList = Collections.emptyList();
+        }
         if (playedList == null) playedList = Collections.emptyList();
+        playedList = playedList.stream().filter(java.util.Objects::nonNull).toList();
 
         Set<String> playedSongs = Set.copyOf(playedList);
         LOGGER.info("Retrieved {} played songs from data storage", playedSongs.size());
