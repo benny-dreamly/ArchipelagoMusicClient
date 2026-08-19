@@ -440,7 +440,7 @@ public class MusicAppDemo extends Application {
             }
             // Re-enable safe controls on failure; keep playback/queue controls
             // disabled when library or queueManager is null to avoid NPE on dereference
-            playerPanel.getLoadQueueBtn().setDisable(false);
+            playerPanel.getLoadQueueBtn().setDisable(queueManager == null);
             treeView.setDisable(library == null || queueManager == null);
             playerPanel.getPlayButton().setDisable(library == null || queueManager == null);
             playerPanel.getPauseButton().setDisable(library == null || queueManager == null);
