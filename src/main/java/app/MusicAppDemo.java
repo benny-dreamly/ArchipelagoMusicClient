@@ -1392,6 +1392,10 @@ public class MusicAppDemo extends Application {
         return library;
     }
 
+    public int getLoadGeneration() {
+        return loadGeneration;
+    }
+
     public GoalManager getGoalManager() {
         return goalManager;
     }

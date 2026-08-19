@@ -76,8 +76,15 @@ public class ItemListener {
         String itemName = event.getItemName();
         String locationName = event.getLocationName();
         String playerName = event.getPlayerName();
+        final int generation = app.getLoadGeneration();
 
-        Runnable processEvent = () -> processItem(itemName, locationName, playerName);
+        Runnable processEvent = () -> {
+            if (generation != app.getLoadGeneration()) {
+                LOGGER.debug("Discarding stale item event: {}", itemName);
+                return;
+            }
+            processItem(itemName, locationName, playerName);
+        };
 
         synchronized (bufferLock) {
             if (failedLoad) {
