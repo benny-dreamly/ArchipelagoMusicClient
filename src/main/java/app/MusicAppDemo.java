@@ -120,6 +120,7 @@ public class MusicAppDemo extends Application {
     private TreeView<String> treeView;
 
     private APClient client;
+    private ItemListener itemListener;
 
     private Song currentSong;
 
@@ -308,6 +309,11 @@ public class MusicAppDemo extends Application {
                 pendingPlayedSongs = Collections.emptySet();
             }
 
+            // Replay any item events that buffered while library was loading
+            if (itemListener != null) {
+                itemListener.drainBuffer();
+            }
+
             treeView.setCellFactory(tv -> new TreeCell<>() {
                 @Override
                 protected void updateItem(String item, boolean empty) {
@@ -411,6 +417,10 @@ public class MusicAppDemo extends Application {
         loadTask.setOnFailed(_ -> {
             //noinspection CallToPrintStackTrace
             loadTask.getException().printStackTrace();
+            // Discard buffered item events — library failed to load
+            if (itemListener != null) {
+                itemListener.discardBuffer();
+            }
             // Re-enable controls on failure so UI doesn't get stuck
             playerPanel.getLoadQueueBtn().setDisable(false);
             playerPanel.getPlayButton().setDisable(false);
@@ -458,6 +468,11 @@ public class MusicAppDemo extends Application {
         playerPanel.getShuffleQueueBtn().setDisable(true);
         playerPanel.getClearQueueBtn().setDisable(true);
         playerPanel.getRemoveSelectedBtn().setDisable(true);
+
+        // Buffer item events while library reloads
+        if (itemListener != null) {
+            itemListener.setLibraryLoading(true);
+        }
 
         Task<List<Album>> loadTask = getLoadTask();
         new Thread(loadTask).start();
@@ -967,7 +982,8 @@ public class MusicAppDemo extends Application {
 
         try {
             client.getEventManager().registerListener(new ConnectionListener(connectionPanel.getStatusLabel(), client, this));
-            client.getEventManager().registerListener(new ItemListener(this));
+            itemListener = new ItemListener(this);
+            client.getEventManager().registerListener(itemListener);
             client.getEventManager().registerListener(new PrintJsonListener(client, this, connectionPanel.getTextClientWindow().getOutputArea()));
             client.connect();
             connectionPanel.setStatus("Connected!");
