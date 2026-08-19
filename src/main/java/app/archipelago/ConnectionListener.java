@@ -93,8 +93,8 @@ public class ConnectionListener {
         try {
             playedList = event.getValueAsObject(key, new TypeToken<List<String>>(){}.getType());
         } catch (JsonSyntaxException e) {
-            LOGGER.error("Failed to deserialize played songs from data storage for key={}", key, e);
-            playedList = Collections.emptyList();
+            LOGGER.error("Failed to deserialize played songs from data storage for key={}; preserving existing goal state", key, e);
+            return;
         }
         if (playedList == null) playedList = Collections.emptyList();
         playedList = playedList.stream().filter(java.util.Objects::nonNull).toList();
