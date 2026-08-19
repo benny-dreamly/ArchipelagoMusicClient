@@ -109,6 +109,7 @@ public class MusicAppDemo extends Application {
     private GoalManager goalManager;
     private Set<String> pendingPlayedSongs = Collections.emptySet();
     private String pendingPlayedSlot;
+    private boolean pendingPlayedSnapshotReceived;
     private boolean usingMusicLibrary = false;
     private boolean offlineMode = false;
     private int loadGeneration = 0;
@@ -307,8 +308,13 @@ public class MusicAppDemo extends Application {
             queueManager = new QueueManager(library, unlockManager);
             goalManager = new GoalManager(unlockManager, albums);
 
-            // Apply any played songs that arrived before GoalManager was ready
-            if (!pendingPlayedSongs.isEmpty()) {
+            // Replay any item events that buffered while library was loading
+            if (itemListener != null) {
+                itemListener.drainBuffer();
+            }
+
+            // Apply any played-songs snapshot that arrived before GoalManager was ready
+            if (pendingPlayedSnapshotReceived) {
                 if (client != null && client.isConnected() && pendingPlayedSlot != null
                         && pendingPlayedSlot.equals(String.valueOf(client.getSlot()))) {
                     goalManager.loadFromServer(pendingPlayedSongs, client);
@@ -318,11 +324,7 @@ public class MusicAppDemo extends Application {
                 }
                 pendingPlayedSongs = Collections.emptySet();
                 pendingPlayedSlot = null;
-            }
-
-            // Replay any item events that buffered while library was loading
-            if (itemListener != null) {
-                itemListener.drainBuffer();
+                pendingPlayedSnapshotReceived = false;
             }
 
             treeView.setCellFactory(tv -> new TreeCell<>() {
@@ -1397,5 +1399,6 @@ public class MusicAppDemo extends Application {
     public void setPendingPlayedSongs(Set<String> songs, String slot) {
         this.pendingPlayedSongs = songs;
         this.pendingPlayedSlot = slot;
+        this.pendingPlayedSnapshotReceived = (slot != null);
     }
 }
