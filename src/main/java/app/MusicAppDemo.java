@@ -311,6 +311,10 @@ public class MusicAppDemo extends Application {
             queueManager = new QueueManager(library, unlockManager);
             goalManager = new GoalManager(unlockManager, albums);
 
+            // Re-apply slot data against the populated album list in case the
+            // connection callback fired before the library finished loading.
+            applySlotData();
+
             // Replay any item events that buffered while library was loading
             if (itemListener != null) {
                 itemListener.drainBuffer();
