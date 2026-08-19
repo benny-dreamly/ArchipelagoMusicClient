@@ -78,6 +78,14 @@ public class ConnectionListener {
         String key = PLAYED_SONGS_KEY + client.getSlot();
         if (!event.containsKey(key)) {
             LOGGER.info("No played songs found in data storage for key={}", key);
+            Platform.runLater(() -> {
+                GoalManager goalManager = app.getGoalManager();
+                if (goalManager != null) {
+                    goalManager.reset();
+                    LOGGER.info("Reset GoalManager for slot {} (no server data)", client.getSlot());
+                }
+                app.setPendingPlayedSongs(Collections.emptySet(), null);
+            });
             return;
         }
 
@@ -100,8 +108,8 @@ public class ConnectionListener {
                 goalManager.loadFromServer(playedSongs, client);
             } else {
                 // GoalManager not yet initialized — store for deferred restoration
-                app.setPendingPlayedSongs(playedSongs);
-                LOGGER.info("Stored {} played songs for deferred GoalManager restoration", playedSongs.size());
+                app.setPendingPlayedSongs(playedSongs, String.valueOf(client.getSlot()));
+                LOGGER.info("Stored {} played songs for deferred GoalManager restoration (slot={})", playedSongs.size(), client.getSlot());
             }
         });
     }

@@ -108,6 +108,7 @@ public class MusicAppDemo extends Application {
     private final UnlockManager unlockManager = new UnlockManager(this::refreshTree);
     private GoalManager goalManager;
     private Set<String> pendingPlayedSongs = Collections.emptySet();
+    private String pendingPlayedSlot;
     private boolean usingMusicLibrary = false;
     private boolean offlineMode = false;
     private boolean volumeAdjustMode = false;
@@ -305,8 +306,15 @@ public class MusicAppDemo extends Application {
 
             // Apply any played songs that arrived before GoalManager was ready
             if (!pendingPlayedSongs.isEmpty()) {
-                goalManager.loadFromServer(pendingPlayedSongs, client);
+                if (client != null && client.isConnected() && pendingPlayedSlot != null
+                        && pendingPlayedSlot.equals(client.getSlot())) {
+                    goalManager.loadFromServer(pendingPlayedSongs, client);
+                } else {
+                    LOGGER.warn("Discarding deferred played songs: slot mismatch (expected={}, current={})",
+                            pendingPlayedSlot, client != null ? client.getSlot() : "null");
+                }
                 pendingPlayedSongs = Collections.emptySet();
+                pendingPlayedSlot = null;
             }
 
             // Replay any item events that buffered while library was loading
@@ -1380,7 +1388,8 @@ public class MusicAppDemo extends Application {
         return goalManager;
     }
 
-    public void setPendingPlayedSongs(Set<String> songs) {
+    public void setPendingPlayedSongs(Set<String> songs, String slot) {
         this.pendingPlayedSongs = songs;
+        this.pendingPlayedSlot = slot;
     }
 }
