@@ -9,7 +9,7 @@ public class Normalization {
         String base = filename.replaceFirst("[.][^.]+$", "");
 
         // 2. Fix truncated "Taylor's Ver" → "Taylor's Version"
-        base = base.replaceAll("(?i)Taylor's Ver(\\b)?", "Taylor's Version");
+        base = base.replaceAll("(?i)Taylor's Ver\\b", "Taylor's Version");
 
         // 3. Remove leading track/CD numbers
         base = base.replaceFirst("(?i)^(cd\\d+ )?\\d+[-. _]+", "");

@@ -35,6 +35,15 @@ class NormalizationTest {
     }
 
     @Test
+    void normalizeFilename_doesNotDoubleTaylorVersionSuffix() {
+        String rawInput = "01 Style (Taylor's Version).mp3";
+
+        String result = Normalization.normalizeFilename(rawInput);
+
+        assertEquals("Style (Taylor's Version)", result);
+    }
+
+    @Test
     void normalizeFilename_standardizesFeatAbbreviation() {
         String rawInput = "Karma ft. Ice Spice.flac";
 
