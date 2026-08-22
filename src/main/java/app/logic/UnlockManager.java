@@ -139,6 +139,9 @@ public class UnlockManager {
         boolean shortSongsEnabled = parseBooleanSlot(slotMap, "include_short_songs");
         boolean vaultSongsEnabled = parseBooleanSlot(slotMap, "include_vault_songs");
 
+        if (shortSongsEnabled) enabledSets.add("short");
+        if (vaultSongsEnabled) enabledSets.add("vault");
+
         // Now remove any songs that should not be visible
         for (Album album : albums) {
             for (Song s : new ArrayList<>(album.getSongs())) { // avoid ConcurrentModification
@@ -170,6 +173,7 @@ public class UnlockManager {
             unlockedAlbums.add(album.getName());
 
             for (Song song : album.getSongs()) {
+                enabledSets.add(song.getType());
                 unlockedSongs.add(song.getTitle());
             }
         }

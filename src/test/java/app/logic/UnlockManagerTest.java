@@ -306,6 +306,8 @@ class UnlockManagerTest {
         assertTrue(unlockManager.isSongUnlocked("Shake It Off"));
         assertTrue(unlockManager.isSongUnlocked("Bad Blood (Short)"));
         assertTrue(unlockManager.isSongUnlocked("Wildest Dreams (Vault)"));
+        assertTrue(unlockManager.isTypeEnabled("short"));
+        assertTrue(unlockManager.isTypeEnabled("vault"));
     }
 
     @Test
@@ -345,5 +347,21 @@ class UnlockManagerTest {
         assertTrue(unlockManager.isAlbumUnlocked("folklore"));
         assertTrue(unlockManager.getEnabledAlbums().contains("1989"));
         assertTrue(unlockManager.getEnabledAlbums().contains("folklore"));
+    }
+
+    @Test
+    void applyOfflineUnlocks_enablesShortAndVaultSongTypes() {
+        Album album = new Album("1989", "standard");
+        album.addSong(new Song("Style", "standard"));
+        album.addSong(new Song("Bad Blood (Short)", "short"));
+        album.addSong(new Song("Wildest Dreams (Vault)", "vault"));
+        List<Album> albums = List.of(album);
+
+        unlockManager.applyOfflineUnlocks(albums);
+
+        assertTrue(unlockManager.isTypeEnabled("short"));
+        assertTrue(unlockManager.isTypeEnabled("vault"));
+        assertTrue(unlockManager.isSongUnlocked("Bad Blood (Short)"));
+        assertTrue(unlockManager.isSongUnlocked("Wildest Dreams (Vault)"));
     }
 }
