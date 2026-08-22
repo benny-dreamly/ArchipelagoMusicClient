@@ -74,7 +74,13 @@ public class ConfigManager {
 
     @SuppressWarnings("unchecked")
     private static Map<String, String> slotsMap(Map<String, Object> data) {
-        return (Map<String, String>) data.computeIfAbsent(SLOTS_KEY, _ -> new HashMap<String, String>());
+        Object existing = data.get(SLOTS_KEY);
+        if (existing instanceof Map<?, ?> map) {
+            return (Map<String, String>) map;
+        }
+        Map<String, String> fresh = new HashMap<>();
+        data.put(SLOTS_KEY, fresh);
+        return fresh;
     }
 
     private static Map<String, Object> loadAllSettings() {
