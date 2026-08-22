@@ -81,7 +81,9 @@ public class AlbumLibraryTest {
 
         result.setFilePath("/path/to/song.mp3");
 
-        assertEquals("/path/to/song.mp3", library.getSongByTitle("Song A").getFilePath());
+        Song lookedUp = library.getSongByTitle("Song A");
+        assertSame(result, lookedUp);
+        assertEquals("/path/to/song.mp3", lookedUp.getFilePath());
     }
 
     @Test
