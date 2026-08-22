@@ -71,9 +71,7 @@ public class ConnectionPanel extends VBox {
             if (name.isEmpty()) return;
             APClient.saveGameNameStatic(name);
             String slot = getSlotForGame(name);
-            if (!slot.isEmpty()) {
-                slotField.setText(slot);
-            }
+            slotField.setText(slot);
         });
 
         connectButton = new Button("Connect");
