@@ -333,15 +333,28 @@ class UnlockManagerTest {
 
     @Test
     void applyOfflineUnlocks_clearsPreviousState() {
+        // Seed stale state from a different album/song
+        Album stale = new Album("Reputation", "standard");
+        stale.addSong(new Song("Delicate", "standard"));
+        List<Album> staleAlbums = List.of(stale);
+        unlockManager.applyOfflineUnlocks(staleAlbums);
+        assertTrue(unlockManager.isAlbumUnlocked("Reputation"));
+        assertTrue(unlockManager.isSongUnlocked("Delicate"));
+
+        // Now apply with a different album list
         Album tswift = new Album("1989", "standard");
         tswift.addSong(new Song("Style", "standard"));
         Album folklore = new Album("folklore", "standard");
         folklore.addSong(new Song("cardigan", "standard"));
         List<Album> albums = List.of(tswift, folklore);
 
-        unlockManager.applySlotData(Map.of(), albums);
         unlockManager.applyOfflineUnlocks(albums);
 
+        // Stale state should be gone
+        assertFalse(unlockManager.isAlbumUnlocked("Reputation"));
+        assertFalse(unlockManager.isSongUnlocked("Delicate"));
+
+        // New state should be present
         assertTrue(unlockManager.isSongUnlocked("Style"));
         assertTrue(unlockManager.isSongUnlocked("cardigan"));
         assertTrue(unlockManager.isAlbumUnlocked("1989"));
