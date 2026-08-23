@@ -147,7 +147,9 @@ public class UnlockManager {
         boolean vaultSongsEnabled = parseBooleanSlot(slotMap, "include_vault_songs");
 
         if (shortSongsEnabled) enabledSets.add("short");
+        else enabledSets.remove("short");
         if (vaultSongsEnabled) enabledSets.add("vault");
+        else enabledSets.remove("vault");
 
         // Now remove any songs that should not be visible
         for (Album album : albums) {
