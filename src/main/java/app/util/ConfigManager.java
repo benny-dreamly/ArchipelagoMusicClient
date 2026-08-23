@@ -32,15 +32,16 @@ public class ConfigManager {
 
     private ConfigManager() {} // utility class
 
-    public static void saveConnectionSettings(String host, int port, String slot, String password, String gameName) {
+    public static boolean saveConnectionSettings(String host, int port, String slot, String password, String gameName) {
         Map<String, Object> data = loadAllSettings();
         data.put("host", host);
         data.put("port", String.valueOf(port));
         Map<String, String> slots = slotsMap(data);
         slots.entrySet().removeIf(e -> gameName.equalsIgnoreCase(e.getKey()));
         slots.put(gameName, slot);
-        write(data);
+        boolean saved = write(data);
         storePassword(password);
+        return saved;
     }
 
     public static String getSlotForGame(String gameName) {

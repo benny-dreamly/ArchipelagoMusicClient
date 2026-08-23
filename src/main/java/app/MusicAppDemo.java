@@ -983,7 +983,9 @@ public class MusicAppDemo extends Application {
         String password = connectionPanel.getPassword();
 
         String gameName = connectionPanel.getGameName();
-        saveConnectionSettings(host, port, slot, password, gameName);
+        if (!saveConnectionSettings(host, port, slot, password, gameName)) {
+            LOGGER.warn("Failed to save connection settings; changes will not persist across restarts");
+        }
         APClient.saveGameNameStatic(gameName);
 
         client = new APClient(host, port, slot, password);
