@@ -64,6 +64,9 @@ public class UnlockManager {
     }
 
     public boolean canQueue(Song song, Album album) {
+        if (album == null) {
+            return enabledSets.contains(song.getType()) && isSongUnlocked(song.getTitle());
+        }
         return enabledSets.contains(song.getType())
                 && isAlbumUnlocked(album.getName())
                 && (album.isFullAlbumUnlock() || isSongUnlocked(song.getTitle()));
