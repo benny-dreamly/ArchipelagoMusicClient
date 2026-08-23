@@ -36,7 +36,9 @@ public class ConfigManager {
         Map<String, Object> data = loadAllSettings();
         data.put("host", host);
         data.put("port", String.valueOf(port));
-        slotsMap(data).put(gameName, slot);
+        Map<String, String> slots = slotsMap(data);
+        slots.entrySet().removeIf(e -> gameName.equalsIgnoreCase(e.getKey()));
+        slots.put(gameName, slot);
         write(data);
         storePassword(password);
     }
