@@ -124,6 +124,9 @@ public class UnlockManager {
             if (enabledAlbumsFromSlotData.contains(album.getName())) {
                 enabledAlbums.add(album.getName());   // mark album as enabled
                 enabledSets.add(album.getType());      // enable album type for tree filtering
+                for (Song song : album.getSongs()) {
+                    enabledSets.add(song.getType());
+                }
             }
         }
 
