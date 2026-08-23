@@ -84,6 +84,7 @@ public class UnlockManager {
             if (album.getName().equals(albumName)) {
                 // Enable this album's type so songs will show
                 enabledSets.add(album.getType());
+                unlockedAlbums.add(albumName);
 
                 for (Song song : album.getSongs()) {
                     unlockSong(song.getTitle());

@@ -213,6 +213,7 @@ class UnlockManagerTest {
 
         unlockManager.unlockAlbum("1989", List.of(album));
 
+        assertTrue(unlockManager.isAlbumUnlocked("1989"));
         assertTrue(unlockManager.isSongUnlocked("Style"));
         assertTrue(unlockManager.isSongUnlocked("Blank Space"));
         assertTrue(unlockManager.isTypeEnabled("standard"));
