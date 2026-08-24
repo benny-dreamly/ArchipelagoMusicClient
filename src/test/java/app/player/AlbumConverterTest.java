@@ -57,6 +57,7 @@ class AlbumConverterTest {
         assertEquals(1, albums.size());
         assertEquals("Speak Now", albums.get(0).getName());
         assertEquals(1, albums.get(0).getSongs().size());
+        assertEquals(List.of("Bonus Track"), converter.getBonusLocations());
     }
 
     @Test
