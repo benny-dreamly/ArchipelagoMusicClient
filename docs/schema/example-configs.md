@@ -91,7 +91,7 @@ Defines unlock behavior for each album.
 ## `music_library.json`
 
 Defines the complete music library: albums, songs, file paths, and Archipelago location mappings.
-This is the primary format for defining your library. If present, it replaces `locations.json`, `album_metadata.json`, and `albumFolders.json`.
+This is the primary format for defining your library. If present, it replaces `locations.json` and `album_metadata.json`. Albums that omit `path` can fall back to `albumFolders.json`.
 
 ```json
 {
