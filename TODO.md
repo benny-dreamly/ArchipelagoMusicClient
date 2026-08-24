@@ -2,7 +2,6 @@
 
 ## Known Bugs (flagged during Phase 3 refactor, not fixed — pure refactor only)
 - ~~**`queueSongNext` lock bypass for null-album songs** — `MusicAppDemo.java:476` uses `album == null || album.isFullAlbumUnlock() || ...`, so a locked song with no album can be queued. `playSong` correctly requires `songUnlocked` for null-album songs; `queueSongNext` should match.~~ ✅ FIXED — `queueSongNext` now uses `UnlockManager.canPlay`, which requires `songUnlocked` for null-album songs.
-- **`"re-recording"` type mismatch** — `UnlockManager.java:116` compares `"re-recording"`, but `AlbumConverter` produces `"rerecording"`, so the Re-recordings slot-data branch never matches. Fix the string and add a test.
 - ~~Queue All Songs doesn't obey the currently unlocked state, as well as Play Next~~ ✅ FIXED — `Album.getQueueableSongs`, `UnlockManager.canPlay`/`canQueue`, `playSong`, and `queueSongNext` now all require the album itself to be unlocked (`albumUnlocked && (fullAlbumUnlock || songUnlocked)`), matching `handleTreeSelection` and the design (full-album unlock → album item unlocks the whole album; otherwise song + album items needed).
 
 ## Dead Code
