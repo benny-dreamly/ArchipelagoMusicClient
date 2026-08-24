@@ -1355,6 +1355,7 @@ public class MusicAppDemo extends Application {
 
     private void handleTreeSelection(TreeItem<String> newSel) {
         if (newSel == null) return;
+        if (isUpdatingSelection) return;
 
         // Only leaf nodes are actionable; ignore album and root nodes
         if (!newSel.isLeaf()) return;
