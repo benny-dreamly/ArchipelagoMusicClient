@@ -439,8 +439,7 @@ public class MusicAppDemo extends Application {
 
         loadTask.setOnFailed(_ -> {
             if (generation != loadGeneration) return; // stale load — discard
-            //noinspection CallToPrintStackTrace
-            loadTask.getException().printStackTrace();
+            LOGGER.error("Library load task failed", loadTask.getException());
             // Discard buffered item events — library failed to load
             if (itemListener != null) {
                 itemListener.discardBuffer();
