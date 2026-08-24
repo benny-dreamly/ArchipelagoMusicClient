@@ -461,6 +461,10 @@ public class MusicAppDemo extends Application {
 
     @SuppressWarnings("unused")
     private void reloadGameLibrary(File gameFolder) {
+        // Buffer item events before invalidating generation
+        if (itemListener != null) {
+            itemListener.setLibraryLoading(true);
+        }
         loadGeneration++; // invalidate any in-flight load task
         // Stop and dispose current playback
         if (currentPlayer != null) {
@@ -498,11 +502,6 @@ public class MusicAppDemo extends Application {
         playerPanel.getShuffleQueueBtn().setDisable(true);
         playerPanel.getClearQueueBtn().setDisable(true);
         playerPanel.getRemoveSelectedBtn().setDisable(true);
-
-        // Buffer item events while library reloads
-        if (itemListener != null) {
-            itemListener.setLibraryLoading(true);
-        }
 
         Task<LoadResult> loadTask = getLoadTask();
         new Thread(loadTask).start();
