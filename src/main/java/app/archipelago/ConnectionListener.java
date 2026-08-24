@@ -83,10 +83,14 @@ public class ConnectionListener {
                 if (generation != app.getLoadGeneration()) return;
                 GoalManager goalManager = app.getGoalManager();
                 if (goalManager != null) {
-                    goalManager.reset();
-                    LOGGER.info("Reset GoalManager for slot {} (no server data)", client.getSlot());
+                    goalManager.loadFromServer(Collections.emptySet(), client);
+                    LOGGER.info("Loaded empty played-song state for slot {}", client.getSlot());
                 }
-                app.setPendingPlayedSongs(Collections.emptySet(), null, app.getLoadGeneration());
+                app.setPendingPlayedSongs(
+                        Collections.emptySet(),
+                        String.valueOf(client.getSlot()),
+                        generation
+                );
             });
             return;
         }
