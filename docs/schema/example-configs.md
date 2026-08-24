@@ -151,7 +151,7 @@ This is the primary format for defining your library. If present, it replaces `l
 | Field | Type | Description |
 |-------|------|-------------|
 | `name` | string | Album name. Must match the `display_name` in `slot_data.json` if slot data is used. |
-| `type` | string | Album type: `"standard"` or `"rerecording"`. |
+| `type` | string | Album type: `"standard"`, `"rerecording"`, `"compilation"`, or `"live"`. |
 | `full_album_unlock` | boolean | If `true`, receiving the album item unlocks all songs at once. If `false`, songs unlock individually. |
 | `path` | string | Optional. Absolute path to the folder containing audio files for this album. If omitted, falls back to `albumFolders.json`. |
 | `songs` | SongJSON[] | List of songs in the album. |
