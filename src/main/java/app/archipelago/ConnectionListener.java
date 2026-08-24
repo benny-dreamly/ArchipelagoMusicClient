@@ -29,11 +29,12 @@ public class ConnectionListener {
 
     private final Label statusLabel;
 
+    private record PendingRequest(int slot, int generation) {}
+
     private final APClient client;
     private final MusicAppDemo app;
 
-    private int pendingRequestSlot = -1;
-    private int pendingRequestGeneration = -1;
+    private volatile PendingRequest pendingRequest;
 
     public ConnectionListener(Label statusLabel, APClient client, MusicAppDemo app) {
         this.statusLabel = statusLabel;
@@ -55,9 +56,8 @@ public class ConnectionListener {
                 app.applySlotData();
 
                 // Load played songs from server data storage
-                pendingRequestSlot = client.getSlot();
-                pendingRequestGeneration = app.getLoadGeneration();
-                String key = PLAYED_SONGS_KEY + pendingRequestSlot;
+                pendingRequest = new PendingRequest(client.getSlot(), app.getLoadGeneration());
+                String key = PLAYED_SONGS_KEY + pendingRequest.slot();
                 LOGGER.info("Requesting played songs from data storage: key={}", key);
                 client.dataStorageGet(List.of(key));
             } else {
@@ -80,10 +80,11 @@ public class ConnectionListener {
     @SuppressWarnings("unused")
     @ArchipelagoEventListener
     public void onRetrieved(RetrievedEvent event) {
-        int slot = pendingRequestSlot;
-        int generation = pendingRequestGeneration;
-        if (slot < 0 || generation < 0) return; // no pending request
+        PendingRequest req = pendingRequest;
+        if (req == null) return;
 
+        int slot = req.slot();
+        int generation = req.generation();
         String key = PLAYED_SONGS_KEY + slot;
         if (!event.containsKey(key)) {
             LOGGER.info("No played songs found in data storage for key={}", key);
