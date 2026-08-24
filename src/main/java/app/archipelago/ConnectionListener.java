@@ -32,6 +32,9 @@ public class ConnectionListener {
     private final APClient client;
     private final MusicAppDemo app;
 
+    private int pendingRequestSlot = -1;
+    private int pendingRequestGeneration = -1;
+
     public ConnectionListener(Label statusLabel, APClient client, MusicAppDemo app) {
         this.statusLabel = statusLabel;
         this.client = client;
@@ -52,7 +55,9 @@ public class ConnectionListener {
                 app.applySlotData();
 
                 // Load played songs from server data storage
-                String key = PLAYED_SONGS_KEY + client.getSlot();
+                pendingRequestSlot = client.getSlot();
+                pendingRequestGeneration = app.getLoadGeneration();
+                String key = PLAYED_SONGS_KEY + pendingRequestSlot;
                 LOGGER.info("Requesting played songs from data storage: key={}", key);
                 client.dataStorageGet(List.of(key));
             } else {
@@ -75,8 +80,11 @@ public class ConnectionListener {
     @SuppressWarnings("unused")
     @ArchipelagoEventListener
     public void onRetrieved(RetrievedEvent event) {
-        String key = PLAYED_SONGS_KEY + client.getSlot();
-        final int generation = app.getLoadGeneration();
+        int slot = pendingRequestSlot;
+        int generation = pendingRequestGeneration;
+        if (slot < 0 || generation < 0) return; // no pending request
+
+        String key = PLAYED_SONGS_KEY + slot;
         if (!event.containsKey(key)) {
             LOGGER.info("No played songs found in data storage for key={}", key);
             Platform.runLater(() -> {
@@ -84,11 +92,11 @@ public class ConnectionListener {
                 GoalManager goalManager = app.getGoalManager();
                 if (goalManager != null) {
                     goalManager.loadFromServer(Collections.emptySet(), client);
-                    LOGGER.info("Loaded empty played-song state for slot {}", client.getSlot());
+                    LOGGER.info("Loaded empty played-song state for slot {}", slot);
                 }
                 app.setPendingPlayedSongs(
                         Collections.emptySet(),
-                        String.valueOf(client.getSlot()),
+                        String.valueOf(slot),
                         generation
                 );
             });
@@ -115,8 +123,8 @@ public class ConnectionListener {
                 goalManager.loadFromServer(playedSongs, client);
             } else {
                 // GoalManager not yet initialized — store for deferred restoration
-                app.setPendingPlayedSongs(playedSongs, String.valueOf(client.getSlot()), app.getLoadGeneration());
-                LOGGER.info("Stored {} played songs for deferred GoalManager restoration (slot={})", playedSongs.size(), client.getSlot());
+                app.setPendingPlayedSongs(playedSongs, String.valueOf(slot), generation);
+                LOGGER.info("Stored {} played songs for deferred GoalManager restoration (slot={})", playedSongs.size(), slot);
             }
         });
     }
