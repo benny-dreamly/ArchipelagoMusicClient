@@ -1,12 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "music_library.json Schema",
-  "description": "Defines the complete music library: albums, songs, file paths, and Archipelago location mappings. Replaces locations.json, album_metadata.json, and albumFolders.json.",
+  "description": "Defines the complete music library: albums, songs, file paths, and Archipelago location mappings. Replaces locations.json and album_metadata.json. Albums that omit 'path' can fall back to albumFolders.json.",
   "type": "object",
   "properties": {
     "artist": {
       "type": "string",
       "description": "The artist name, used as a display grouping or fallback album prefix."
+    },
+    "bonus_locations": {
+      "type": "array",
+      "description": "Non-song locations to send as checks. Appears in a 'Bonus' section in the tree; clicking sends the check and removes the entry.",
+      "items": {
+        "type": "string"
+      }
     },
     "albums": {
       "type": "array",
@@ -56,6 +63,11 @@
                   "enum": ["normal", "short", "vault", "rerecording"],
                   "description": "Song classification. Replaces the category-based heuristic in AlbumConverter.",
                   "default": "normal"
+                },
+                "requires": {
+                  "type": "string",
+                  "description": "Pipe-delimited item names required before this song can be played (e.g. '|Disc 1|' or '|Disc 1|Disc 2|'). Empty string means no requirement.",
+                  "default": ""
                 }
               },
               "required": ["title"]
