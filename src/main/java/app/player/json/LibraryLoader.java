@@ -40,17 +40,19 @@ public class LibraryLoader {
         Gson gson = createGson();
         JsonElement root = gson.fromJson(reader, JsonElement.class);
 
+        if (root == null || (!root.isJsonArray() && !root.isJsonObject())) {
+            throw new IllegalArgumentException("Unexpected locations JSON root type");
+        }
+
         JsonArray array;
         if (root.isJsonArray()) {
             array = root.getAsJsonArray();
-        } else if (root.isJsonObject()) {
+        } else {
             JsonElement data = root.getAsJsonObject().get("data");
             if (data == null || !data.isJsonArray()) {
                 throw new IllegalArgumentException("locations JSON has no 'data' array");
             }
             array = data.getAsJsonArray();
-        } else {
-            throw new IllegalArgumentException("Unexpected locations JSON root type");
         }
 
         return gson.fromJson(array, SONG_LIST_TYPE);
