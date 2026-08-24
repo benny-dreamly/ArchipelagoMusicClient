@@ -115,6 +115,19 @@ class QueueManagerTest {
         qm.setRepeatMode(RepeatMode.ALBUM);
         qm.add(songA);
 
+        Song unknown = new Song("Unknown", "standard");
+        assertEquals(songA, qm.nextSong(unknown));
+        assertNull(qm.nextSong(unknown));
+    }
+
+    @Test
+    void nextSong_repeatAlbum_nullCurrentSong_doesNotRefill() {
+        Album album = new Album("Album", "standard");
+        album.getSongs().add(songA);
+        QueueManager qm = new QueueManager(new AlbumLibrary(List.of(album)), unlockManager);
+        qm.setRepeatMode(RepeatMode.ALBUM);
+        qm.add(songA);
+
         assertEquals(songA, qm.nextSong(null));
         assertNull(qm.nextSong(null));
     }
