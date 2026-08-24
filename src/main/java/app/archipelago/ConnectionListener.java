@@ -107,7 +107,16 @@ public class ConnectionListener {
         try {
             playedList = event.getValueAsObject(key, new TypeToken<List<String>>(){}.getType());
         } catch (JsonSyntaxException e) {
-            LOGGER.error("Failed to deserialize played songs from data storage for key={}; preserving existing goal state", key, e);
+            LOGGER.error("Failed to deserialize played songs from data storage for key={}; loading empty state so markPlayed can persist", key, e);
+            Platform.runLater(() -> {
+                if (generation != app.getLoadGeneration()) return;
+                GoalManager goalManager = app.getGoalManager();
+                if (goalManager != null) {
+                    goalManager.loadFromServer(Collections.emptySet(), client);
+                } else {
+                    app.setPendingPlayedSongs(Collections.emptySet(), String.valueOf(slot), generation);
+                }
+            });
             return;
         }
         if (playedList == null) playedList = Collections.emptyList();
