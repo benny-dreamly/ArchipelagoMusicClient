@@ -20,7 +20,6 @@ repositories {
 application {
     applicationDefaultJvmArgs = listOf(
         "--enable-native-access=javafx.graphics",
-        "-Dorg.slf4j.simpleLogger.logFile=System.out",
     )
     // fully qualified name of your main Application class
     mainClass.set("app.Main")

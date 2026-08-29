@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "music_library.json Schema",
+  "description": "Defines the complete music library: albums, songs, file paths, and Archipelago location mappings. Replaces locations.json and album_metadata.json. Albums that omit 'path' can fall back to albumFolders.json.",
+  "type": "object",
+  "properties": {
+    "artist": {
+      "type": "string",
+      "description": "The artist name, used as a display grouping or fallback album prefix."
+    },
+    "bonus_locations": {
+      "type": "array",
+      "description": "Non-song locations to send as checks. Appears in a 'Bonus' section in the tree; clicking sends the check and removes the entry.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "albums": {
+      "type": "array",
+      "description": "Ordered list of albums in the library.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Album name. Used as the tree-view node and as the key for albumOrder.json overrides."
+          },
+          "type": {
+            "type": "string",
+            "enum": ["standard", "rerecording", "compilation", "live"],
+            "description": "Album classification. Replaces album_metadata.json 'type'.",
+            "default": "standard"
+          },
+          "full_album_unlock": {
+            "type": "boolean",
+            "description": "If true, unlocking the album automatically unlocks all songs in it. Replaces album_metadata.json 'full_album_unlock'.",
+            "default": false
+          },
+          "path": {
+            "type": "string",
+            "description": "Optional folder path for all songs in this album. Replaces albumFolders.json entry."
+          },
+          "songs": {
+            "type": "array",
+            "description": "Songs in this album, in play order.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "description": "Song title as displayed in the UI."
+                },
+                "location": {
+                  "type": "string",
+                  "description": "Archipelago location name for server communication. Defaults to 'title' if omitted."
+                },
+                "path": {
+                  "type": "string",
+                  "description": "Optional file path for this specific song. Overrides the album-level 'path'."
+                },
+                "type": {
+                  "type": "string",
+                  "enum": ["normal", "short", "vault", "rerecording"],
+                  "description": "Song classification. Replaces the category-based heuristic in AlbumConverter.",
+                  "default": "normal"
+                },
+                "requires": {
+                  "type": "string",
+                  "description": "Pipe-delimited item names required before this song can be played (e.g. '|Disc 1|' or '|Disc 1|Disc 2|'). Empty string means no requirement.",
+                  "default": ""
+                }
+              },
+              "required": ["title"]
+            }
+          }
+        },
+        "required": ["name", "songs"]
+      }
+    }
+  },
+  "required": ["artist", "albums"],
+  "examples": [
+    {
+      "artist": "Taylor Swift",
+      "albums": [
+        {
+          "name": "Fearless (Taylor's Version)",
+          "type": "rerecording",
+          "full_album_unlock": true,
+          "songs": [
+            {
+              "title": "Love Story (Taylor's Version)",
+              "location": "Love Story",
+              "type": "normal"
+            },
+            {
+              "title": "You Belong with Me (Taylor's Version)",
+              "type": "normal"
+            }
+          ]
+        },
+        {
+          "name": "Midnights",
+          "type": "standard",
+          "full_album_unlock": false,
+          "songs": [
+            {
+              "title": "Anti-Hero",
+              "type": "normal"
+            },
+            {
+              "title": "Lavender Haze",
+              "type": "normal"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

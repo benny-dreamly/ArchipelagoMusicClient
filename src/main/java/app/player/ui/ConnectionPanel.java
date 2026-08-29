@@ -6,6 +6,7 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
@@ -19,6 +20,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
+import static app.util.ConfigManager.getSlotForGame;
 import static app.util.ConfigManager.loadConnectionSettings;
 import static app.util.ConfigPaths.checkIfGameFolderExists;
 
@@ -26,7 +28,7 @@ public class ConnectionPanel extends VBox {
     private final TextField hostField;
     private final TextField portField;
     private final TextField slotField;
-    private final TextField passwordField;
+    private final PasswordField passwordField;
     private final TextField gameField;
     private final Button connectButton;
     private final Label statusLabel;
@@ -53,14 +55,24 @@ public class ConnectionPanel extends VBox {
         hostField = new TextField("localhost");
         portField = new TextField("38281");
         slotField = new TextField("Player1");
-        passwordField = new TextField();
+        passwordField = new PasswordField();
 
         Map<String, String> saved = loadConnectionSettings();
 
         hostField.setText(saved.getOrDefault("host", "localhost"));
         portField.setText(saved.getOrDefault("port", "38281"));
-        slotField.setText(saved.getOrDefault("slot", "Player1"));
+        String savedSlot = getSlotForGame(savedGameName);
+        slotField.setText(savedSlot.isEmpty() ? "Player1" : savedSlot);
         passwordField.setText(saved.getOrDefault("password", ""));
+
+        gameField.focusedProperty().addListener((_, _, focused) -> {
+            if (focused) return;
+            String name = getGameName();
+            if (name.isEmpty()) return;
+            APClient.saveGameNameStatic(name);
+            String slot = getSlotForGame(name);
+            slotField.setText(slot);
+        });
 
         connectButton = new Button("Connect");
         statusLabel = new Label("Not connected");

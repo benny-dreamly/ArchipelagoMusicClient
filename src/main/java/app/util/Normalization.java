@@ -9,7 +9,7 @@ public class Normalization {
         String base = filename.replaceFirst("[.][^.]+$", "");
 
         // 2. Fix truncated "Taylor's Ver" → "Taylor's Version"
-        base = base.replaceAll("(?i)Taylor's Ver(\\b)?", "Taylor's Version");
+        base = base.replaceAll("(?i)Taylor's Ver\\b", "Taylor's Version");
 
         // 3. Remove leading track/CD numbers
         base = base.replaceFirst("(?i)^(cd\\d+ )?\\d+[-. _]+", "");
@@ -25,6 +25,11 @@ public class Normalization {
         base = base.replaceAll("\\(\\s*$", "");
 
         return base.trim();
+    }
+
+    public static String stripFeatCredit(String s) {
+        String result = s.replaceAll("(?i)\\(\\s*(?:feat\\.?|ft\\.?)\\b[^)]*\\)", "");
+        return result.replaceAll("\\s+", " ").trim();
     }
 
     // Levenshtein distance helper

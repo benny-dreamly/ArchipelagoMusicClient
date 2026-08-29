@@ -11,14 +11,17 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Map;
 
-import static app.MusicAppDemo.LOGGER;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AlbumMetadataLoader {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AlbumMetadataLoader.class);
 
     public static Map<String, AlbumMetadata> loadAlbumMetadata(File configDir) {
         File file = new File(configDir, "album_metadata.json");
         if (!file.exists()) {
-            System.err.println("No album_metadata.json found in " + configDir.getAbsolutePath());
+            LOGGER.warn("No album_metadata.json found in {}", configDir.getAbsolutePath());
             return Collections.emptyMap();
         }
 
@@ -28,8 +31,7 @@ public class AlbumMetadataLoader {
             LOGGER.info("Loaded album metadata for {} albums.", metadata.size());
             return metadata;
         } catch (IOException e) {
-            //noinspection CallToPrintStackTrace
-            e.printStackTrace();
+            LOGGER.error("Failed to load album_metadata.json", e);
             return Collections.emptyMap();
         }
     }

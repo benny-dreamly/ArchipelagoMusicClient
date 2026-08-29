@@ -20,7 +20,7 @@ public class ConfigPaths {
 
     public static File getConnectionConfigFile() {
         File configDir = getConfigDir();
-        return new File(configDir, "connection.json");
+        return new File(configDir.getParentFile(), "connection.json");
     }
 
     public static void checkIfGameFolderExists(File gameFolder, Logger logger){
