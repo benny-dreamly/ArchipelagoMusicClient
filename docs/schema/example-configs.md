@@ -163,7 +163,7 @@ This is the primary format for defining your library. If present, it replaces `l
 | `title` | string | Song title. |
 | `location` | string | Optional. Archipelago location name for `sendCheck()`. Defaults to `title` if omitted. |
 | `path` | string | Optional. Absolute path to the audio file. Overrides fuzzy file matching. |
-| `type` | string | Song type: `"normal"`, `"short"`, `"vault"`, `"rerecording"`. Controls visibility based on slot options. |
+| `type` | string | Song type: `"normal"`, `"short"`, `"vault"`, `"rerecording"`, `"deluxe"`. Controls visibility based on slot options. |
 | `requires` | string | Optional. Pipe-delimited item names required before this song can be played (e.g. `"|Disc 1|"` or `"|Disc 1|Disc 2|"`). Empty string means no requirement. |
 
 ---

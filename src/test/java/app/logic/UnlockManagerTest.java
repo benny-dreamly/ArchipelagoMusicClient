@@ -312,6 +312,39 @@ class UnlockManagerTest {
     }
 
     @Test
+    void filterSongCategories_deluxeSongsDisabled_removesDeluxeSongs() {
+        Album album = new Album("1989", "standard");
+        Song normal = new Song("Shake It Off", "standard");
+        Song deluxeSong = new Song("Bad Blood (Deluxe)", "deluxe");
+        album.addSong(normal);
+        album.addSong(deluxeSong);
+        List<Album> albums = List.of(album);
+
+        unlockManager.unlockSong(normal.getTitle());
+        unlockManager.unlockSong(deluxeSong.getTitle());
+
+        unlockManager.applySlotData(Map.of("include_deluxe", false), albums);
+
+        assertTrue(unlockManager.isSongUnlocked("Shake It Off"));
+        assertFalse(unlockManager.isSongUnlocked("Bad Blood (Deluxe)"));
+    }
+
+    @Test
+    void filterSongCategories_deluxeSongsEnabled_keepsDeluxeSongs() {
+        Album album = new Album("1989", "standard");
+        Song deluxeSong = new Song("Bad Blood (Deluxe)", "deluxe");
+        album.addSong(deluxeSong);
+        List<Album> albums = List.of(album);
+
+        unlockManager.unlockSong(deluxeSong.getTitle());
+
+        unlockManager.applySlotData(Map.of("include_deluxe", true), albums);
+
+        assertTrue(unlockManager.isSongUnlocked("Bad Blood (Deluxe)"));
+        assertTrue(unlockManager.isTypeEnabled("deluxe"));
+    }
+
+    @Test
     void applyOfflineUnlocks_unlocksAllAlbumsAndSongs() {
         Album tswift = new Album("1989", "standard");
         tswift.addSong(new Song("Style", "standard"));
