@@ -57,6 +57,10 @@ Used to define which features (albums, vaults, categories) are available in your
       "type": "song_option",
       "display_name": "Vault Tracks"
     },
+    "include_deluxe": {
+      "type": "song_option",
+      "display_name": "Deluxe Songs"
+    },
     "include_re_recordings": {
       "type": "album",
       "display_name": "Re-recordings"
