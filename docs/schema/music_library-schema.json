@@ -60,7 +60,7 @@
                 },
                 "type": {
                   "type": "string",
-                  "enum": ["normal", "short", "vault", "rerecording"],
+                  "enum": ["normal", "short", "vault", "rerecording", "deluxe"],
                   "description": "Song classification. Replaces the category-based heuristic in AlbumConverter.",
                   "default": "normal"
                 },
