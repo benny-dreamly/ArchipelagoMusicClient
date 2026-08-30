@@ -1,3 +1,6 @@
+/*
+ * SPDX-License-Identifier: MPL-2.0
+ */
 package app.player;
 
 import org.slf4j.Logger;

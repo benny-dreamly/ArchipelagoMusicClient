@@ -89,3 +89,10 @@ See [`config-locations.md`](docs/config-locations.md) for platform-specific path
 | 0-9 (volume mode)   | Type exact volume value           |
 | Enter (volume mode) | Apply typed volume                |
 | Esc (volume mode)   | Cancel volume adjustment          |
+
+## License
+
+This project is licensed under the **Mozilla Public License 2.0** (MPL-2.0).
+
+See the [LICENSE](LICENSE) file for the full license text. Each source file is
+tagged with an `SPDX-License-Identifier: MPL-2.0` header.

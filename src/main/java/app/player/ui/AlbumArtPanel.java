@@ -1,3 +1,6 @@
+/*
+ * SPDX-License-Identifier: MPL-2.0
+ */
 package app.player.ui;
 
 import javafx.geometry.Insets;

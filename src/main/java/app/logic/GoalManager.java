@@ -1,3 +1,6 @@
+/*
+ * SPDX-License-Identifier: MPL-2.0
+ */
 package app.logic;
 
 import app.player.Album;

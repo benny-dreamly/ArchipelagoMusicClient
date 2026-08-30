@@ -1,3 +1,6 @@
+/*
+ * SPDX-License-Identifier: MPL-2.0
+ */
 package app.player;
 
 import app.player.json.AlbumMetadata;
