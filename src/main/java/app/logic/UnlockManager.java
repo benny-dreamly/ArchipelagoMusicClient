@@ -149,6 +149,7 @@ public class UnlockManager {
         boolean shortSongsEnabled = parseBooleanSlot(slotMap, "include_short_songs");
         boolean vaultSongsEnabled = parseBooleanSlot(slotMap, "include_vault_songs");
         boolean deluxeSongsEnabled = parseBooleanSlot(slotMap, "include_deluxe");
+        boolean extraSongsEnabled = parseBooleanSlot(slotMap, "include_extra");
 
         if (shortSongsEnabled) enabledSets.add("short");
         else enabledSets.remove("short");
@@ -156,6 +157,8 @@ public class UnlockManager {
         else enabledSets.remove("vault");
         if (deluxeSongsEnabled) enabledSets.add("deluxe");
         else enabledSets.remove("deluxe");
+        if (extraSongsEnabled) enabledSets.add("extra");
+        else enabledSets.remove("extra");
 
         // Now remove any songs that should not be visible
         for (Album album : albums) {
@@ -176,6 +179,12 @@ public class UnlockManager {
 
                 // Skip deluxe songs if disabled
                 if (!deluxeSongsEnabled && "deluxe".equalsIgnoreCase(type)) {
+                    unlockedSongs.remove(s.getTitle());
+                    continue;
+                }
+
+                // Skip extra songs if disabled
+                if (!extraSongsEnabled && "extra".equalsIgnoreCase(type)) {
                     unlockedSongs.remove(s.getTitle());
                 }
             }

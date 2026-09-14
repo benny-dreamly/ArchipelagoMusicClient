@@ -348,6 +348,39 @@ class UnlockManagerTest {
     }
 
     @Test
+    void filterSongCategories_extraSongsDisabled_removesExtraSongs() {
+        Album album = new Album("1989", "standard");
+        Song normal = new Song("Shake It Off", "standard");
+        Song extraSong = new Song("I Know Places - Voice Memo", "extra");
+        album.addSong(normal);
+        album.addSong(extraSong);
+        List<Album> albums = List.of(album);
+
+        unlockManager.unlockSong(normal.getTitle());
+        unlockManager.unlockSong(extraSong.getTitle());
+
+        unlockManager.applySlotData(Map.of("include_extra", false), albums);
+
+        assertTrue(unlockManager.isSongUnlocked("Shake It Off"));
+        assertFalse(unlockManager.isSongUnlocked("I Know Places - Voice Memo"));
+    }
+
+    @Test
+    void filterSongCategories_extraSongsEnabled_keepsExtraSongs() {
+        Album album = new Album("1989", "standard");
+        Song extraSong = new Song("I Know Places - Voice Memo", "extra");
+        album.addSong(extraSong);
+        List<Album> albums = List.of(album);
+
+        unlockManager.unlockSong(extraSong.getTitle());
+
+        unlockManager.applySlotData(Map.of("include_extra", true), albums);
+
+        assertTrue(unlockManager.isSongUnlocked("I Know Places - Voice Memo"));
+        assertTrue(unlockManager.isTypeEnabled("extra"));
+    }
+
+    @Test
     void applyOfflineUnlocks_unlocksAllAlbumsAndSongs() {
         Album tswift = new Album("1989", "standard");
         tswift.addSong(new Song("Style", "standard"));
