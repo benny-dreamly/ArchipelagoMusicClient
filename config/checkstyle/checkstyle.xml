@@ -25,7 +25,10 @@
         <!-- Basic naming (already matches your style) -->
         <module name="ConstantName"/>
         <module name="LocalVariableName"/>
-        <module name="MethodName"/>
+        <!-- Allow UnderscoreNames in test method names: method_case describes the scenario -->
+        <module name="MethodName">
+            <property name="format" value="^[a-z][a-zA-Z0-9_]*$"/>
+        </module>
         <module name="PackageName"/>
         <module name="ParameterName"/>
         <module name="TypeName"/>
