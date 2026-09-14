@@ -383,7 +383,8 @@ public class MusicAppDemo extends Application {
 
             // Fallback: load albumFolders.json for albums without a path from music_library.json
             {
-                boolean anyMissingPaths = albums.stream().anyMatch(a -> a.getFolderPath() == null || a.getFolderPath().isBlank());
+                boolean anyMissingPaths = albums.stream().anyMatch(a -> a.getFolderPath() == null
+                        || a.getFolderPath().isBlank());
                 if (anyMissingPaths) {
                     Map<String, String> albumFolders = new HashMap<>();
                     File configFile = getAlbumConfigFile();
@@ -583,7 +584,8 @@ public class MusicAppDemo extends Application {
         Album album = library.getAlbumByName(albumName);
         if (album == null) return;
 
-        List<Song> queueable = album.getQueueableSongs(unlockManager.getEnabledSets(), unlockManager.getUnlockedSongs(), unlockManager.getUnlockedAlbums());
+        List<Song> queueable = album.getQueueableSongs(unlockManager.getEnabledSets(),
+                unlockManager.getUnlockedSongs(), unlockManager.getUnlockedAlbums());
         if (queueable.isEmpty()) {
             LOGGER.info("No queueable songs in album '{}'", albumName);
             return;
@@ -594,7 +596,8 @@ public class MusicAppDemo extends Application {
         updateQueueDisplay();
 
         // If nothing is playing, start the first queued song
-        if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) && !queueManager.isEmpty()) {
+if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING)
+                && !queueManager.isEmpty()) {
             Song next = queueManager.poll();
             updateQueueDisplay();
             if (next != null) {
@@ -660,7 +663,8 @@ public class MusicAppDemo extends Application {
         queueManager.recordSnapshot(song);
 
         if (song.getFilePath() == null || !new File(song.getFilePath()).exists()) {
-            LOGGER.info("Song trying to be played ({})'s file path ({}) does not exist or is null.", song.getTitle(), song.getFilePath());
+            LOGGER.info("Song trying to be played ({})'s file path ({}) does not exist or is null.",
+                song.getTitle(), song.getFilePath());
             showError("File Not Found", "Cannot play song", "File not found for: " + song.getTitle());
             playNextInQueue();
             return;
@@ -863,7 +867,8 @@ public class MusicAppDemo extends Application {
                  FileOutputStream out = new FileOutputStream(localLocations)) {
                 if (in != null) {
                     in.transferTo(out);
-                    LOGGER.info("Copied default locations.json to {}", localLocations.getAbsolutePath());                }
+                    LOGGER.info("Copied default locations.json to {}", localLocations.getAbsolutePath());
+                }
             } catch (IOException e) {
                 LOGGER.error("Failed to copy default locations.json to {}", localLocations.getAbsolutePath(), e);
             }
@@ -1015,10 +1020,12 @@ public class MusicAppDemo extends Application {
         });
 
         try {
-            client.getEventManager().registerListener(new ConnectionListener(connectionPanel.getStatusLabel(), client, this));
+            client.getEventManager().registerListener(new ConnectionListener(connectionPanel.getStatusLabel(),
+                client, this));
             itemListener = new ItemListener(this);
             client.getEventManager().registerListener(itemListener);
-            client.getEventManager().registerListener(new PrintJsonListener(client, this, connectionPanel.getTextClientWindow().getOutputArea()));
+            client.getEventManager().registerListener(new PrintJsonListener(client, this,
+                connectionPanel.getTextClientWindow().getOutputArea()));
             client.connect();
             connectionPanel.setStatus("Connected!");
             connectionPanel.setConnectButtonText("Disconnect"); // toggle button text
@@ -1048,11 +1055,14 @@ public class MusicAppDemo extends Application {
             // If paused, resume. If nothing playing but queue has items, start next.
             if (currentPlayer != null && currentPlayer.getStatus() == MediaPlayer.Status.PAUSED) {
                 currentPlayer.play();
-                if (currentSong != null) playerPanel.setCurrentSongLabel("Currently Playing: " + currentSong.getTitle());
+                if (currentSong != null) {
+                    playerPanel.setCurrentSongLabel("Currently Playing: " + currentSong.getTitle());
+                }
                 return;
             }
 
-            if (currentSong != null && (currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING)) {
+            if (currentSong != null
+                && (currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING)) {
                 LOGGER.info("Current song ({})'s file path: {}", currentSong.getTitle(), currentSong.getFilePath());
                 // start current (if file exists)
                 if (currentSong.getFilePath() != null) {
@@ -1060,7 +1070,8 @@ public class MusicAppDemo extends Application {
                 } else {
                     showError("File Not Found", "Cannot play song", "File not found for: " + currentSong.getTitle());
                 }
-            } else if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) && !queueManager.isEmpty()) {
+            } else if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING)
+                && !queueManager.isEmpty()) {
                 Song next = queueManager.poll();
                 updateQueueDisplay();
                 if (next != null) playSong(next);
@@ -1075,7 +1086,9 @@ public class MusicAppDemo extends Application {
                     if (currentSong != null) playerPanel.setCurrentSongLabel("Paused: " + currentSong.getTitle());
                 } else if (status == MediaPlayer.Status.PAUSED) {
                     currentPlayer.play();
-                    if (currentSong != null) playerPanel.setCurrentSongLabel("Currently Playing: " + currentSong.getTitle());
+                    if (currentSong != null) {
+                        playerPanel.setCurrentSongLabel("Currently Playing: " + currentSong.getTitle());
+                    }
                 }
             }
         });
@@ -1269,7 +1282,9 @@ public class MusicAppDemo extends Application {
                 if (currentSong != null) playerPanel.setCurrentSongLabel("Paused: " + currentSong.getTitle());
             } else if (status == MediaPlayer.Status.PAUSED) {
                 currentPlayer.play();
-                if (currentSong != null) playerPanel.setCurrentSongLabel("Currently Playing: " + currentSong.getTitle());
+                if (currentSong != null) {
+                    playerPanel.setCurrentSongLabel("Currently Playing: " + currentSong.getTitle());
+                }
             }
         } else if (queueManager != null && !queueManager.isEmpty()) {
             Song next = queueManager.poll();
@@ -1292,13 +1307,15 @@ public class MusicAppDemo extends Application {
     private void enterVolumeAdjustMode() {
         volumeAdjustMode = true;
         volumeInput.setLength(0);
-        connectionPanel.setStatus("Volume: " + (int) playerPanel.getVolumeSlider().getValue() + "% (arrows/numbers, Enter=set, Esc=cancel)");
+        connectionPanel.setStatus("Volume: " + (int) playerPanel.getVolumeSlider().getValue()
+                + "% (arrows/numbers, Enter=set, Esc=cancel)");
     }
 
     private void exitVolumeAdjustMode() {
         volumeAdjustMode = false;
         volumeInput.setLength(0);
-        connectionPanel.setStatus(offlineMode ? "Offline Mode" : (client != null && client.isConnected() ? "Connected!" : "Not connected"));
+        connectionPanel.setStatus(offlineMode ? "Offline Mode"
+                : (client != null && client.isConnected() ? "Connected!" : "Not connected"));
     }
 
     private void handleVolumeModeKey(KeyCode code) {
@@ -1384,7 +1401,8 @@ public class MusicAppDemo extends Application {
             if (album == null || !unlockManager.isAlbumUnlocked(album.getName())) {
                 showError("Locked Song", "Cannot play song", song.getTitle() + " is not unlocked yet!");
             } else {
-                showError("Locked Song", "Cannot queue song", song.getTitle() + " requires album " + album.getName() + " to be unlocked!");
+                showError("Locked Song", "Cannot queue song",
+                song.getTitle() + " requires album " + album.getName() + " to be unlocked!");
             }
             return;
         }

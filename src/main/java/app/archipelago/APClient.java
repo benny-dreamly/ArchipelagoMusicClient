@@ -36,7 +36,8 @@ public class APClient extends Client {
         super();
 //        setGame("Manual_TaylorSwiftDiscography_bennydreamly");
         setPassword(password);
-        setItemsHandlingFlags(ItemsHandling.SEND_ITEMS + ItemsHandling.SEND_OWN_ITEMS + ItemsHandling.SEND_STARTING_INVENTORY);
+        setItemsHandlingFlags(ItemsHandling.SEND_ITEMS + ItemsHandling.SEND_OWN_ITEMS
+                + ItemsHandling.SEND_STARTING_INVENTORY);
         this.address = host + ":" + port;
         setName(slot);
 

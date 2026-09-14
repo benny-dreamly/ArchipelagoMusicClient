@@ -36,7 +36,8 @@ public class AlbumConverter {
             Album album = albums.computeIfAbsent(
                     albumKey,
                     name -> {
-                        boolean fullUnlock = albumMetadata.getOrDefault(name, new AlbumMetadata(false)).isFullAlbumUnlock();
+                        boolean fullUnlock = albumMetadata
+                        .getOrDefault(name, new AlbumMetadata(false)).isFullAlbumUnlock();
                         return new Album(name, detectAlbumType(raw.category), fullUnlock);
                     }
             );

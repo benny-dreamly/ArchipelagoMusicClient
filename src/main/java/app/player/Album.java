@@ -72,7 +72,8 @@ public class Album {
     @SuppressWarnings("unused")
     public void setFullAlbumUnlock(boolean fullAlbumUnlock) { this.fullAlbumUnlock = fullAlbumUnlock; }
 
-    public List<Song> getQueueableSongs(Set<String> enabledSets, Set<String> unlockedSongs, Set<String> unlockedAlbums) {
+    public List<Song> getQueueableSongs(Set<String> enabledSets, Set<String> unlockedSongs,
+                                    Set<String> unlockedAlbums) {
         List<Song> queueable = new ArrayList<>();
         boolean albumUnlocked = unlockedAlbums.contains(name);
 

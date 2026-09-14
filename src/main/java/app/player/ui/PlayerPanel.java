@@ -132,9 +132,11 @@ public class PlayerPanel extends VBox {
         saveQueueBtn = new Button("Save Queue");
         loadQueueBtn = new Button("Load Queue");
         loadQueueBtn.setDisable(true);
-        queueButtons.getChildren().addAll(removeSelectedBtn, clearQueueBtn, shuffleQueueBtn, saveQueueBtn, loadQueueBtn);
+        queueButtons.getChildren().addAll(removeSelectedBtn, clearQueueBtn, shuffleQueueBtn, saveQueueBtn,
+                loadQueueBtn);
 
-        getChildren().addAll(currentSongLabel, enableSeekCheck , progressBox, volumeBox, playerButtons, new Label("Queue:"), queueScrollPane, queueButtons);
+        getChildren().addAll(currentSongLabel, enableSeekCheck, progressBox, volumeBox, playerButtons,
+                new Label("Queue:"), queueScrollPane, queueButtons);
         setAlignment(Pos.CENTER_RIGHT);
         HBox.setHgrow(this, Priority.ALWAYS);
 

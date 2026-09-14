@@ -68,13 +68,15 @@ class AlbumConverterTest {
         AlbumConverter converter = new AlbumConverter(Map.of());
 
         SongJSON shortSong = createSong("Interlude", "Misc", List.of("Short Songs"));
-        SongJSON rerecordSong = createSong("Love Story (Taylor's Version)", "Fearless (Taylor's Version)", List.of("Re-recordings"));
+        SongJSON rerecordSong = createSong("Love Story (Taylor's Version)", "Fearless (Taylor's Version)",
+                List.of("Re-recordings"));
         SongJSON standardSong = createSong("Style", "1989", List.of("1989"));
 
         List<Album> albums = converter.convert(List.of(shortSong, rerecordSong, standardSong));
 
         // Re-recordings check (both album & song type should be 'rerecording')
-        Album rerecordAlbum = albums.stream().filter(a -> a.getName().equals("Fearless (Taylor's Version)")).findFirst().orElseThrow();
+        Album rerecordAlbum = albums.stream().filter(a -> a.getName().equals("Fearless (Taylor's Version)"))
+                .findFirst().orElseThrow();
         assertEquals("rerecording", rerecordAlbum.getType());
         assertEquals("rerecording", rerecordAlbum.getSongs().get(0).getType());
 

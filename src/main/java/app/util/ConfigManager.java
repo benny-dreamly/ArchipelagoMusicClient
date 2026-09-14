@@ -150,7 +150,8 @@ public class ConfigManager {
                 LOGGER.info("Migrated and removed legacy connection settings {}", legacy.getAbsolutePath());
             }
         }
-        LOGGER.info("Migrated legacy per-game connection settings into {}", getConnectionConfigFile().getAbsolutePath());
+        LOGGER.info("Migrated legacy per-game connection settings into {}",
+                getConnectionConfigFile().getAbsolutePath());
         return data;
     }
 

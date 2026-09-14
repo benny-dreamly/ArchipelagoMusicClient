@@ -131,7 +131,8 @@ public class GoalManager {
         }
 
         serverDataLoaded = true;
-        LOGGER.info("Loaded {} played songs from server (merged, total={})", savedPlayedSongs.size(), playedSongs.size());
+        LOGGER.info("Loaded {} played songs from server (merged, total={})", savedPlayedSongs.size(),
+                playedSongs.size());
         persistToServer(client);
         checkGoal(client);
     }

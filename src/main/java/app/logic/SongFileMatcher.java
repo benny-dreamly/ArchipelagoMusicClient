@@ -41,7 +41,8 @@ public class SongFileMatcher {
                     if (matchedSong.getFilePath() == null) {
                         matchedSong.setFilePath(file.getAbsolutePath());
                     }
-                    LOGGER.info("Matched: {} -> {} | path: {}", file.getName(), matchedSong.getTitle(), matchedSong.getFilePath());
+                    LOGGER.info("Matched: {} -> {} | path: {}", file.getName(), matchedSong.getTitle(),
+                matchedSong.getFilePath());
                 } else {
                     LOGGER.warn("Could not match file to song: {} in album {}", file.getName(), album.getName());
                 }
@@ -78,7 +79,8 @@ public class SongFileMatcher {
                 }
             }
 
-            int dist = levenshteinDistance(normalizedFilename.toLowerCase(Locale.ROOT), normalizedSong.toLowerCase(Locale.ROOT));
+            int dist = levenshteinDistance(normalizedFilename.toLowerCase(Locale.ROOT),
+                normalizedSong.toLowerCase(Locale.ROOT));
             if (dist < 5 && dist < bestDistance) { // tweak threshold if needed
                 matchedSong = song;
                 bestDistance = dist;
