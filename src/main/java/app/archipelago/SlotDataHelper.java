@@ -27,7 +27,7 @@ public class SlotDataHelper {
     public static void loadSlotOptions(File configDir) {
         File file = new File(configDir, "slot_data.json");
         if (!file.exists()) {
-            System.err.println("No slot_data.json found in " + configDir.getAbsolutePath());
+            LOGGER.warn("No slot_data.json found in {}", configDir.getAbsolutePath());
             return;
         }
 
