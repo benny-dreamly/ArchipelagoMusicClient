@@ -645,16 +645,10 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         if (song == null) return;
 
         Album album = library.getAlbumForSong(song.getTitle());
-        boolean albumUnlocked = album != null && unlockManager.isAlbumUnlocked(album.getName());
         boolean canPlay = unlockManager.canPlay(song, album);
 
         if (!canPlay) {
-            String msg;
-            if (album != null && !albumUnlocked) {
-                msg = song.getTitle() + " requires album " + album.getName() + " to be unlocked!";
-            } else {
-                msg = song.getTitle() + " is not unlocked yet!";
-            }
+            String msg = lockedSongMessage(song, album);
             LOGGER.info("Cannot play song. {}", msg);
             showError("Locked Song", "Cannot play song", msg);
             return;
@@ -1366,6 +1360,13 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         }
     }
 
+    private String lockedSongMessage(Song song, Album album) {
+        if (album != null && !unlockManager.isAlbumUnlocked(album.getName())) {
+            return song.getTitle() + " requires album " + album.getName() + " to be unlocked!";
+        }
+        return song.getTitle() + " is not unlocked yet!";
+    }
+
     private void sendBonusCheck(String location) {
         if (client != null && client.isConnected()) {
             client.sendCheck(location);
@@ -1400,12 +1401,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
 
         Album album = library.getAlbumForSong(value);
         if (!unlockManager.canPlay(song, album)) {
-            if (album == null || !unlockManager.isAlbumUnlocked(album.getName())) {
-                showError("Locked Song", "Cannot play song", song.getTitle() + " is not unlocked yet!");
-            } else {
-                showError("Locked Song", "Cannot queue song",
-                song.getTitle() + " requires album " + album.getName() + " to be unlocked!");
-            }
+            showError("Locked Song", "Cannot play song", lockedSongMessage(song, album));
             return;
         }
 
