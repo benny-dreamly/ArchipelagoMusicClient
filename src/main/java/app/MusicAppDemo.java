@@ -81,6 +81,7 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -117,7 +118,7 @@ public class MusicAppDemo extends Application {
     private int pendingPlayedGeneration = -1;
     private boolean usingMusicLibrary = false;
     private boolean offlineMode = false;
-    private volatile int loadGeneration = 0;
+    private final AtomicInteger loadGeneration = new AtomicInteger(0);
     private boolean volumeAdjustMode = false;
     private final StringBuilder volumeInput = new StringBuilder();
     private final java.util.LinkedList<Song> songHistory = new java.util.LinkedList<>();
@@ -259,7 +260,7 @@ public class MusicAppDemo extends Application {
     private record LoadResult(List<Album> albums, boolean usingMusicLibrary, List<String> bonusLocations) {}
 
     private Task<LoadResult> getLoadTask() {
-        final int generation = loadGeneration;
+        final int generation = loadGeneration.get();
         Task<LoadResult> loadTask = new Task<>() {
             @Override
             protected LoadResult call() throws Exception {
@@ -301,7 +302,7 @@ public class MusicAppDemo extends Application {
 
         loadTask.setOnSucceeded(_ -> {
             LoadResult result = loadTask.getValue();
-            if (generation != loadGeneration) return; // stale load — discard
+            if (generation != loadGeneration.get()) return; // stale load — discard
 
             albums.addAll(result.albums());
             usingMusicLibrary = result.usingMusicLibrary();
@@ -328,7 +329,7 @@ public class MusicAppDemo extends Application {
             }
 
             // Apply any played-songs snapshot that arrived before GoalManager was ready
-            if (pendingPlayedSnapshotReceived && pendingPlayedGeneration == loadGeneration) {
+            if (pendingPlayedSnapshotReceived && pendingPlayedGeneration == loadGeneration.get()) {
                 if (client != null && client.isConnected() && pendingPlayedSlot != null
                         && pendingPlayedSlot.equals(String.valueOf(client.getSlot()))) {
                     goalManager.loadFromServer(pendingPlayedSongs, client);
@@ -446,7 +447,7 @@ public class MusicAppDemo extends Application {
         });
 
         loadTask.setOnFailed(_ -> {
-            if (generation != loadGeneration) return; // stale load — discard
+            if (generation != loadGeneration.get()) return; // stale load — discard
             LOGGER.error("Library load task failed", loadTask.getException());
             // Discard buffered item events — library failed to load
             if (itemListener != null) {
@@ -474,7 +475,7 @@ public class MusicAppDemo extends Application {
         if (itemListener != null) {
             itemListener.setLibraryLoading(true);
         }
-        loadGeneration++; // invalidate any in-flight load task
+        loadGeneration.incrementAndGet(); // invalidate any in-flight load task
         // Stop and dispose current playback
         if (currentPlayer != null) {
             currentPlayer.stop();
@@ -1470,7 +1471,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
     }
 
     public int getLoadGeneration() {
-        return loadGeneration;
+        return loadGeneration.get();
     }
 
     public GoalManager getGoalManager() {
