@@ -94,9 +94,8 @@ public class QueueManager {
 
     public void recordSnapshot(Song song) {
         if (repeatMode == RepeatMode.QUEUE && queueSnapshot == null) {
-            LinkedList<Song> snapshot = new LinkedList<>();
-            snapshot.add(song);
-            snapshot.addAll(playQueue);
+            List<Song> snapshot = new ArrayList<>(playQueue);
+            snapshot.addFirst(song);
             queueSnapshot = snapshot;
         }
     }
@@ -110,7 +109,7 @@ public class QueueManager {
     }
 
     public void addFirst(Song song) {
-        LinkedList<Song> temp = new LinkedList<>(playQueue);
+        List<Song> temp = new ArrayList<>(playQueue);
         temp.addFirst(song);
         playQueue.clear();
         playQueue.addAll(temp);
@@ -136,14 +135,14 @@ public class QueueManager {
         playQueue.remove(song);
         // reinsert at toIndex, adjusting if removing shifted the position
         int adjusted = toIndex > fromIndex ? toIndex - 1 : toIndex;
-        LinkedList<Song> temp = new LinkedList<>(playQueue);
+        List<Song> temp = new ArrayList<>(playQueue);
         temp.add(adjusted, song);
         playQueue.clear();
         playQueue.addAll(temp);
     }
 
     public void shuffle() {
-        LinkedList<Song> temp = new LinkedList<>(playQueue);
+        List<Song> temp = new ArrayList<>(playQueue);
         Collections.shuffle(temp);
         playQueue.clear();
         playQueue.addAll(temp);

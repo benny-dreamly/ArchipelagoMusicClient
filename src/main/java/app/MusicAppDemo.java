@@ -76,7 +76,6 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.Set;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.ArrayList;
@@ -1174,7 +1173,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
                 List<Map<String, String>> entries = new Gson().fromJson(reader, listType);
                 if (entries == null) return;
 
-                LinkedList<Song> resolved = new LinkedList<>();
+                List<Song> resolved = new ArrayList<>();
                 for (Map<String, String> entry : entries) {
                     String title = entry.get("title");
                     String type = entry.get("type");
