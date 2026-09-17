@@ -25,6 +25,7 @@ import app.player.ui.ConnectionPanel;
 import app.player.ui.PlayerPanel;
 import app.util.AlbumLibrary;
 import app.util.AlbumOrderManager;
+import app.util.SentBonusStore;
 import app.util.StateManager;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -305,6 +306,7 @@ public class MusicAppDemo extends Application {
             usingMusicLibrary = result.usingMusicLibrary();
             bonusLocations.clear();
             bonusLocations.addAll(result.bonusLocations());
+            bonusLocations.removeAll(SentBonusStore.load());
 
             if (!usingMusicLibrary) {
                 generateDefaultAlbumFolders(albums);
@@ -1369,10 +1371,14 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
 
     private void sendBonusCheck(String location) {
         if (client != null && client.isConnected()) {
-            client.sendCheck(location);
-            bonusLocations.remove(location);
-            Platform.runLater(this::refreshTree);
-            LOGGER.info("Sent bonus check: {}", location);
+            if (client.sendCheck(location)) {
+                bonusLocations.remove(location);
+                SentBonusStore.markSent(location);
+                Platform.runLater(this::refreshTree);
+                LOGGER.info("Sent bonus check: {}", location);
+            } else {
+                LOGGER.info("Cannot send bonus check '{}': location does not exist on this server", location);
+            }
         }
     }
 

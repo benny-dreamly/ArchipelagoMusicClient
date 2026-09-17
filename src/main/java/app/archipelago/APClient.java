@@ -74,14 +74,15 @@ public class APClient extends Client {
         disconnect();
     }
 
-    public void sendCheck(String locationName) {
+    public boolean sendCheck(String locationName) {
         Long locationID = getDataPackage().getGame(getGame()).locationNameToId.get(locationName);
 
         if (locationID != null) {
             checkLocation(locationID);
-        } else {
-            LOGGER.warn("No location ID found for location: {}", locationName);
+            return true;
         }
+        LOGGER.warn("No location ID found for location: {}", locationName);
+        return false;
     }
 
     // persistency helpers to save/load the game name
