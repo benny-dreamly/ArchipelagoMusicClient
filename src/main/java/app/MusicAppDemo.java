@@ -120,6 +120,7 @@ public class MusicAppDemo extends Application {
     private volatile int loadGeneration = 0;
     private boolean volumeAdjustMode = false;
     private final StringBuilder volumeInput = new StringBuilder();
+    private final java.util.LinkedList<Song> songHistory = new java.util.LinkedList<>();
     private AlbumLibrary library;
 
     private AlbumOrderManager albumOrderManager;
@@ -660,6 +661,12 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
 
         queueManager.recordSnapshot(song);
 
+        songHistory.remove(song);
+        songHistory.addLast(song);
+        while (songHistory.size() > 100) {
+            songHistory.removeFirst();
+        }
+
         if (song.getFilePath() == null || !new File(song.getFilePath()).exists()) {
             LOGGER.info("Song trying to be played ({})'s file path ({}) does not exist or is null.",
                 song.getTitle(), song.getFilePath());
@@ -776,6 +783,26 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
                 }
             });
             playerPanel.resetProgress();
+        }
+    }
+
+    private void playPreviousTrack() {
+        if (queueManager == null) return;
+
+        // If more than a few seconds in, restart the current track instead
+        if (currentPlayer != null && currentSong != null) {
+            Duration current = currentPlayer.getCurrentTime();
+            if (current != null && current.greaterThan(Duration.seconds(3))) {
+                currentPlayer.seek(Duration.ZERO);
+                return;
+            }
+        }
+
+        if (songHistory.size() > 1) {
+            songHistory.removeLast();
+            Song prev = songHistory.removeLast();
+            queueManager.addFirst(currentSong);
+            playSong(prev);
         }
     }
 
@@ -1097,6 +1124,12 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             queueManager.setRepeatMode(nextMode);
             panel.getRepeatButton().setText(nextMode.label());
         });
+
+        // Previous track button
+        panel.getPreviousButton().setOnAction(_ -> playPreviousTrack());
+
+        // Next track button
+        panel.getNextButton().setOnAction(_ -> playNextInQueue());
 
         // Remove selected from the queue (both ListView and underlying queue)
         panel.getRemoveSelectedBtn().setOnAction(_ -> {
