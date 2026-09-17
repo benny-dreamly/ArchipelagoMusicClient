@@ -439,6 +439,7 @@ public class MusicAppDemo extends Application {
             playerPanel.getClearQueueBtn().setDisable(false);
             playerPanel.getRemoveSelectedBtn().setDisable(false);
             treeView.setDisable(false);
+            playerPanel.setCurrentSongLabel("Currently Playing: None");
         });
 
         loadTask.setOnFailed(_ -> {
@@ -459,6 +460,7 @@ public class MusicAppDemo extends Application {
             playerPanel.getShuffleQueueBtn().setDisable(library == null || queueManager == null);
             playerPanel.getClearQueueBtn().setDisable(library == null || queueManager == null);
             playerPanel.getRemoveSelectedBtn().setDisable(library == null || queueManager == null);
+            playerPanel.setCurrentSongLabel("Currently Playing: None");
         });
         return loadTask;
     }
