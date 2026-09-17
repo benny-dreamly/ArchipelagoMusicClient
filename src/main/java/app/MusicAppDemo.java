@@ -1378,6 +1378,9 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
                 LOGGER.info("Sent bonus check: {}", location);
             } else {
                 LOGGER.info("Cannot send bonus check '{}': location does not exist on this server", location);
+                showError("Bonus Check Failed", "Cannot send bonus check",
+                        "The server does not recognize the location \"" + location + "\". "
+                        + "This bonus location is not defined for your game on this server.");
             }
         }
     }
