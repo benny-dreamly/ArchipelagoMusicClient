@@ -210,4 +210,33 @@ public class UnlockManager {
 
         if (onChange != null) onChange.run();
     }
+
+    public record AlbumProgress(int unlocked, int total) {
+        public int percentage() {
+            return total == 0 ? 0 : (int) Math.round((unlocked * 100.0) / total);
+        }
+    }
+
+    public AlbumProgress getAlbumProgress(Album album) {
+        int total = 0;
+        int unlocked = 0;
+        for (Song song : album.getSongs()) {
+            if (!enabledSets.contains(song.getType())) continue;
+            total++;
+            if (unlockedSongs.contains(song.getTitle())) unlocked++;
+        }
+        return new AlbumProgress(unlocked, total);
+    }
+
+    public AlbumProgress getWorldProgress(List<Album> albums) {
+        int total = 0;
+        int unlocked = 0;
+        for (Album album : albums) {
+            if (!enabledAlbums.contains(album.getName())) continue;
+            AlbumProgress progress = getAlbumProgress(album);
+            unlocked += progress.unlocked();
+            total += progress.total();
+        }
+        return new AlbumProgress(unlocked, total);
+    }
 }

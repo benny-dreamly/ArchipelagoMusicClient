@@ -387,12 +387,11 @@ public class MusicAppDemo extends Application {
                         setStyle("");
                         getStyleClass().removeAll("song-unlocked", "album-unlocked");
                     } else {
-                        setText(item);
-
                         TreeItem<String> treeItem = getTreeItem();
 
                         if (treeItem != null && treeItem.isLeaf()) {
                             // Song nodes
+                            setText(item);
                             Song song = library.getSongByTitle(item);
                             if (song != null && unlockManager.isSongUnlocked(song.getTitle())) {
                                 getStyleClass().add("song-unlocked");
@@ -403,11 +402,19 @@ public class MusicAppDemo extends Application {
                             // Album nodes
                             getStyleClass().remove("song-unlocked");
                             if (item.equals("Albums")) {
-                                // Root "Albums" node — normal
+                                // Root "Albums" node — show overall world completion
+                                UnlockManager.AlbumProgress world = unlockManager.getWorldProgress(library.getAlbums());
+                                setText(item + " (" + world.unlocked() + "/" + world.total() + ")");
                                 getStyleClass().remove("album-unlocked");
                             } else {
                                 // Regular album node
                                 Album album = library.getAlbumByName(item);
+                                if (album != null) {
+                                    UnlockManager.AlbumProgress progress = unlockManager.getAlbumProgress(album);
+                                    setText(item + " (" + progress.unlocked() + "/" + progress.total() + ")");
+                                } else {
+                                    setText(item);
+                                }
                                 if (album != null && unlockManager.isAlbumUnlocked(album.getName())) {
                                     // unlocked → bold
                                     getStyleClass().add("album-unlocked");
