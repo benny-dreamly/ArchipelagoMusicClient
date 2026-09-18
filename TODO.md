@@ -46,4 +46,4 @@ Add a "Browse Folder" button that imports local music without needing an Archipe
 - **Unit tests** — JUnit is configured but unused; start with domain logic tests (already started with `AlbumTest`)
 - **Extract file matching** — pull `assignFilesToSongs` into a standalone utility for testability (it has zero JavaFX dependency) ✅
 - **Logging cleanup** — replace remaining `e.printStackTrace()` calls with SLF4J ✅
-- **Config validation** — validate JSON configs on load with proper error messages
+- **Config validation** — validate JSON configs on load with proper error messages ✅
