@@ -31,10 +31,10 @@ Add a "Browse Folder" button that imports local music without needing an Archipe
 - **Keyboard shortcuts** — space (play/pause), left/right arrows (seek), cmd+right (next track) ✅
 - **Gate seek shortcuts behind "Enable Seek Slider"** — the left/right arrow seek shortcuts in `MusicAppDemo` still work when the seek checkbox (`PlayerPanel.enableSeekCheck`) is off; they should be disabled while seeking is disabled ✅
 - **Next/Previous song buttons** — no dedicated next/prev buttons in the player UI; skipping forward currently works only via the `N` key / `playNextInQueue()`, and there is no skip-backward at all ✅
-- **Dark mode** — presentable dark theme
+- **Dark mode** — presentable dark theme ✅
 - **Album art** — display cover art from the file's metadata if available ✅
 - **Crossfade / gapless playback** — smooth transitions between songs
-- **Search/filter tree** — filter the album tree by song or album name
+- **Search/filter tree** — filter the album tree by song or album name ✅
 
 ## Archipelago
 - **Send goal status to server** — report goal/win status; requires tracking progress toward the goal, which means state tracking across connections for the same slot. Likely requires deeper digging into the Archipelago client library — there's basically no docs, so it means reading the library source and how other projects use it. ✅

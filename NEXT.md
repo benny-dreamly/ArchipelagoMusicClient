@@ -31,6 +31,6 @@ Add a "Browse Folder" button that imports local music without needing an Archipe
 
 ## UI
 
-- **Dark mode** — presentable dark theme
+- **Dark mode** — presentable dark theme ✅
 - **Album art** — display cover art from the file's metadata if available ✅
-- **Search/filter tree** — filter the album tree by song or album name
+- **Search/filter tree** — filter the album tree by song or album name ✅
