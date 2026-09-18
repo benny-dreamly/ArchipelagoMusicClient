@@ -41,6 +41,7 @@ import javafx.scene.control.ContextMenu;
 import javafx.scene.control.ListView;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.Slider;
+import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputControl;
 import javafx.scene.control.TreeView;
 import javafx.scene.control.TreeCell;
@@ -74,6 +75,7 @@ import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.Collections;
 import java.util.Map;
@@ -127,6 +129,7 @@ public class MusicAppDemo extends Application {
     private StateManager stateManager;
 
     private TreeView<String> treeView;
+    private TextField searchField;
 
     private APClient client;
     private ItemListener itemListener;
@@ -178,6 +181,8 @@ public class MusicAppDemo extends Application {
             handleTreeSelection(newSel);
         });
 
+        searchField.textProperty().addListener((_, _, _) -> refreshTree());
+
         setupAlbumContextMenu();
 
         // Suppress selection handling on right-click so context menu doesn't double-queue
@@ -204,8 +209,12 @@ public class MusicAppDemo extends Application {
 
         albumArtPanel = new AlbumArtPanel();
         albumPanel = new HBox(10);
-        albumPanel.getChildren().addAll(treeView, albumArtPanel);
-        HBox.setHgrow(treeView, javafx.scene.layout.Priority.ALWAYS);
+        VBox treeBox = new VBox(10);
+        treeBox.setPrefWidth(400);
+        treeBox.getChildren().addAll(searchField, treeView);
+        HBox.setHgrow(treeBox, javafx.scene.layout.Priority.ALWAYS);
+        VBox.setVgrow(treeView, javafx.scene.layout.Priority.ALWAYS);
+        albumPanel.getChildren().addAll(treeBox, albumArtPanel);
         VBox.setVgrow(albumPanel, javafx.scene.layout.Priority.ALWAYS);
 
         root = new VBox(10, albumPanel, bottomBar);
@@ -535,15 +544,19 @@ public class MusicAppDemo extends Application {
         TreeItem<String> rootItem = new TreeItem<>("Albums");
         rootItem.setExpanded(true);
 
+        String query = searchField.getText().trim().toLowerCase(Locale.ROOT);
+
         for (Album album : albums) {
             // Skip albums not unlocked in slot data
             if (!unlockManager.getEnabledAlbums().contains(album.getName())) continue;
 
+            boolean albumMatches = album.getName().toLowerCase(Locale.ROOT).contains(query);
             TreeItem<String> albumItem = new TreeItem<>(album.getName());
             boolean hasSongs = false;
 
             for (Song song : album.getSongs()) {
                 if (unlockManager.getEnabledSets().contains(song.getType())) {
+                    if (!albumMatches && !song.getTitle().toLowerCase(Locale.ROOT).contains(query)) continue;
                     TreeItem<String> songItem = new TreeItem<>(song.getTitle());
                     albumItem.getChildren().add(songItem);
                     hasSongs = true;
@@ -554,11 +567,16 @@ public class MusicAppDemo extends Application {
         }
 
         if (!bonusLocations.isEmpty()) {
+            boolean bonusMatches = "bonus".contains(query);
             TreeItem<String> bonusItem = new TreeItem<>("Bonus");
             for (String location : bonusLocations) {
-                bonusItem.getChildren().add(new TreeItem<>(location));
+                if (bonusMatches || location.toLowerCase(Locale.ROOT).contains(query)) {
+                    bonusItem.getChildren().add(new TreeItem<>(location));
+                }
             }
-            rootItem.getChildren().add(bonusItem);
+            if (!bonusItem.getChildren().isEmpty()) {
+                rootItem.getChildren().add(bonusItem);
+            }
         }
 
         treeView.setRoot(rootItem);
@@ -1469,6 +1487,9 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
 
     private void initUIComponents() {
         treeView = new TreeView<>();
+        searchField = new TextField();
+        searchField.setPromptText("Search songs or albums...");
+        searchField.setText("");
     }
 
     public AlbumLibrary getLibrary() {
