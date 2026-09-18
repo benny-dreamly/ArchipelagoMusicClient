@@ -5,6 +5,7 @@ package app;
 
 import app.archipelago.APClient;
 import app.archipelago.ConnectionListener;
+import app.archipelago.DeathLinkListener;
 import app.archipelago.ItemListener;
 import app.archipelago.PrintJsonListener;
 import app.archipelago.SlotDataHelper;
@@ -100,6 +101,8 @@ import static app.util.AlbumUtils.generateDefaultAlbumFolders;
 import static app.util.ConfigManager.saveConnectionSettings;
 import static app.util.ConfigManager.loadDarkMode;
 import static app.util.ConfigManager.saveDarkMode;
+import static app.util.ConfigManager.loadDeathLink;
+import static app.util.ConfigManager.saveDeathLink;
 import static app.util.ConfigPaths.getConfigDir;
 import static app.util.ConfigPaths.getAlbumConfigFile;
 import static app.util.ConfigPaths.checkIfGameFolderExists;
@@ -267,6 +270,13 @@ public class MusicAppDemo extends Application {
                 scene.getStylesheets().add(getClass().getResource("/dark.css").toExternalForm());
             }
             saveDarkMode(isDark);
+        });
+
+        // Deathlink toggle
+        connectionPanel.getDeathLinkCheck().setSelected(loadDeathLink());
+        connectionPanel.getDeathLinkCheck().selectedProperty().addListener((_, _, enabled) -> {
+            saveDeathLink(enabled);
+            applyDeathLinkEnabled(enabled);
         });
     }
 
@@ -1011,6 +1021,24 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         playerPanel.resetProgress();
     }
 
+    private void applyDeathLinkEnabled(boolean enabled) {
+        if (client != null) {
+            client.setDeathLinkEnabled(enabled);
+            LOGGER.info("Deathlink {} for connection", enabled ? "enabled" : "disabled");
+        }
+    }
+
+    public void handleDeathLink(String source, String cause) {
+        LOGGER.info("Deathlink activated by {}: {}", source, cause);
+
+        // Stop current playback on death
+        stopCurrentSong();
+        playerPanel.setCurrentSongLabel("Currently Playing: None");
+        connectionPanel.setStatus("Deathlink from " + source);
+        connectionPanel.getTextClientWindow().appendOutput(
+                "You died from " + source + (cause == null || cause.isBlank() ? "" : " (" + cause + ")") + "\n");
+    }
+
     private final ChangeListener<Boolean> seekListener = (_, _, isChanging) -> {
         if (!isChanging && currentPlayer != null) {
             Duration total = currentPlayer.getTotalDuration();
@@ -1103,6 +1131,8 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             client.getEventManager().registerListener(itemListener);
             client.getEventManager().registerListener(new PrintJsonListener(client, this,
                 connectionPanel.getTextClientWindow().getOutputArea()));
+            client.getEventManager().registerListener(new DeathLinkListener(this));
+            applyDeathLinkEnabled(loadDeathLink());
             client.connect();
             connectionPanel.setStatus("Connected!");
             connectionPanel.setConnectButtonText("Disconnect"); // toggle button text

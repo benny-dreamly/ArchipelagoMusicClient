@@ -92,6 +92,20 @@ public class ConfigManager {
         write(data);
     }
 
+    public static boolean loadDeathLink() {
+        Object value = loadAllSettings().get("deathlink");
+        return value instanceof Boolean bool && bool;
+    }
+
+    public static void saveDeathLink(boolean deathLink) {
+        Map<String, Object> data = loadAllSettings();
+        if (deathLink == (data.get("deathlink") instanceof Boolean bool && bool)) {
+            return;
+        }
+        data.put("deathlink", deathLink);
+        write(data);
+    }
+
     @SuppressWarnings("unchecked")
     private static Map<String, String> slotsMap(Map<String, Object> data) {
         Object existing = data.get(SLOTS_KEY);

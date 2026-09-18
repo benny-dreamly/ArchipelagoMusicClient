@@ -38,7 +38,7 @@ Add a "Browse Folder" button that imports local music without needing an Archipe
 
 ## Archipelago
 - **Send goal status to server** — report goal/win status; requires tracking progress toward the goal, which means state tracking across connections for the same slot. Likely requires deeper digging into the Archipelago client library — there's basically no docs, so it means reading the library source and how other projects use it. ✅
-- **Deathlink support** — stop/skip playback on deathlink
+- **Deathlink support** — stop/skip playback on deathlink ✅
 - **Auto-reconnect** — retry connection if the server drops ✅
 - **Track completion percentage** — show unlock progress per album/world
 
