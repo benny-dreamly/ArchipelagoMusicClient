@@ -21,14 +21,39 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 public class APClient extends Client {
 
+    private static final int MAX_RECONNECT_ATTEMPTS = 12;
+    private static final long INITIAL_RECONNECT_DELAY_MS = 3000;
+    private static final long MAX_RECONNECT_DELAY_MS = 30_000;
+    public static final int MAX_RECONNECT_ATTEMPTS_PUBLIC = MAX_RECONNECT_ATTEMPTS;
+
     private final String address;
     private Consumer<Exception> onErrorCallback;
+    private Consumer<String> onReconnectStatusCallback;
+    private Runnable onReconnectFailedCallback;
     private String gameName;
     private JsonElement slotData;
+
+    private final ScheduledExecutorService reconnectExecutor =
+            Executors.newSingleThreadScheduledExecutor(runnable -> {
+                Thread thread = new Thread(runnable, "ap-reconnect");
+                thread.setDaemon(true);
+                return thread;
+            });
+    private final AtomicInteger reconnectAttempt = new AtomicInteger();
+    private ScheduledFuture<?> pendingReconnect;
+    private volatile boolean reconnectTaskScheduled;
+    private volatile boolean hasConnected;
+    private volatile boolean manualDisconnect;
+    private volatile boolean gaveUp;
 
     public static final Logger LOGGER = LoggerFactory.getLogger(APClient.class);
 
@@ -49,29 +74,146 @@ public class APClient extends Client {
         this.onErrorCallback = callback;
     }
 
+    public void setOnReconnectStatusCallback(Consumer<String> callback) {
+        this.onReconnectStatusCallback = callback;
+    }
+
+    public void setOnReconnectFailedCallback(Runnable callback) {
+        this.onReconnectFailedCallback = callback;
+    }
+
 
     public void connect() throws URISyntaxException {
+        manualDisconnect = false;
+        hasConnected = false;
+        gaveUp = false;
+        reconnectAttempt.set(0);
+        cancelPendingReconnect();
         super.connect(this.address);
     }
 
     @Override
     public void disconnect() {
+        manualDisconnect = true;
+        cancelPendingReconnect();
         if (isConnected()) {
             super.disconnect();
         }
     }
 
     @Override
+    public void reconnect() {
+        // The library schedules its own reconnect with a large backoff. We
+        // neutralize that here and run our own bounded retry loop instead so
+        // the app can surface status and give up within a sane window.
+        LOGGER.info("Library-requested reconnect suppressed; using app-controlled loop");
+    }
+
+    @Override
     public void onError(Exception e) {
-        if (onErrorCallback != null) {
-            Platform.runLater(() -> onErrorCallback.accept(e));
+        if (manualDisconnect) {
+            return;
         }
-        disconnect();
+        if (!hasConnected) {
+            if (onErrorCallback != null) {
+                Platform.runLater(() -> onErrorCallback.accept(e));
+            }
+        } else {
+            LOGGER.warn("Connection error during session: {}", e.getMessage());
+            scheduleReconnect();
+        }
     }
 
     @Override
     public void onClose(String message, int i) {
-        disconnect();
+        if (manualDisconnect) {
+            LOGGER.info("Manual disconnect: {}", message);
+            return;
+        }
+        if (!hasConnected) {
+            LOGGER.info("Connection closed before successful handshake: {}", message);
+            return;
+        }
+        LOGGER.warn("Connection closed unexpectedly: {}", message);
+        scheduleReconnect();
+    }
+
+    public boolean isReconnecting() {
+        return reconnectAttempt.get() > 0;
+    }
+
+    public void continueReconnect() {
+        scheduleReconnect();
+    }
+
+    public void markConnected() {
+        this.hasConnected = true;
+        this.gaveUp = false;
+        reconnectAttempt.set(0);
+        cancelPendingReconnect();
+    }
+
+    private void scheduleReconnect() {
+        if (manualDisconnect || !hasConnected || gaveUp) {
+            return;
+        }
+        synchronized (reconnectExecutor) {
+            if (reconnectTaskScheduled) {
+                return;
+            }
+            int attempt = reconnectAttempt.incrementAndGet();
+            if (attempt > MAX_RECONNECT_ATTEMPTS) {
+                reconnectAttempt.set(0);
+                fireReconnectFailed();
+                return;
+            }
+            long delay = Math.min(MAX_RECONNECT_DELAY_MS,
+                    INITIAL_RECONNECT_DELAY_MS * (1L << (attempt - 1)));
+            if (onReconnectStatusCallback != null) {
+                Platform.runLater(() -> onReconnectStatusCallback.accept(
+                        "Connection lost - reconnecting (attempt " + attempt + "/"
+                                + MAX_RECONNECT_ATTEMPTS + ")"));
+            }
+            reconnectTaskScheduled = true;
+            pendingReconnect = reconnectExecutor.schedule(() -> {
+                synchronized (reconnectExecutor) {
+                    reconnectTaskScheduled = false;
+                }
+                // Guard against a stale task firing after a manual connect, manual
+                // disconnect, or successful reconnect reset the attempt counter.
+                if (manualDisconnect || reconnectAttempt.get() == 0) {
+                    return;
+                }
+                attemptReconnect();
+            }, delay, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    private void attemptReconnect() {
+        LOGGER.info("Attempting to reconnect to {}", address);
+        try {
+            super.connect(this.address);
+        } catch (URISyntaxException e) {
+            LOGGER.error("Reconnect failed to parse address {}", address, e);
+            scheduleReconnect();
+        }
+    }
+
+    private void cancelPendingReconnect() {
+        synchronized (reconnectExecutor) {
+            reconnectTaskScheduled = false;
+            if (pendingReconnect != null) {
+                pendingReconnect.cancel(false);
+                pendingReconnect = null;
+            }
+        }
+    }
+
+    private void fireReconnectFailed() {
+        gaveUp = true;
+        if (onReconnectFailedCallback != null) {
+            Platform.runLater(onReconnectFailedCallback);
+        }
     }
 
     public boolean sendCheck(String locationName) {

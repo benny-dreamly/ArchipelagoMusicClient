@@ -240,7 +240,7 @@ public class MusicAppDemo extends Application {
 
         // Archipelago connection handler
         connectionPanel.getConnectButton().setOnAction(_ -> {
-            if (client == null || !client.isConnected()) {
+            if (client == null || (!client.isConnected() && !client.isReconnecting())) {
                 connectToServer(gameFolder);
             } else {
                 disconnectFromServer();
@@ -963,7 +963,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         offlineMode = true;
 
         // Disconnect any active connection first
-        if (client != null && client.isConnected()) {
+        if (client != null && (client.isConnected() || client.isReconnecting())) {
             client.disconnect();
             connectionPanel.setConnectButtonText("Connect");
             connectionPanel.disableGameField(false);
@@ -1084,6 +1084,16 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             // Reset button and fields so user can try again
             connectionPanel.setConnectButtonText("Connect");
             connectionPanel.disableGameField(false);
+        });
+
+        client.setOnReconnectStatusCallback(status ->
+                connectionPanel.setStatus(status));
+        client.setOnReconnectFailedCallback(() -> {
+            LOGGER.warn("Auto-reconnect failed after {} attempts", APClient.MAX_RECONNECT_ATTEMPTS_PUBLIC);
+            connectionPanel.setStatus("Connection lost");
+            connectionPanel.setConnectButtonText("Connect");
+            connectionPanel.disableGameField(false);
+            connectionPanel.setGameFieldTooltip(null);
         });
 
         try {
