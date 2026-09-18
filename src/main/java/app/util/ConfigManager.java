@@ -162,13 +162,35 @@ public class ConfigManager {
         try (Reader reader = new FileReader(file, StandardCharsets.UTF_8)) {
             Type type = new TypeToken<Map<String, Object>>(){}.getType();
             Map<String, Object> data = new Gson().fromJson(reader, type);
-            return data == null ? new HashMap<>() : data;
+            if (data == null) {
+                LOGGER.warn("connection.json is empty in {}", file.getAbsolutePath());
+                return new HashMap<>();
+            }
+            validateConnectionSettings(data);
+            return data;
         } catch (IOException e) {
             LOGGER.error("Failed to load connection settings from {}", file.getAbsolutePath(), e);
             return new HashMap<>();
         } catch (JsonSyntaxException e) {
             LOGGER.error("Malformed connection settings in {}", file.getAbsolutePath(), e);
             return new HashMap<>();
+        }
+    }
+
+    private static void validateConnectionSettings(Map<String, Object> data) {
+        Object host = data.get("host");
+        if (host != null && String.valueOf(host).isBlank()) {
+            data.remove("host");
+            LOGGER.error("Ignoring blank 'host' in connection.json");
+        }
+
+        Object port = data.get("port");
+        if (port != null) {
+            String portText = String.valueOf(port).trim();
+            if (!portText.matches("\\d{1,5}")) {
+                data.remove("port");
+                LOGGER.error("Ignoring invalid 'port' '{}' in connection.json", port);
+            }
         }
     }
 

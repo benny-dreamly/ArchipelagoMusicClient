@@ -447,7 +447,8 @@ public class MusicAppDemo extends Application {
 
         loadTask.setOnFailed(_ -> {
             if (generation != loadGeneration.get()) return; // stale load — discard
-            LOGGER.error("Library load task failed", loadTask.getException());
+            Throwable err = loadTask.getException();
+            LOGGER.error("Library load task failed", err);
             // Discard buffered item events — library failed to load
             if (itemListener != null) {
                 itemListener.discardBuffer();
@@ -464,6 +465,11 @@ public class MusicAppDemo extends Application {
             playerPanel.getClearQueueBtn().setDisable(library == null || queueManager == null);
             playerPanel.getRemoveSelectedBtn().setDisable(library == null || queueManager == null);
             playerPanel.setCurrentSongLabel("Currently Playing: None");
+
+            String detail = err == null ? "Unknown error"
+                    : (err.getMessage() == null || err.getMessage().isBlank()
+                    ? err.getClass().getSimpleName() : err.getMessage());
+            showError("Library Load Failed", "Could not load the music library", detail);
         });
         return loadTask;
     }
