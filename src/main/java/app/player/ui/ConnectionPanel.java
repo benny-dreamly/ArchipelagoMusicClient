@@ -37,6 +37,7 @@ public class ConnectionPanel extends VBox {
     private final Label statusLabel;
     private final Button showTextClientBtn;
     private final CheckBox offlineCheck;
+    private final CheckBox darkModeCheck;
     private final HBox connectButtonsBox;
     private final VBox settingsBox;
     private final Button settingsToggleButton;
@@ -94,6 +95,9 @@ public class ConnectionPanel extends VBox {
         offlineCheck = new CheckBox("Offline Mode");
         offlineCheck.setSelected(false);
 
+        darkModeCheck = new CheckBox("Dark Mode");
+        darkModeCheck.setSelected(false);
+
         // Create a horizontal container for connect button and text client button
         connectButtonsBox = new HBox(10);
         connectButtonsBox.setAlignment(Pos.CENTER_LEFT);
@@ -113,6 +117,7 @@ public class ConnectionPanel extends VBox {
                 new Label("Password:"), passwordField,
                 connectButtonsBox,
                 offlineCheck,
+                new Label("Appearance:"), darkModeCheck,
                 statusLabel
         );
         settingsBox.setVisible(false);
@@ -184,6 +189,10 @@ public class ConnectionPanel extends VBox {
 
     public CheckBox getOfflineCheck() {
         return offlineCheck;
+    }
+
+    public CheckBox getDarkModeCheck() {
+        return darkModeCheck;
     }
 
     public void setConnectionFieldsDisabled(boolean disabled) {

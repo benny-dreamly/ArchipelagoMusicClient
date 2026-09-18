@@ -98,6 +98,8 @@ import org.jaudiotagger.tag.images.Artwork;
 
 import static app.util.AlbumUtils.generateDefaultAlbumFolders;
 import static app.util.ConfigManager.saveConnectionSettings;
+import static app.util.ConfigManager.loadDarkMode;
+import static app.util.ConfigManager.saveDarkMode;
 import static app.util.ConfigPaths.getConfigDir;
 import static app.util.ConfigPaths.getAlbumConfigFile;
 import static app.util.ConfigPaths.checkIfGameFolderExists;
@@ -219,6 +221,7 @@ public class MusicAppDemo extends Application {
 
         root = new VBox(10, albumPanel, bottomBar);
         Scene scene = new Scene(root, 800, 600);
+        scene.getStylesheets().add(getClass().getResource("/app.css").toExternalForm());
         stage.setScene(scene);
         stage.setTitle("Archipelago Music Client");
         stage.show();
@@ -251,6 +254,19 @@ public class MusicAppDemo extends Application {
             } else {
                 disableOfflineMode();
             }
+        });
+
+        // Dark mode toggle
+        if (loadDarkMode()) {
+            scene.getStylesheets().add(getClass().getResource("/dark.css").toExternalForm());
+        }
+        connectionPanel.getDarkModeCheck().setSelected(loadDarkMode());
+        connectionPanel.getDarkModeCheck().selectedProperty().addListener((_, _, isDark) -> {
+            scene.getStylesheets().remove(getClass().getResource("/dark.css").toExternalForm());
+            if (isDark) {
+                scene.getStylesheets().add(getClass().getResource("/dark.css").toExternalForm());
+            }
+            saveDarkMode(isDark);
         });
     }
 
@@ -358,7 +374,8 @@ public class MusicAppDemo extends Application {
 
                     if (empty || item == null) {
                         setText(null);
-                        setStyle(""); // reset style
+                        setStyle("");
+                        getStyleClass().removeAll("song-unlocked", "album-unlocked");
                     } else {
                         setText(item);
 
@@ -368,24 +385,25 @@ public class MusicAppDemo extends Application {
                             // Song nodes
                             Song song = library.getSongByTitle(item);
                             if (song != null && unlockManager.isSongUnlocked(song.getTitle())) {
-                                setStyle("-fx-font-weight: bold; -fx-text-fill: green;");
+                                getStyleClass().add("song-unlocked");
                             } else {
-                                setStyle("-fx-font-weight: normal; -fx-text-fill: black;");
+                                getStyleClass().remove("song-unlocked");
                             }
                         } else {
                             // Album nodes
+                            getStyleClass().remove("song-unlocked");
                             if (item.equals("Albums")) {
-                                // Root "Albums" node — keep it normal black
-                                setStyle("-fx-font-weight: normal; -fx-text-fill: black;");
+                                // Root "Albums" node — normal
+                                getStyleClass().remove("album-unlocked");
                             } else {
                                 // Regular album node
                                 Album album = library.getAlbumByName(item);
                                 if (album != null && unlockManager.isAlbumUnlocked(album.getName())) {
-                                    // unlocked → bold black
-                                    setStyle("-fx-font-weight: bold; -fx-text-fill: black;");
+                                    // unlocked → bold
+                                    getStyleClass().add("album-unlocked");
                                 } else {
-                                    // locked → normal black
-                                    setStyle("-fx-font-weight: normal; -fx-text-fill: black;");
+                                    // locked → normal
+                                    getStyleClass().remove("album-unlocked");
                                 }
                             }
                         }

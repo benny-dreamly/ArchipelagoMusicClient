@@ -80,10 +80,8 @@ public class PlayerPanel extends VBox {
                 super.updateItem(song, empty);
                 if (empty || song == null) {
                     setText(null);
-                    setStyle("");
                 } else {
                     setText(song.getTitle());
-                    setStyle("-fx-text-fill: black;");
                 }
             }
         });

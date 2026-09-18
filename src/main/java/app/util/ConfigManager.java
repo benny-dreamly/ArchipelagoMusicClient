@@ -78,6 +78,20 @@ public class ConfigManager {
         return flat;
     }
 
+    public static boolean loadDarkMode() {
+        Object value = loadAllSettings().get("dark_mode");
+        return value instanceof Boolean bool && bool;
+    }
+
+    public static void saveDarkMode(boolean darkMode) {
+        Map<String, Object> data = loadAllSettings();
+        if (darkMode == (data.get("dark_mode") instanceof Boolean bool && bool)) {
+            return;
+        }
+        data.put("dark_mode", darkMode);
+        write(data);
+    }
+
     @SuppressWarnings("unchecked")
     private static Map<String, String> slotsMap(Map<String, Object> data) {
         Object existing = data.get(SLOTS_KEY);

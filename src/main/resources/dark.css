@@ -1,0 +1,71 @@
+/*
+ * SPDX-License-Identifier: MPL-2.0
+ */
+
+/* Dark theme. Loaded after app.css so it wins on conflicts. */
+
+.root {
+    -fx-base: #3c3f41;
+    -fx-background: #2b2d30;
+    -fx-control-inner-background: #2b2d30;
+    -fx-control-inner-background-alt: derive(#2b2d30, 5%);
+    -fx-text-background-color: #e0e0e0;
+    -fx-text-fill: #e0e0e0;
+    -fx-text-base-color: #e0e0e0;
+    -fx-font-size: 14px;
+}
+
+.scroll-pane {
+    -fx-background-color: -fx-background;
+}
+
+.scroll-bar:horizontal, .scroll-bar:vertical {
+    -fx-background-color: derive(-fx-base, -10%);
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #606060;
+}
+
+.tree-view, .list-view {
+    -fx-background-color: -fx-control-inner-background;
+}
+
+.tree-cell, .list-cell {
+    -fx-text-fill: -fx-text-background-color;
+}
+
+.tree-cell:selected, .list-cell:selected {
+    -fx-background-color: -fx-selection-bar;
+    -fx-text-fill: -fx-selection-bar-text;
+}
+
+.tree-cell.song-unlocked {
+    -fx-font-weight: bold;
+    -fx-text-fill: #7cf59e;
+}
+
+.tree-cell.album-unlocked {
+    -fx-font-weight: bold;
+}
+
+.text-field, .password-field {
+    -fx-text-fill: -fx-text-background-color;
+    -fx-prompt-text-fill: derive(-fx-text-background-color, -35%);
+}
+
+.button {
+    -fx-text-fill: -fx-text-background-color;
+}
+
+.check-box {
+    -fx-text-fill: -fx-text-background-color;
+}
+
+.label {
+    -fx-text-fill: -fx-text-background-color;
+}
+
+.slider {
+    -fx-text-fill: -fx-text-background-color;
+}
