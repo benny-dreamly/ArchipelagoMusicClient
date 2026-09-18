@@ -10,13 +10,18 @@
 ## Folder Scanner (Browse Folder mode)
 Add a "Browse Folder" button that imports local music without needing an Archipelago manual:
 
-- Recursively scan a chosen folder for audio files (.mp3, .m4a, .wav)
-- Group files by immediate parent directory into synthetic `Album` objects
-- Assign file paths directly (no fuzzy matching needed)
-- Set `fullAlbumUnlock = true` on everything so all songs are playable
-- Skip `locations.json` / `album_metadata.json` loading entirely in this mode
-- Add a button in the connection panel (or alongside the offline checkbox)
-- Might need a new class like `FolderScanner` to keep concerns separate
+- Recursively scan a chosen folder for audio files (.mp3, .m4a, .wav) ✅
+- Group files by immediate parent directory into synthetic `Album` objects ✅
+- Assign file paths directly (no fuzzy matching needed) ✅
+- Set `fullAlbumUnlock = true` on everything so all songs are playable ✅
+- Skip `locations.json` / `album_metadata.json` loading entirely in this mode ✅
+- Add a button in the connection panel (or alongside the offline checkbox) ✅
+- Might need a new class like `FolderScanner` to keep concerns separate ✅
+
+Resolved design decisions: entering Browse Folder forces offline mode (disconnects any
+connection, disables it, enables all unlocks); the chosen folder is persisted to
+`connection.json` (`browse_folder`) and restored on next launch; scan recurses fully
+(`root/Artist/Album` → one synthetic album per immediate parent dir).
 
 ## Queue Improvements
 - **Save/restore queue** — persist queue to `queue.json` on exit, restore on startup ✅

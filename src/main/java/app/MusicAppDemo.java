@@ -9,6 +9,7 @@ import app.archipelago.DeathLinkListener;
 import app.archipelago.ItemListener;
 import app.archipelago.PrintJsonListener;
 import app.archipelago.SlotDataHelper;
+import app.logic.FolderScanner;
 import app.logic.GoalManager;
 import app.logic.QueueManager;
 import app.logic.SongFileMatcher;
@@ -60,6 +61,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.media.Media;
 import javafx.stage.Stage;
+import javafx.stage.DirectoryChooser;
 import javafx.concurrent.Task;
 import javafx.util.Duration;
 
@@ -103,6 +105,8 @@ import static app.util.ConfigManager.loadDarkMode;
 import static app.util.ConfigManager.saveDarkMode;
 import static app.util.ConfigManager.loadDeathLink;
 import static app.util.ConfigManager.saveDeathLink;
+import static app.util.ConfigManager.loadBrowseFolder;
+import static app.util.ConfigManager.saveBrowseFolder;
 import static app.util.ConfigPaths.getConfigDir;
 import static app.util.ConfigPaths.getAlbumConfigFile;
 import static app.util.ConfigPaths.checkIfGameFolderExists;
@@ -231,9 +235,13 @@ public class MusicAppDemo extends Application {
 
         setupKeyboardShortcuts(scene);
 
-        Task<LoadResult> loadTask = getLoadTask();
-
-        new Thread(loadTask).start();
+        File savedBrowse = savedBrowseFolder();
+        if (savedBrowse != null) {
+            browseFolder(savedBrowse);
+        } else {
+            Task<LoadResult> loadTask = getLoadTask();
+            new Thread(loadTask).start();
+        }
 
         // Disable the game field if connected
         connectionPanel.disableGameField(client != null && client.isConnected());
@@ -264,6 +272,16 @@ public class MusicAppDemo extends Application {
             scene.getStylesheets().add(getClass().getResource("/dark.css").toExternalForm());
         }
         connectionPanel.getDarkModeCheck().setSelected(loadDarkMode());
+
+        // Browse Folder mode
+        connectionPanel.getBrowseFolderBtn().setOnAction(_ -> {
+            DirectoryChooser chooser = new DirectoryChooser();
+            chooser.setTitle("Select Music Folder");
+            File selected = chooser.showDialog(stage);
+            if (selected != null) {
+                browseFolder(selected);
+            }
+        });
         connectionPanel.getDarkModeCheck().selectedProperty().addListener((_, _, isDark) -> {
             scene.getStylesheets().remove(getClass().getResource("/dark.css").toExternalForm());
             if (isDark) {
@@ -377,56 +395,7 @@ public class MusicAppDemo extends Application {
                 pendingPlayedGeneration = -1;
             }
 
-            treeView.setCellFactory(tv -> new TreeCell<>() {
-                @Override
-                protected void updateItem(String item, boolean empty) {
-                    super.updateItem(item, empty);
-
-                    if (empty || item == null) {
-                        setText(null);
-                        setStyle("");
-                        getStyleClass().removeAll("song-unlocked", "album-unlocked");
-                    } else {
-                        TreeItem<String> treeItem = getTreeItem();
-
-                        if (treeItem != null && treeItem.isLeaf()) {
-                            // Song nodes
-                            setText(item);
-                            Song song = library.getSongByTitle(item);
-                            if (song != null && unlockManager.isSongUnlocked(song.getTitle())) {
-                                getStyleClass().add("song-unlocked");
-                            } else {
-                                getStyleClass().remove("song-unlocked");
-                            }
-                        } else {
-                            // Album nodes
-                            getStyleClass().remove("song-unlocked");
-                            if (item.equals("Albums")) {
-                                // Root "Albums" node — show overall world completion
-                                UnlockManager.AlbumProgress world = unlockManager.getWorldProgress(library.getAlbums());
-                                setText(item + " (" + world.unlocked() + "/" + world.total() + ")");
-                                getStyleClass().remove("album-unlocked");
-                            } else {
-                                // Regular album node
-                                Album album = library.getAlbumByName(item);
-                                if (album != null) {
-                                    UnlockManager.AlbumProgress progress = unlockManager.getAlbumProgress(album);
-                                    setText(item + " (" + progress.unlocked() + "/" + progress.total() + ")");
-                                } else {
-                                    setText(item);
-                                }
-                                if (album != null && unlockManager.isAlbumUnlocked(album.getName())) {
-                                    // unlocked → bold
-                                    getStyleClass().add("album-unlocked");
-                                } else {
-                                    // locked → normal
-                                    getStyleClass().remove("album-unlocked");
-                                }
-                            }
-                        }
-                    }
-                }
-            });
+            installTreeCellFactory();
 
             // Fallback: load albumFolders.json for albums without a path from music_library.json
             {
@@ -477,16 +446,7 @@ public class MusicAppDemo extends Application {
                 applyOfflineUnlocks();
             }
 
-            playerPanel.getLoadQueueBtn().setDisable(false);
-            playerPanel.getPlayButton().setDisable(false);
-            playerPanel.getPauseButton().setDisable(false);
-            playerPanel.getRepeatButton().setDisable(false);
-            playerPanel.getSaveQueueBtn().setDisable(false);
-            playerPanel.getShuffleQueueBtn().setDisable(false);
-            playerPanel.getClearQueueBtn().setDisable(false);
-            playerPanel.getRemoveSelectedBtn().setDisable(false);
-            treeView.setDisable(false);
-            playerPanel.setCurrentSongLabel("Currently Playing: None");
+            restoreLibraryControls();
         });
 
         loadTask.setOnFailed(_ -> {
@@ -499,16 +459,7 @@ public class MusicAppDemo extends Application {
             }
             // Re-enable safe controls on failure; keep playback/queue controls
             // disabled when library or queueManager is null to avoid NPE on dereference
-            playerPanel.getLoadQueueBtn().setDisable(queueManager == null);
-            treeView.setDisable(library == null || queueManager == null);
-            playerPanel.getPlayButton().setDisable(library == null || queueManager == null);
-            playerPanel.getPauseButton().setDisable(library == null || queueManager == null);
-            playerPanel.getRepeatButton().setDisable(library == null || queueManager == null);
-            playerPanel.getSaveQueueBtn().setDisable(library == null || queueManager == null);
-            playerPanel.getShuffleQueueBtn().setDisable(library == null || queueManager == null);
-            playerPanel.getClearQueueBtn().setDisable(library == null || queueManager == null);
-            playerPanel.getRemoveSelectedBtn().setDisable(library == null || queueManager == null);
-            playerPanel.setCurrentSongLabel("Currently Playing: None");
+            applyFailureControls();
 
             String detail = err == null ? "Unknown error"
                     : (err.getMessage() == null || err.getMessage().isBlank()
@@ -564,6 +515,207 @@ public class MusicAppDemo extends Application {
 
         Task<LoadResult> loadTask = getLoadTask();
         new Thread(loadTask).start();
+    }
+
+    /**
+     * Loads a local folder into a playable library without any Archipelago
+     * manual. Disconnects (offline mode), clears the previous library, and scans
+     * the folder on a background thread. Synthetic albums are fully unlocked so
+     * every scanned song is immediately playable.
+     */
+    private void browseFolder(File folder) {
+        // Enter offline mode first; this disconnects any active connection
+        enableOfflineMode();
+        connectionPanel.getOfflineCheck().setSelected(true);
+
+        // Buffer item events before invalidating generation
+        if (itemListener != null) {
+            itemListener.setLibraryLoading(true);
+        }
+        loadGeneration.incrementAndGet(); // invalidate any in-flight load task
+
+        // Stop and dispose current playback
+        if (currentPlayer != null) {
+            currentPlayer.stop();
+            currentPlayer.dispose();
+            currentPlayer = null;
+        }
+        currentSong = null;
+
+        // Clear old state before loading the scanned library
+        albums.clear();
+        bonusLocations.clear();
+        unlockManager.getUnlockedAlbums().clear();
+        unlockManager.getUnlockedSongs().clear();
+        unlockManager.getEnabledSets().clear();
+        unlockManager.getEnabledAlbums().clear();
+        albumOrderManager.clearAlbumOrderCache();
+        goalManager = null;
+        library = null;
+        queueManager = null;
+        pendingPlayedSongs = Collections.emptySet();
+        pendingPlayedSlot = null;
+        pendingPlayedSnapshotReceived = false;
+        pendingPlayedGeneration = -1;
+        playerPanel.clearQueueDisplay();
+        playerPanel.clearPlaybackState();
+        playerPanel.setCurrentSongLabel("Scanning...");
+
+        // Disable tree and playback controls during scan
+        treeView.setDisable(true);
+        playerPanel.getPlayButton().setDisable(true);
+        playerPanel.getPauseButton().setDisable(true);
+        playerPanel.getRepeatButton().setDisable(true);
+        playerPanel.getSaveQueueBtn().setDisable(true);
+        playerPanel.getLoadQueueBtn().setDisable(true);
+        playerPanel.getShuffleQueueBtn().setDisable(true);
+        playerPanel.getClearQueueBtn().setDisable(true);
+        playerPanel.getRemoveSelectedBtn().setDisable(true);
+
+        connectionPanel.setStatus("Scanning " + folder.getName() + "...");
+        saveBrowseFolder(folder.getAbsolutePath());
+
+        final int generation = loadGeneration.get();
+        Task<List<Album>> scanTask = new Task<>() {
+            @Override
+            protected List<Album> call() throws Exception {
+                return FolderScanner.scanFolder(folder);
+            }
+        };
+
+        scanTask.setOnSucceeded(_ -> {
+            if (generation != loadGeneration.get()) return; // stale scan — discard
+            List<Album> scanned = scanTask.getValue();
+            if (scanned == null || scanned.isEmpty()) {
+                LOGGER.warn("No audio files found under {}", folder);
+                applyFailureControls();
+                showError("No Music Found", "Folder scan found nothing",
+                        "No .mp3, .m4a or .wav files were found in: " + folder.getAbsolutePath());
+                return;
+            }
+
+            albums.addAll(scanned);
+            usingMusicLibrary = true;
+            bonusLocations.clear();
+
+            library = new AlbumLibrary(albums);
+            queueManager = new QueueManager(library, unlockManager);
+            goalManager = new GoalManager(unlockManager, albums);
+
+            installTreeCellFactory();
+            applyOfflineUnlocks();
+            refreshTree();
+
+            restoreLibraryControls();
+            connectionPanel.setStatus("Browsing " + folder.getName()
+                    + " (" + albums.size() + " albums, "
+                    + albums.stream().mapToInt(a -> a.getSongs().size()).sum() + " tracks)");
+        });
+
+        scanTask.setOnFailed(_ -> {
+            if (generation != loadGeneration.get()) return; // stale scan — discard
+            Throwable err = scanTask.getException();
+            LOGGER.error("Folder scan failed", err);
+            if (itemListener != null) {
+                itemListener.discardBuffer();
+            }
+            applyFailureControls();
+
+            String detail = err == null ? "Unknown error"
+                    : (err.getMessage() == null || err.getMessage().isBlank()
+                    ? err.getClass().getSimpleName() : err.getMessage());
+            showError("Folder Scan Failed", "Could not scan the selected folder", detail);
+        });
+
+        new Thread(scanTask).start();
+    }
+
+    private void installTreeCellFactory() {
+        treeView.setCellFactory(tv -> new TreeCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                    getStyleClass().removeAll("song-unlocked", "album-unlocked");
+                } else {
+                    TreeItem<String> treeItem = getTreeItem();
+
+                    if (treeItem != null && treeItem.isLeaf()) {
+                        // Song nodes
+                        setText(item);
+                        Song song = library.getSongByTitle(item);
+                        if (song != null && unlockManager.isSongUnlocked(song.getTitle())) {
+                            getStyleClass().add("song-unlocked");
+                        } else {
+                            getStyleClass().remove("song-unlocked");
+                        }
+                    } else {
+                        // Album nodes
+                        getStyleClass().remove("song-unlocked");
+                        if (item.equals("Albums")) {
+                            // Root "Albums" node — show overall world completion
+                            UnlockManager.AlbumProgress world = unlockManager.getWorldProgress(library.getAlbums());
+                            setText(item + " (" + world.unlocked() + "/" + world.total() + ")");
+                            getStyleClass().remove("album-unlocked");
+                        } else {
+                            // Regular album node
+                            Album album = library.getAlbumByName(item);
+                            if (album != null) {
+                                UnlockManager.AlbumProgress progress = unlockManager.getAlbumProgress(album);
+                                setText(item + " (" + progress.unlocked() + "/" + progress.total() + ")");
+                            } else {
+                                setText(item);
+                            }
+                            if (album != null && unlockManager.isAlbumUnlocked(album.getName())) {
+                                // unlocked → bold
+                                getStyleClass().add("album-unlocked");
+                            } else {
+                                // locked → normal
+                                getStyleClass().remove("album-unlocked");
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    private void restoreLibraryControls() {
+        playerPanel.getLoadQueueBtn().setDisable(false);
+        playerPanel.getPlayButton().setDisable(false);
+        playerPanel.getPauseButton().setDisable(false);
+        playerPanel.getRepeatButton().setDisable(false);
+        playerPanel.getSaveQueueBtn().setDisable(false);
+        playerPanel.getShuffleQueueBtn().setDisable(false);
+        playerPanel.getClearQueueBtn().setDisable(false);
+        playerPanel.getRemoveSelectedBtn().setDisable(false);
+        treeView.setDisable(false);
+        playerPanel.setCurrentSongLabel("Currently Playing: None");
+    }
+
+    private void applyFailureControls() {
+        playerPanel.getLoadQueueBtn().setDisable(queueManager == null);
+        treeView.setDisable(library == null || queueManager == null);
+        playerPanel.getPlayButton().setDisable(library == null || queueManager == null);
+        playerPanel.getPauseButton().setDisable(library == null || queueManager == null);
+        playerPanel.getRepeatButton().setDisable(library == null || queueManager == null);
+        playerPanel.getSaveQueueBtn().setDisable(library == null || queueManager == null);
+        playerPanel.getShuffleQueueBtn().setDisable(library == null || queueManager == null);
+        playerPanel.getClearQueueBtn().setDisable(library == null || queueManager == null);
+        playerPanel.getRemoveSelectedBtn().setDisable(library == null || queueManager == null);
+        playerPanel.setCurrentSongLabel("Currently Playing: None");
+    }
+
+    private File savedBrowseFolder() {
+        String path = loadBrowseFolder();
+        if (path == null) {
+            return null;
+        }
+        File folder = new File(path);
+        return folder.isDirectory() ? folder : null;
     }
 
     public void refreshTree() {

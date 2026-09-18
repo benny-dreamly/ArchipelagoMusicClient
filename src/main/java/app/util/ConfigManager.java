@@ -106,6 +106,28 @@ public class ConfigManager {
         write(data);
     }
 
+    public static String loadBrowseFolder() {
+        Object value = loadAllSettings().get("browse_folder");
+        return value instanceof String s && !s.isBlank() ? s : null;
+    }
+
+    public static void saveBrowseFolder(String path) {
+        Map<String, Object> data = loadAllSettings();
+        String current = loadBrowseFolder();
+        if (path == null || path.isBlank()) {
+            if (current == null) {
+                return;
+            }
+            data.remove("browse_folder");
+        } else {
+            if (path.equals(current)) {
+                return;
+            }
+            data.put("browse_folder", path);
+        }
+        write(data);
+    }
+
     @SuppressWarnings("unchecked")
     private static Map<String, String> slotsMap(Map<String, Object> data) {
         Object existing = data.get(SLOTS_KEY);

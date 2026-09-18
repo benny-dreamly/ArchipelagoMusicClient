@@ -39,6 +39,7 @@ public class ConnectionPanel extends VBox {
     private final CheckBox offlineCheck;
     private final CheckBox darkModeCheck;
     private final CheckBox deathLinkCheck;
+    private final Button browseFolderBtn;
     private final HBox connectButtonsBox;
     private final VBox settingsBox;
     private final Button settingsToggleButton;
@@ -102,6 +103,9 @@ public class ConnectionPanel extends VBox {
         deathLinkCheck = new CheckBox("Deathlink");
         deathLinkCheck.setSelected(false);
 
+        browseFolderBtn = new Button("Browse Folder...");
+        browseFolderBtn.setMaxWidth(Double.MAX_VALUE);
+
         // Create a horizontal container for connect button and text client button
         connectButtonsBox = new HBox(10);
         connectButtonsBox.setAlignment(Pos.CENTER_LEFT);
@@ -122,6 +126,7 @@ public class ConnectionPanel extends VBox {
                 connectButtonsBox,
                 offlineCheck,
                 deathLinkCheck,
+                browseFolderBtn,
                 new Label("Appearance:"), darkModeCheck,
                 statusLabel
         );
@@ -202,6 +207,10 @@ public class ConnectionPanel extends VBox {
 
     public CheckBox getDarkModeCheck() {
         return darkModeCheck;
+    }
+
+    public Button getBrowseFolderBtn() {
+        return browseFolderBtn;
     }
 
     public void setConnectionFieldsDisabled(boolean disabled) {
