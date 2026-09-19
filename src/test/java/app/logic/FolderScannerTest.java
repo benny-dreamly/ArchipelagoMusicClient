@@ -120,6 +120,30 @@ class FolderScannerTest {
     }
 
     @Test
+    void testDuplicateTitlesAcrossAlbumsRemainDistinct() throws IOException {
+        File albumA = new File(tempDir.toFile(), "AlbumA");
+        File albumB = new File(tempDir.toFile(), "AlbumB");
+        assertTrue(albumA.mkdir());
+        assertTrue(albumB.mkdir());
+
+        File a = new File(albumA, "Track 1.mp3");
+        File b = new File(albumB, "Track 1.mp3");
+        assertTrue(a.createNewFile());
+        assertTrue(b.createNewFile());
+
+        List<Album> albums = FolderScanner.scanFolder(tempDir.toFile());
+
+        Album folderA = findByName(albums, "AlbumA");
+        Album folderB = findByName(albums, "AlbumB");
+        assertEquals(1, folderA.getSongs().size());
+        assertEquals(1, folderB.getSongs().size());
+        assertEquals("Track 1", folderA.getSongs().get(0).getTitle());
+        assertEquals("Track 1", folderB.getSongs().get(0).getTitle());
+        assertEquals(a.getAbsolutePath(), folderA.getSongs().get(0).getFilePath());
+        assertEquals(b.getAbsolutePath(), folderB.getSongs().get(0).getFilePath());
+    }
+
+    @Test
     void testScanFailsOnUnreadableDirectory() throws IOException {
         File locked = new File(tempDir.toFile(), "Locked");
         assertTrue(locked.mkdir());

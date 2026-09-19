@@ -780,7 +780,10 @@ public class MusicAppDemo extends Application {
 
             if (item.isLeaf() && item.getParent().getParent() != null && !"Bonus".equals(item.getParent().getValue())) {
                 MenuItem queueNext = new MenuItem("Play Next");
-                queueNext.setOnAction(_ -> queueSongNext(item.getValue()));
+                queueNext.setOnAction(_ -> {
+                    Album album = library.getAlbumByName(item.getParent().getValue());
+                    queueSongNext(item.getValue(), album);
+                });
                 contextMenu.getItems().add(queueNext);
                 contextMenu.show(treeView, event.getScreenX(), event.getScreenY());
                 event.consume();
@@ -823,11 +826,13 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         }
     }
 
-    private void queueSongNext(String songTitle) {
-        Song song = library.getSongByTitle(songTitle);
+    private void queueSongNext(String songTitle, Album album) {
+        Song song = album != null ? album.getSong(songTitle) : null;
+        if (song == null) {
+            song = library.getSongByTitle(songTitle);
+        }
         if (song == null) return;
 
-        Album album = library.getAlbumForSong(songTitle);
         if (!unlockManager.canPlay(song, album)) return;
 
         // insert at front
@@ -1675,15 +1680,22 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             sendBonusCheck(value);
             return;
         }
+        if (parent == null) return;
 
-        Song song = library.getSongByTitle(value);
+        // Resolve the song via its album first so duplicate titles across albums
+        // stay distinguishable; fall back to the title-wide lookup as a safety net.
+        Album album = library.getAlbumByName(parent.getValue());
+        if (album == null) return;
+        Song song = album.getSong(value);
+        if (song == null) {
+            song = library.getSongByTitle(value);
+        }
 
         if (song == null) return;
 
         // Don't re-queue the currently playing song (e.g. from highlightCurrentSong)
         if (song == currentSong) return;
 
-        Album album = library.getAlbumForSong(value);
         if (!unlockManager.canPlay(song, album)) {
             showError("Locked Song", "Cannot play song", lockedSongMessage(song, album));
             return;
