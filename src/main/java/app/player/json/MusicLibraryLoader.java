@@ -43,6 +43,9 @@ public class MusicLibraryLoader {
             if (albumJSON == null) {
                 throw new IllegalArgumentException("Null album entry in music library");
             }
+            if (albumJSON.name == null || albumJSON.name.isBlank()) {
+                throw new IllegalArgumentException("Album with missing or blank 'name' in music library");
+            }
             if (albumJSON.songs == null) {
                 throw new IllegalArgumentException("Album '" + albumJSON.name + "' has null songs list");
             }
@@ -59,6 +62,10 @@ public class MusicLibraryLoader {
             for (MusicLibraryJSON.SongJSON songJSON : albumJSON.songs) {
                 if (songJSON == null) {
                     throw new IllegalArgumentException("Null song entry in album '" + albumJSON.name + "'");
+                }
+                if (songJSON.title == null || songJSON.title.isBlank()) {
+                    throw new IllegalArgumentException(
+                            "Song with missing or blank 'title' in album '" + albumJSON.name + "'");
                 }
 
                 String songType = songJSON.type != null ? songJSON.type : "normal";
