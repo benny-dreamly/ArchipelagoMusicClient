@@ -645,6 +645,7 @@ public class MusicAppDemo extends Application {
 
                     if (treeItem != null && treeItem.isLeaf()) {
                         // Song nodes
+                        getStyleClass().remove("album-unlocked");
                         setText(item);
                         Song song = library.getSongByTitle(item);
                         if (song != null && unlockManager.isSongUnlocked(song.getTitle())) {
