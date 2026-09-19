@@ -573,7 +573,7 @@ public class MusicAppDemo extends Application {
         playerPanel.getRemoveSelectedBtn().setDisable(true);
 
         connectionPanel.setStatus("Scanning " + folder.getName() + "...");
-        saveBrowseFolder(folder.getAbsolutePath());
+        final String persistedBrowsePath = loadBrowseFolder();
 
         final int generation = loadGeneration.get();
         Task<List<Album>> scanTask = new Task<>() {
@@ -588,12 +588,17 @@ public class MusicAppDemo extends Application {
             List<Album> scanned = scanTask.getValue();
             if (scanned == null || scanned.isEmpty()) {
                 LOGGER.warn("No audio files found under {}", folder);
+                if (persistedBrowsePath != null
+                        && persistedBrowsePath.equals(folder.getAbsolutePath())) {
+                    saveBrowseFolder(null); // clear stale remembered folder so we can fall back to the normal library
+                }
                 applyFailureControls();
                 showError("No Music Found", "Folder scan found nothing",
                         "No .mp3, .m4a or .wav files were found in: " + folder.getAbsolutePath());
                 return;
             }
 
+            saveBrowseFolder(folder.getAbsolutePath()); // persist only once playable files are found
             albums.addAll(scanned);
             usingMusicLibrary = true;
             bonusLocations.clear();
@@ -618,6 +623,10 @@ public class MusicAppDemo extends Application {
             LOGGER.error("Folder scan failed", err);
             if (itemListener != null) {
                 itemListener.discardBuffer();
+            }
+            if (persistedBrowsePath != null
+                    && persistedBrowsePath.equals(folder.getAbsolutePath())) {
+                saveBrowseFolder(null); // clear stale remembered folder so the normal library restores
             }
             applyFailureControls();
 
