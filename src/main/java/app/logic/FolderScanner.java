@@ -9,6 +9,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -31,7 +35,7 @@ public class FolderScanner {
 
     private FolderScanner() {} // utility class
 
-    public static List<Album> scanFolder(File root) {
+    public static List<Album> scanFolder(File root) throws IOException {
         if (root == null) {
             throw new IllegalArgumentException("Folder to scan must not be null");
         }
@@ -52,32 +56,34 @@ public class FolderScanner {
         return albums;
     }
 
-    private static void collect(File dir, File root, Map<String, Album> albumsByName) {
-        File[] files = dir.listFiles();
-        if (files == null) return;
+    private static void collect(File dir, File root, Map<String, Album> albumsByName) throws IOException {
+        // newDirectoryStream surfaces IOException (e.g. a directory that cannot be
+        // read) instead of silently treating the unreadable directory as empty.
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir.toPath())) {
+            Album album = null;
+            Set<String> titles = new HashSet<>();
 
-        Album album = null;
-        Set<String> titles = new HashSet<>();
-
-        for (File file : files) {
-            if (file.isDirectory()) {
-                collect(file, root, albumsByName);
-            } else if (SongFileMatcher.isAudioFile(file.getName())) {
-                if (album == null) {
-                    String name = uniqueAlbumName(dir, root, albumsByName);
-                    album = new Album(name, "standard", true);
-                    album.setFolderPath(dir.getAbsolutePath());
-                    albumsByName.put(name, album);
+            for (Path path : stream) {
+                File file = path.toFile();
+                if (file.isDirectory()) {
+                    collect(file, root, albumsByName);
+                } else if (SongFileMatcher.isAudioFile(file.getName())) {
+                    if (album == null) {
+                        String name = uniqueAlbumName(dir, root, albumsByName);
+                        album = new Album(name, "standard", true);
+                        album.setFolderPath(dir.getAbsolutePath());
+                        albumsByName.put(name, album);
+                    }
+                    String title = songTitle(file.getName());
+                    if (!titles.add(title.toLowerCase(Locale.ROOT))) {
+                        LOGGER.warn("Skipping duplicate title '{}' in {}", title, dir);
+                        continue;
+                    }
+                    Song song = new Song(title, "normal", "", "");
+                    song.setFilePath(file.getAbsolutePath());
+                    album.addSong(song);
+                    LOGGER.info("Added {} -> {}", file.getName(), song.getTitle());
                 }
-                String title = songTitle(file.getName());
-                if (!titles.add(title.toLowerCase(Locale.ROOT))) {
-                    LOGGER.warn("Skipping duplicate title '{}' in {}", title, dir);
-                    continue;
-                }
-                Song song = new Song(title, "normal", "", "");
-                song.setFilePath(file.getAbsolutePath());
-                album.addSong(song);
-                LOGGER.info("Added {} -> {}", file.getName(), song.getTitle());
             }
         }
     }

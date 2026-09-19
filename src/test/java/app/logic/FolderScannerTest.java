@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FolderScannerTest {
@@ -116,5 +117,22 @@ class FolderScannerTest {
         Song song = folderD.getSongs().get(0);
         assertEquals("", song.getLocation());
         assertEquals("", song.getRequires());
+    }
+
+    @Test
+    void testScanFailsOnUnreadableDirectory() throws IOException {
+        File locked = new File(tempDir.toFile(), "Locked");
+        assertTrue(locked.mkdir());
+        if (!locked.setReadable(false) || locked.canRead()) {
+            // Owner/platform does not enforce directory read bits — skip
+            assertTrue(locked.setReadable(true));
+            return;
+        }
+        try {
+            assertThrows(IOException.class, () -> FolderScanner.scanFolder(tempDir.toFile()));
+        } finally {
+            //noinspection ResultOfMethodCallIgnored
+            locked.setReadable(true);
+        }
     }
 }
