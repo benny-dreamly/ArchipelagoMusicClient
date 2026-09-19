@@ -849,10 +849,6 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         }
     }
 
-    public void unlockSong(String songTitle) {
-        unlockManager.unlockSong(songTitle);
-    }
-
     public void unlockAlbum(String albumName) {
         unlockManager.unlockAlbum(albumName, albums);
     }
