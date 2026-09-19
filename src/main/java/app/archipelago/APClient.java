@@ -142,6 +142,10 @@ public class APClient extends Client {
         return reconnectAttempt.get() > 0;
     }
 
+    public boolean isManualDisconnect() {
+        return manualDisconnect;
+    }
+
     public void continueReconnect() {
         scheduleReconnect();
     }

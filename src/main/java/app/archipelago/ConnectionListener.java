@@ -52,6 +52,13 @@ public class ConnectionListener {
             ConnectionResult result = event.getResult();
 
             if (result == io.github.archipelagomw.network.ConnectionResult.Success) {
+                // A connect handshake that was in flight when the user disconnected
+                // can still deliver a success result afterwards; reject it so the
+                // stale result can't re-enable the connection or update the UI.
+                if (client.isManualDisconnect()) {
+                    LOGGER.info("Ignoring stale connection result after manual disconnect");
+                    return;
+                }
                 JsonElement slotData = event.getSlotData(JsonElement.class);
                 client.setSlotData(slotData);
                 client.markConnected();
