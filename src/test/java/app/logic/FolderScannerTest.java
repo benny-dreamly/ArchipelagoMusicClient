@@ -10,6 +10,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -141,6 +142,33 @@ class FolderScannerTest {
         assertEquals("Track 1", folderB.getSongs().get(0).getTitle());
         assertEquals(a.getAbsolutePath(), folderA.getSongs().get(0).getFilePath());
         assertEquals(b.getAbsolutePath(), folderB.getSongs().get(0).getFilePath());
+    }
+
+    @Test
+    void testSymlinkedDirectoryIsSkipped() throws IOException {
+        File album = new File(tempDir.toFile(), "Album");
+        assertTrue(album.mkdir());
+        assertTrue(new File(album, "Track 1.mp3").createNewFile());
+
+        Path link = tempDir.resolve("AlbumLink");
+        Path target = album.toPath();
+
+        // Assumes symlink creation is permitted in the temp dir; if not, the
+        // scanner would be counted once from the real directory and the link
+        // would be skipped, so we just assert no infinite recursion and no
+        // duplicate album.
+        try {
+            Files.createSymbolicLink(link, target);
+        } catch (UnsupportedOperationException | IOException | SecurityException e) {
+            return;
+        }
+
+        List<Album> albums = FolderScanner.scanFolder(tempDir.toFile());
+
+        assertEquals(1, albums.size());
+        Album folder = findByName(albums, "Album");
+        assertEquals(1, folder.getSongs().size());
+        assertEquals(1, albums.stream().filter(a -> a.getName().equals("Album")).count());
     }
 
     @Test

@@ -66,6 +66,13 @@ public class FolderScanner {
             for (Path path : stream) {
                 File file = path.toFile();
                 if (file.isDirectory()) {
+                    // Directory symlinks are skipped: recursing into them would
+                    // either scan the same content twice or, for a cycle,
+                    // recurse forever until a StackOverflowError.
+                    if (Files.isSymbolicLink(path)) {
+                        LOGGER.info("Skipping symbolic-link directory {}", path);
+                        continue;
+                    }
                     collect(file, root, albumsByName);
                 } else if (SongFileMatcher.isAudioFile(file.getName())) {
                     if (album == null) {
