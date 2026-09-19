@@ -96,9 +96,9 @@ public class APClient extends Client {
     public void disconnect() {
         manualDisconnect = true;
         cancelPendingReconnect();
-        if (isConnected()) {
-            super.disconnect();
-        }
+        // Always tear down so an in-progress connect attempt (isConnected() == false)
+        // is also cancelled instead of silently coming up after a manual disconnect.
+        super.disconnect();
     }
 
     @Override
