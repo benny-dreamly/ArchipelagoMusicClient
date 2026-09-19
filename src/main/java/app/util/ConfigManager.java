@@ -237,11 +237,20 @@ public class ConfigManager {
         Object port = data.get("port");
         if (port != null) {
             String portText = String.valueOf(port).trim();
-            if (!portText.matches("\\d{1,5}")) {
+            int portValue;
+            try {
+                portValue = Integer.parseInt(portText);
+            } catch (NumberFormatException e) {
+                portValue = -1;
+            }
+            if (portValue < 1 || portValue > 65535) {
                 data.remove("port");
                 LOGGER.error("Ignoring invalid 'port' '{}' in connection.json", port);
+            } else {
+                data.put("port", portValue);
             }
         }
+
     }
 
     private static Map<String, String> findIgnoreCase(Map<String, Map<String, String>> map, String key) {
