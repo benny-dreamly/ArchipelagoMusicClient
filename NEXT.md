@@ -22,15 +22,15 @@ Add a "Browse Folder" button that imports local music without needing an Archipe
 - **Now-playing highlight in tree** — auto-scroll and highlight the currently playing song in the album tree ✅
 - **Repeat modes** — repeat song, repeat queue, repeat album ✅
 - **Crossfade / gapless playback** — smooth transitions between songs
-- **Skip to next track button** — skips to next track in queue (works via `N` key / `playNextInQueue()`; needs a visible player button)
-- **Previous track button** — no skip-backward exists at all yet
+- **Skip to next track button** — skips to next track in queue (works via `N` key / `playNextInQueue()`; needs a visible player button) ✅
+- **Previous track button** — no skip-backward exists at all yet ✅
 - **Gate seek shortcuts behind "Enable Seek Slider"** — left/right arrow seek shortcuts still work when the seek checkbox is off; they should be disabled while seeking is disabled ✅
 
 ## Archipelago
-- **Send goal status to server** — report goal/win status; requires tracking progress toward the goal (state tracking across connections for the same slot). Likely requires deeper digging into the Archipelago client library — no docs, so read the library source and how other projects use it
+- **Send goal status to server** — report goal/win status; requires tracking progress toward the goal (state tracking across connections for the same slot). Likely requires deeper digging into the Archipelago client library — no docs, so read the library source and how other projects use it ✅
 
 ## UI
 
-- **Dark mode** — presentable dark theme
-- **Album art** — display cover art from the file's metadata if available
-- **Search/filter tree** — filter the album tree by song or album name
+- **Dark mode** — presentable dark theme ✅
+- **Album art** — display cover art from the file's metadata if available ✅
+- **Search/filter tree** — filter the album tree by song or album name ✅

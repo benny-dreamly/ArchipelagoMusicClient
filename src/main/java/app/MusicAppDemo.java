@@ -5,9 +5,11 @@ package app;
 
 import app.archipelago.APClient;
 import app.archipelago.ConnectionListener;
+import app.archipelago.DeathLinkListener;
 import app.archipelago.ItemListener;
 import app.archipelago.PrintJsonListener;
 import app.archipelago.SlotDataHelper;
+import app.logic.FolderScanner;
 import app.logic.GoalManager;
 import app.logic.QueueManager;
 import app.logic.SongFileMatcher;
@@ -41,6 +43,7 @@ import javafx.scene.control.ContextMenu;
 import javafx.scene.control.ListView;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.Slider;
+import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputControl;
 import javafx.scene.control.TreeView;
 import javafx.scene.control.TreeCell;
@@ -58,6 +61,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.media.Media;
 import javafx.stage.Stage;
+import javafx.stage.DirectoryChooser;
 import javafx.concurrent.Task;
 import javafx.util.Duration;
 
@@ -74,13 +78,14 @@ import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -96,6 +101,12 @@ import org.jaudiotagger.tag.images.Artwork;
 
 import static app.util.AlbumUtils.generateDefaultAlbumFolders;
 import static app.util.ConfigManager.saveConnectionSettings;
+import static app.util.ConfigManager.loadDarkMode;
+import static app.util.ConfigManager.saveDarkMode;
+import static app.util.ConfigManager.loadDeathLink;
+import static app.util.ConfigManager.saveDeathLink;
+import static app.util.ConfigManager.loadBrowseFolder;
+import static app.util.ConfigManager.saveBrowseFolder;
 import static app.util.ConfigPaths.getConfigDir;
 import static app.util.ConfigPaths.getAlbumConfigFile;
 import static app.util.ConfigPaths.checkIfGameFolderExists;
@@ -117,15 +128,17 @@ public class MusicAppDemo extends Application {
     private int pendingPlayedGeneration = -1;
     private boolean usingMusicLibrary = false;
     private boolean offlineMode = false;
-    private volatile int loadGeneration = 0;
+    private final AtomicInteger loadGeneration = new AtomicInteger(0);
     private boolean volumeAdjustMode = false;
     private final StringBuilder volumeInput = new StringBuilder();
+    private final java.util.LinkedList<Song> songHistory = new java.util.LinkedList<>();
     private AlbumLibrary library;
 
     private AlbumOrderManager albumOrderManager;
     private StateManager stateManager;
 
     private TreeView<String> treeView;
+    private TextField searchField;
 
     private APClient client;
     private ItemListener itemListener;
@@ -177,6 +190,8 @@ public class MusicAppDemo extends Application {
             handleTreeSelection(newSel);
         });
 
+        searchField.textProperty().addListener((_, _, _) -> refreshTree());
+
         setupAlbumContextMenu();
 
         // Suppress selection handling on right-click so context menu doesn't double-queue
@@ -203,21 +218,30 @@ public class MusicAppDemo extends Application {
 
         albumArtPanel = new AlbumArtPanel();
         albumPanel = new HBox(10);
-        albumPanel.getChildren().addAll(treeView, albumArtPanel);
-        HBox.setHgrow(treeView, javafx.scene.layout.Priority.ALWAYS);
+        VBox treeBox = new VBox(10);
+        treeBox.setPrefWidth(400);
+        treeBox.getChildren().addAll(searchField, treeView);
+        HBox.setHgrow(treeBox, javafx.scene.layout.Priority.ALWAYS);
+        VBox.setVgrow(treeView, javafx.scene.layout.Priority.ALWAYS);
+        albumPanel.getChildren().addAll(treeBox, albumArtPanel);
         VBox.setVgrow(albumPanel, javafx.scene.layout.Priority.ALWAYS);
 
         root = new VBox(10, albumPanel, bottomBar);
         Scene scene = new Scene(root, 800, 600);
+        scene.getStylesheets().add(getClass().getResource("/app.css").toExternalForm());
         stage.setScene(scene);
         stage.setTitle("Archipelago Music Client");
         stage.show();
 
         setupKeyboardShortcuts(scene);
 
-        Task<LoadResult> loadTask = getLoadTask();
-
-        new Thread(loadTask).start();
+        File savedBrowse = savedBrowseFolder();
+        if (savedBrowse != null) {
+            browseFolder(savedBrowse);
+        } else {
+            Task<LoadResult> loadTask = getLoadTask();
+            new Thread(loadTask).start();
+        }
 
         // Disable the game field if connected
         connectionPanel.disableGameField(client != null && client.isConnected());
@@ -227,7 +251,7 @@ public class MusicAppDemo extends Application {
 
         // Archipelago connection handler
         connectionPanel.getConnectButton().setOnAction(_ -> {
-            if (client == null || !client.isConnected()) {
+            if (client == null || (!client.isConnected() && !client.isReconnecting())) {
                 connectToServer(gameFolder);
             } else {
                 disconnectFromServer();
@@ -242,6 +266,36 @@ public class MusicAppDemo extends Application {
                 disableOfflineMode();
             }
         });
+
+        // Dark mode toggle
+        if (loadDarkMode()) {
+            scene.getStylesheets().add(getClass().getResource("/dark.css").toExternalForm());
+        }
+        connectionPanel.getDarkModeCheck().setSelected(loadDarkMode());
+
+        // Browse Folder mode
+        connectionPanel.getBrowseFolderBtn().setOnAction(_ -> {
+            DirectoryChooser chooser = new DirectoryChooser();
+            chooser.setTitle("Select Music Folder");
+            File selected = chooser.showDialog(stage);
+            if (selected != null) {
+                browseFolder(selected);
+            }
+        });
+        connectionPanel.getDarkModeCheck().selectedProperty().addListener((_, _, isDark) -> {
+            scene.getStylesheets().remove(getClass().getResource("/dark.css").toExternalForm());
+            if (isDark) {
+                scene.getStylesheets().add(getClass().getResource("/dark.css").toExternalForm());
+            }
+            saveDarkMode(isDark);
+        });
+
+        // Deathlink toggle
+        connectionPanel.getDeathLinkCheck().setSelected(loadDeathLink());
+        connectionPanel.getDeathLinkCheck().selectedProperty().addListener((_, _, enabled) -> {
+            saveDeathLink(enabled);
+            applyDeathLinkEnabled(enabled);
+        });
     }
 
 
@@ -249,8 +303,8 @@ public class MusicAppDemo extends Application {
     public void stop() throws Exception {
         super.stop();
         artworkExecutor.shutdownNow();
-        if (client != null && client.isConnected()) {
-            client.disconnect();
+        if (client != null) {
+            client.close();
         }
         System.exit(0); // ensures all threads are killed
     }
@@ -258,7 +312,7 @@ public class MusicAppDemo extends Application {
     private record LoadResult(List<Album> albums, boolean usingMusicLibrary, List<String> bonusLocations) {}
 
     private Task<LoadResult> getLoadTask() {
-        final int generation = loadGeneration;
+        final int generation = loadGeneration.get();
         Task<LoadResult> loadTask = new Task<>() {
             @Override
             protected LoadResult call() throws Exception {
@@ -300,7 +354,7 @@ public class MusicAppDemo extends Application {
 
         loadTask.setOnSucceeded(_ -> {
             LoadResult result = loadTask.getValue();
-            if (generation != loadGeneration) return; // stale load — discard
+            if (generation != loadGeneration.get()) return; // stale load — discard
 
             albums.addAll(result.albums());
             usingMusicLibrary = result.usingMusicLibrary();
@@ -327,7 +381,7 @@ public class MusicAppDemo extends Application {
             }
 
             // Apply any played-songs snapshot that arrived before GoalManager was ready
-            if (pendingPlayedSnapshotReceived && pendingPlayedGeneration == loadGeneration) {
+            if (pendingPlayedSnapshotReceived && pendingPlayedGeneration == loadGeneration.get()) {
                 if (client != null && client.isConnected() && pendingPlayedSlot != null
                         && pendingPlayedSlot.equals(String.valueOf(client.getSlot()))) {
                     goalManager.loadFromServer(pendingPlayedSongs, client);
@@ -341,47 +395,7 @@ public class MusicAppDemo extends Application {
                 pendingPlayedGeneration = -1;
             }
 
-            treeView.setCellFactory(tv -> new TreeCell<>() {
-                @Override
-                protected void updateItem(String item, boolean empty) {
-                    super.updateItem(item, empty);
-
-                    if (empty || item == null) {
-                        setText(null);
-                        setStyle(""); // reset style
-                    } else {
-                        setText(item);
-
-                        TreeItem<String> treeItem = getTreeItem();
-
-                        if (treeItem != null && treeItem.isLeaf()) {
-                            // Song nodes
-                            Song song = library.getSongByTitle(item);
-                            if (song != null && unlockManager.isSongUnlocked(song.getTitle())) {
-                                setStyle("-fx-font-weight: bold; -fx-text-fill: green;");
-                            } else {
-                                setStyle("-fx-font-weight: normal; -fx-text-fill: black;");
-                            }
-                        } else {
-                            // Album nodes
-                            if (item.equals("Albums")) {
-                                // Root "Albums" node — keep it normal black
-                                setStyle("-fx-font-weight: normal; -fx-text-fill: black;");
-                            } else {
-                                // Regular album node
-                                Album album = library.getAlbumByName(item);
-                                if (album != null && unlockManager.isAlbumUnlocked(album.getName())) {
-                                    // unlocked → bold black
-                                    setStyle("-fx-font-weight: bold; -fx-text-fill: black;");
-                                } else {
-                                    // locked → normal black
-                                    setStyle("-fx-font-weight: normal; -fx-text-fill: black;");
-                                }
-                            }
-                        }
-                    }
-                }
-            });
+            installTreeCellFactory();
 
             // Fallback: load albumFolders.json for albums without a path from music_library.json
             {
@@ -432,37 +446,25 @@ public class MusicAppDemo extends Application {
                 applyOfflineUnlocks();
             }
 
-            playerPanel.getLoadQueueBtn().setDisable(false);
-            playerPanel.getPlayButton().setDisable(false);
-            playerPanel.getPauseButton().setDisable(false);
-            playerPanel.getRepeatButton().setDisable(false);
-            playerPanel.getSaveQueueBtn().setDisable(false);
-            playerPanel.getShuffleQueueBtn().setDisable(false);
-            playerPanel.getClearQueueBtn().setDisable(false);
-            playerPanel.getRemoveSelectedBtn().setDisable(false);
-            treeView.setDisable(false);
-            playerPanel.setCurrentSongLabel("Currently Playing: None");
+            restoreLibraryControls();
         });
 
         loadTask.setOnFailed(_ -> {
-            if (generation != loadGeneration) return; // stale load — discard
-            LOGGER.error("Library load task failed", loadTask.getException());
+            if (generation != loadGeneration.get()) return; // stale load — discard
+            Throwable err = loadTask.getException();
+            LOGGER.error("Library load task failed", err);
             // Discard buffered item events — library failed to load
             if (itemListener != null) {
                 itemListener.discardBuffer();
             }
             // Re-enable safe controls on failure; keep playback/queue controls
             // disabled when library or queueManager is null to avoid NPE on dereference
-            playerPanel.getLoadQueueBtn().setDisable(queueManager == null);
-            treeView.setDisable(library == null || queueManager == null);
-            playerPanel.getPlayButton().setDisable(library == null || queueManager == null);
-            playerPanel.getPauseButton().setDisable(library == null || queueManager == null);
-            playerPanel.getRepeatButton().setDisable(library == null || queueManager == null);
-            playerPanel.getSaveQueueBtn().setDisable(library == null || queueManager == null);
-            playerPanel.getShuffleQueueBtn().setDisable(library == null || queueManager == null);
-            playerPanel.getClearQueueBtn().setDisable(library == null || queueManager == null);
-            playerPanel.getRemoveSelectedBtn().setDisable(library == null || queueManager == null);
-            playerPanel.setCurrentSongLabel("Currently Playing: None");
+            applyFailureControls();
+
+            String detail = err == null ? "Unknown error"
+                    : (err.getMessage() == null || err.getMessage().isBlank()
+                    ? err.getClass().getSimpleName() : err.getMessage());
+            showError("Library Load Failed", "Could not load the music library", detail);
         });
         return loadTask;
     }
@@ -473,7 +475,7 @@ public class MusicAppDemo extends Application {
         if (itemListener != null) {
             itemListener.setLibraryLoading(true);
         }
-        loadGeneration++; // invalidate any in-flight load task
+        loadGeneration.incrementAndGet(); // invalidate any in-flight load task
         // Stop and dispose current playback
         if (currentPlayer != null) {
             currentPlayer.stop();
@@ -483,6 +485,7 @@ public class MusicAppDemo extends Application {
         currentSong = null;
 
         // Clear old state before reloading
+        songHistory.clear();
         albums.clear();
         unlockManager.getUnlockedAlbums().clear();
         unlockManager.getUnlockedSongs().clear();
@@ -515,6 +518,218 @@ public class MusicAppDemo extends Application {
         new Thread(loadTask).start();
     }
 
+    /**
+     * Loads a local folder into a playable library without any Archipelago
+     * manual. Disconnects (offline mode), clears the previous library, and scans
+     * the folder on a background thread. Synthetic albums are fully unlocked so
+     * every scanned song is immediately playable.
+     */
+    private void browseFolder(File folder) {
+        // Enter offline mode first; this disconnects any active connection
+        enableOfflineMode();
+        connectionPanel.getOfflineCheck().setSelected(true);
+
+        // Buffer item events before invalidating generation
+        if (itemListener != null) {
+            itemListener.setLibraryLoading(true);
+        }
+        loadGeneration.incrementAndGet(); // invalidate any in-flight load task
+
+        // Stop and dispose current playback
+        if (currentPlayer != null) {
+            currentPlayer.stop();
+            currentPlayer.dispose();
+            currentPlayer = null;
+        }
+        currentSong = null;
+
+        // Clear old state before loading the scanned library
+        songHistory.clear();
+        albums.clear();
+        bonusLocations.clear();
+        unlockManager.getUnlockedAlbums().clear();
+        unlockManager.getUnlockedSongs().clear();
+        unlockManager.getEnabledSets().clear();
+        unlockManager.getEnabledAlbums().clear();
+        albumOrderManager.clearAlbumOrderCache();
+        goalManager = null;
+        library = null;
+        queueManager = null;
+        pendingPlayedSongs = Collections.emptySet();
+        pendingPlayedSlot = null;
+        pendingPlayedSnapshotReceived = false;
+        pendingPlayedGeneration = -1;
+        playerPanel.clearQueueDisplay();
+        playerPanel.clearPlaybackState();
+        playerPanel.setCurrentSongLabel("Scanning...");
+
+        // Disable tree and playback controls during scan
+        treeView.setDisable(true);
+        playerPanel.getPlayButton().setDisable(true);
+        playerPanel.getPauseButton().setDisable(true);
+        playerPanel.getRepeatButton().setDisable(true);
+        playerPanel.getSaveQueueBtn().setDisable(true);
+        playerPanel.getLoadQueueBtn().setDisable(true);
+        playerPanel.getShuffleQueueBtn().setDisable(true);
+        playerPanel.getClearQueueBtn().setDisable(true);
+        playerPanel.getRemoveSelectedBtn().setDisable(true);
+
+        connectionPanel.setStatus("Scanning " + folder.getName() + "...");
+        final String persistedBrowsePath = loadBrowseFolder();
+
+        final int generation = loadGeneration.get();
+        Task<List<Album>> scanTask = new Task<>() {
+            @Override
+            protected List<Album> call() throws Exception {
+                return FolderScanner.scanFolder(folder);
+            }
+        };
+
+        scanTask.setOnSucceeded(_ -> {
+            if (generation != loadGeneration.get()) return; // stale scan — discard
+            List<Album> scanned = scanTask.getValue();
+            if (scanned == null || scanned.isEmpty()) {
+                LOGGER.warn("No audio files found under {}", folder);
+                if (persistedBrowsePath != null
+                        && persistedBrowsePath.equals(folder.getAbsolutePath())) {
+                    saveBrowseFolder(null); // clear stale remembered folder so we can fall back to the normal library
+                }
+                applyFailureControls();
+                showError("No Music Found", "Folder scan found nothing",
+                        "No .mp3, .m4a or .wav files were found in: " + folder.getAbsolutePath());
+                return;
+            }
+
+            saveBrowseFolder(folder.getAbsolutePath()); // persist only once playable files are found
+            albums.addAll(scanned);
+            usingMusicLibrary = true;
+            bonusLocations.clear();
+
+            library = new AlbumLibrary(albums);
+            queueManager = new QueueManager(library, unlockManager);
+            goalManager = new GoalManager(unlockManager, albums);
+
+            installTreeCellFactory();
+            applyOfflineUnlocks();
+            refreshTree();
+
+            restoreLibraryControls();
+            connectionPanel.setStatus("Browsing " + folder.getName()
+                    + " (" + albums.size() + " albums, "
+                    + albums.stream().mapToInt(a -> a.getSongs().size()).sum() + " tracks)");
+        });
+
+        scanTask.setOnFailed(_ -> {
+            if (generation != loadGeneration.get()) return; // stale scan — discard
+            Throwable err = scanTask.getException();
+            LOGGER.error("Folder scan failed", err);
+            if (itemListener != null) {
+                itemListener.discardBuffer();
+            }
+            if (persistedBrowsePath != null
+                    && persistedBrowsePath.equals(folder.getAbsolutePath())) {
+                saveBrowseFolder(null); // clear stale remembered folder so the normal library restores
+            }
+            applyFailureControls();
+
+            String detail = err == null ? "Unknown error"
+                    : (err.getMessage() == null || err.getMessage().isBlank()
+                    ? err.getClass().getSimpleName() : err.getMessage());
+            showError("Folder Scan Failed", "Could not scan the selected folder", detail);
+        });
+
+        new Thread(scanTask).start();
+    }
+
+    private void installTreeCellFactory() {
+        treeView.setCellFactory(tv -> new TreeCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                    getStyleClass().removeAll("song-unlocked", "album-unlocked");
+                } else {
+                    TreeItem<String> treeItem = getTreeItem();
+
+                    if (treeItem != null && treeItem.isLeaf()) {
+                        // Song nodes
+                        getStyleClass().remove("album-unlocked");
+                        setText(item);
+                        Song song = library.getSongByTitle(item);
+                        if (song != null && unlockManager.isSongUnlocked(song.getTitle())) {
+                            getStyleClass().add("song-unlocked");
+                        } else {
+                            getStyleClass().remove("song-unlocked");
+                        }
+                    } else {
+                        // Album nodes
+                        getStyleClass().remove("song-unlocked");
+                        if (item.equals("Albums")) {
+                            // Root "Albums" node — show overall world completion
+                            UnlockManager.AlbumProgress world = unlockManager.getWorldProgress(library.getAlbums());
+                            setText(item + " (" + world.unlocked() + "/" + world.total() + ")");
+                            getStyleClass().remove("album-unlocked");
+                        } else {
+                            // Regular album node
+                            Album album = library.getAlbumByName(item);
+                            if (album != null) {
+                                UnlockManager.AlbumProgress progress = unlockManager.getAlbumProgress(album);
+                                setText(item + " (" + progress.unlocked() + "/" + progress.total() + ")");
+                            } else {
+                                setText(item);
+                            }
+                            if (album != null && unlockManager.isAlbumUnlocked(album.getName())) {
+                                // unlocked → bold
+                                getStyleClass().add("album-unlocked");
+                            } else {
+                                // locked → normal
+                                getStyleClass().remove("album-unlocked");
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    private void restoreLibraryControls() {
+        playerPanel.getLoadQueueBtn().setDisable(false);
+        playerPanel.getPlayButton().setDisable(false);
+        playerPanel.getPauseButton().setDisable(false);
+        playerPanel.getRepeatButton().setDisable(false);
+        playerPanel.getSaveQueueBtn().setDisable(false);
+        playerPanel.getShuffleQueueBtn().setDisable(false);
+        playerPanel.getClearQueueBtn().setDisable(false);
+        playerPanel.getRemoveSelectedBtn().setDisable(false);
+        treeView.setDisable(false);
+        playerPanel.setCurrentSongLabel("Currently Playing: None");
+    }
+
+    private void applyFailureControls() {
+        playerPanel.getLoadQueueBtn().setDisable(queueManager == null);
+        treeView.setDisable(library == null || queueManager == null);
+        playerPanel.getPlayButton().setDisable(library == null || queueManager == null);
+        playerPanel.getPauseButton().setDisable(library == null || queueManager == null);
+        playerPanel.getRepeatButton().setDisable(library == null || queueManager == null);
+        playerPanel.getSaveQueueBtn().setDisable(library == null || queueManager == null);
+        playerPanel.getShuffleQueueBtn().setDisable(library == null || queueManager == null);
+        playerPanel.getClearQueueBtn().setDisable(library == null || queueManager == null);
+        playerPanel.getRemoveSelectedBtn().setDisable(library == null || queueManager == null);
+        playerPanel.setCurrentSongLabel("Currently Playing: None");
+    }
+
+    private File savedBrowseFolder() {
+        String path = loadBrowseFolder();
+        if (path == null) {
+            return null;
+        }
+        File folder = new File(path);
+        return folder.isDirectory() ? folder : null;
+    }
+
     public void refreshTree() {
         // Custom album order
         List<String> albumOrder = albumOrderManager.getAlbumOrder();
@@ -528,15 +743,19 @@ public class MusicAppDemo extends Application {
         TreeItem<String> rootItem = new TreeItem<>("Albums");
         rootItem.setExpanded(true);
 
+        String query = searchField.getText().trim().toLowerCase(Locale.ROOT);
+
         for (Album album : albums) {
             // Skip albums not unlocked in slot data
             if (!unlockManager.getEnabledAlbums().contains(album.getName())) continue;
 
+            boolean albumMatches = album.getName().toLowerCase(Locale.ROOT).contains(query);
             TreeItem<String> albumItem = new TreeItem<>(album.getName());
             boolean hasSongs = false;
 
             for (Song song : album.getSongs()) {
                 if (unlockManager.getEnabledSets().contains(song.getType())) {
+                    if (!albumMatches && !song.getTitle().toLowerCase(Locale.ROOT).contains(query)) continue;
                     TreeItem<String> songItem = new TreeItem<>(song.getTitle());
                     albumItem.getChildren().add(songItem);
                     hasSongs = true;
@@ -547,11 +766,16 @@ public class MusicAppDemo extends Application {
         }
 
         if (!bonusLocations.isEmpty()) {
+            boolean bonusMatches = "bonus".contains(query);
             TreeItem<String> bonusItem = new TreeItem<>("Bonus");
             for (String location : bonusLocations) {
-                bonusItem.getChildren().add(new TreeItem<>(location));
+                if (bonusMatches || location.toLowerCase(Locale.ROOT).contains(query)) {
+                    bonusItem.getChildren().add(new TreeItem<>(location));
+                }
             }
-            rootItem.getChildren().add(bonusItem);
+            if (!bonusItem.getChildren().isEmpty()) {
+                rootItem.getChildren().add(bonusItem);
+            }
         }
 
         treeView.setRoot(rootItem);
@@ -567,7 +791,10 @@ public class MusicAppDemo extends Application {
 
             if (item.isLeaf() && item.getParent().getParent() != null && !"Bonus".equals(item.getParent().getValue())) {
                 MenuItem queueNext = new MenuItem("Play Next");
-                queueNext.setOnAction(_ -> queueSongNext(item.getValue()));
+                queueNext.setOnAction(_ -> {
+                    Album album = library.getAlbumByName(item.getParent().getValue());
+                    queueSongNext(item.getValue(), album);
+                });
                 contextMenu.getItems().add(queueNext);
                 contextMenu.show(treeView, event.getScreenX(), event.getScreenY());
                 event.consume();
@@ -610,11 +837,13 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         }
     }
 
-    private void queueSongNext(String songTitle) {
-        Song song = library.getSongByTitle(songTitle);
+    private void queueSongNext(String songTitle, Album album) {
+        Song song = album != null ? album.getSong(songTitle) : null;
+        if (song == null) {
+            song = library.getSongByTitle(songTitle);
+        }
         if (song == null) return;
 
-        Album album = library.getAlbumForSong(songTitle);
         if (!unlockManager.canPlay(song, album)) return;
 
         // insert at front
@@ -629,10 +858,6 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
                 playSong(next);
             }
         }
-    }
-
-    public void unlockSong(String songTitle) {
-        unlockManager.unlockSong(songTitle);
     }
 
     public void unlockAlbum(String albumName) {
@@ -659,6 +884,12 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         this.currentSong = song;
 
         queueManager.recordSnapshot(song);
+
+        songHistory.remove(song);
+        songHistory.addLast(song);
+        while (songHistory.size() > 100) {
+            songHistory.removeFirst();
+        }
 
         if (song.getFilePath() == null || !new File(song.getFilePath()).exists()) {
             LOGGER.info("Song trying to be played ({})'s file path ({}) does not exist or is null.",
@@ -757,7 +988,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         currentPlayer.play();
         playerPanel.setCurrentSongLabel("Currently Playing: " + song.getTitle());
         updateQueueDisplay();
-        highlightCurrentSong(song.getTitle());
+        highlightCurrentSong(album, song.getTitle());
     }
 
     private void playNextInQueue() {
@@ -779,7 +1010,27 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         }
     }
 
-    private void highlightCurrentSong(String songTitle) {
+    private void playPreviousTrack() {
+        if (queueManager == null) return;
+
+        // If more than a few seconds in, restart the current track instead
+        if (currentPlayer != null && currentSong != null) {
+            Duration current = currentPlayer.getCurrentTime();
+            if (current != null && current.greaterThan(Duration.seconds(3))) {
+                currentPlayer.seek(Duration.ZERO);
+                return;
+            }
+        }
+
+        if (songHistory.size() > 1) {
+            songHistory.removeLast();
+            Song prev = songHistory.removeLast();
+            queueManager.addFirst(currentSong);
+            playSong(prev);
+        }
+    }
+
+    private void highlightCurrentSong(Album album, String songTitle) {
         if (isUpdatingSelection) return;
 
         TreeItem<String> root = treeView.getRoot();
@@ -788,6 +1039,9 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         isUpdatingSelection = true;
 
         for (TreeItem<String> albumItem : root.getChildren()) {
+            if (!albumItem.getValue().equals(album.getName())) {
+                continue; // different album — skip (duplicate titles across albums stay distinct)
+            }
             for (TreeItem<String> songItem : albumItem.getChildren()) {
                 if (songItem.getValue().equals(songTitle)) {
                     treeView.getSelectionModel().select(songItem);
@@ -894,8 +1148,8 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         offlineMode = true;
 
         // Disconnect any active connection first
-        if (client != null && client.isConnected()) {
-            client.disconnect();
+        if (client != null && (client.isConnected() || client.isReconnecting())) {
+            client.close();
             connectionPanel.setConnectButtonText("Connect");
             connectionPanel.disableGameField(false);
             connectionPanel.setGameFieldTooltip(null);
@@ -916,7 +1170,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         connectionPanel.setConnectionFieldsDisabled(false);
 
         if (client != null) {
-            client.disconnect();
+            client.close();
         }
 
         stateManager.clearUnlocks();
@@ -942,6 +1196,24 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         playerPanel.resetProgress();
     }
 
+    private void applyDeathLinkEnabled(boolean enabled) {
+        if (client != null) {
+            client.setDeathLinkEnabled(enabled);
+            LOGGER.info("Deathlink {} for connection", enabled ? "enabled" : "disabled");
+        }
+    }
+
+    public void handleDeathLink(String source, String cause) {
+        LOGGER.info("Deathlink activated by {}: {}", source, cause);
+
+        // Stop current playback on death
+        stopCurrentSong();
+        playerPanel.setCurrentSongLabel("Currently Playing: None");
+        connectionPanel.setStatus("Deathlink from " + source);
+        connectionPanel.getTextClientWindow().appendOutput(
+                "You died from " + source + (cause == null || cause.isBlank() ? "" : " (" + cause + ")") + "\n");
+    }
+
     private final ChangeListener<Boolean> seekListener = (_, _, isChanging) -> {
         if (!isChanging && currentPlayer != null) {
             Duration total = currentPlayer.getTotalDuration();
@@ -961,7 +1233,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
 
     private void disconnectFromServer() {
         // DISCONNECT
-        client.disconnect();
+        client.close();
         connectionPanel.setStatus("Disconnected");
         connectionPanel.setConnectButtonText("Connect"); // toggle button text
 
@@ -992,6 +1264,9 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         }
         APClient.saveGameNameStatic(gameName);
 
+        if (client != null) {
+            client.close();
+        }
         client = new APClient(host, port, slot, password);
 
         stateManager.resetGameState();
@@ -1017,6 +1292,16 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             connectionPanel.disableGameField(false);
         });
 
+        client.setOnReconnectStatusCallback(status ->
+                connectionPanel.setStatus(status));
+        client.setOnReconnectFailedCallback(() -> {
+            LOGGER.warn("Auto-reconnect failed after {} attempts", APClient.MAX_RECONNECT_ATTEMPTS_PUBLIC);
+            connectionPanel.setStatus("Connection lost");
+            connectionPanel.setConnectButtonText("Connect");
+            connectionPanel.disableGameField(false);
+            connectionPanel.setGameFieldTooltip(null);
+        });
+
         try {
             client.getEventManager().registerListener(new ConnectionListener(connectionPanel.getStatusLabel(),
                 client, this));
@@ -1024,6 +1309,8 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             client.getEventManager().registerListener(itemListener);
             client.getEventManager().registerListener(new PrintJsonListener(client, this,
                 connectionPanel.getTextClientWindow().getOutputArea()));
+            client.getEventManager().registerListener(new DeathLinkListener(this));
+            applyDeathLinkEnabled(loadDeathLink());
             client.connect();
             connectionPanel.setStatus("Connected!");
             connectionPanel.setConnectButtonText("Disconnect"); // toggle button text
@@ -1098,6 +1385,12 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             panel.getRepeatButton().setText(nextMode.label());
         });
 
+        // Previous track button
+        panel.getPreviousButton().setOnAction(_ -> playPreviousTrack());
+
+        // Next track button
+        panel.getNextButton().setOnAction(_ -> playNextInQueue());
+
         // Remove selected from the queue (both ListView and underlying queue)
         panel.getRemoveSelectedBtn().setOnAction(_ -> {
             Song sel = playerPanel.getQueueListView().getSelectionModel().getSelectedItem();
@@ -1140,7 +1433,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
                 List<Map<String, String>> entries = new Gson().fromJson(reader, listType);
                 if (entries == null) return;
 
-                LinkedList<Song> resolved = new LinkedList<>();
+                List<Song> resolved = new ArrayList<>();
                 for (Map<String, String> entry : entries) {
                     String title = entry.get("title");
                     String type = entry.get("type");
@@ -1400,15 +1693,22 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             sendBonusCheck(value);
             return;
         }
+        if (parent == null) return;
 
-        Song song = library.getSongByTitle(value);
+        // Resolve the song via its album first so duplicate titles across albums
+        // stay distinguishable; fall back to the title-wide lookup as a safety net.
+        Album album = library.getAlbumByName(parent.getValue());
+        if (album == null) return;
+        Song song = album.getSong(value);
+        if (song == null) {
+            song = library.getSongByTitle(value);
+        }
 
         if (song == null) return;
 
         // Don't re-queue the currently playing song (e.g. from highlightCurrentSong)
         if (song == currentSong) return;
 
-        Album album = library.getAlbumForSong(value);
         if (!unlockManager.canPlay(song, album)) {
             showError("Locked Song", "Cannot play song", lockedSongMessage(song, album));
             return;
@@ -1430,6 +1730,9 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
 
     private void initUIComponents() {
         treeView = new TreeView<>();
+        searchField = new TextField();
+        searchField.setPromptText("Search songs or albums...");
+        searchField.setText("");
     }
 
     public AlbumLibrary getLibrary() {
@@ -1437,7 +1740,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
     }
 
     public int getLoadGeneration() {
-        return loadGeneration;
+        return loadGeneration.get();
     }
 
     public GoalManager getGoalManager() {

@@ -1,0 +1,14 @@
+/*
+ * SPDX-License-Identifier: MPL-2.0
+ */
+
+/* Base (light) theme — unlocked songs are bold green, albums bold when unlocked. */
+
+.tree-cell.song-unlocked {
+    -fx-font-weight: bold;
+    -fx-text-fill: #006600;
+}
+
+.tree-cell.album-unlocked {
+    -fx-font-weight: bold;
+}

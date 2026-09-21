@@ -78,6 +78,56 @@ public class ConfigManager {
         return flat;
     }
 
+    public static boolean loadDarkMode() {
+        Object value = loadAllSettings().get("dark_mode");
+        return value instanceof Boolean bool && bool;
+    }
+
+    public static void saveDarkMode(boolean darkMode) {
+        Map<String, Object> data = loadAllSettings();
+        if (darkMode == (data.get("dark_mode") instanceof Boolean bool && bool)) {
+            return;
+        }
+        data.put("dark_mode", darkMode);
+        write(data);
+    }
+
+    public static boolean loadDeathLink() {
+        Object value = loadAllSettings().get("deathlink");
+        return value instanceof Boolean bool && bool;
+    }
+
+    public static void saveDeathLink(boolean deathLink) {
+        Map<String, Object> data = loadAllSettings();
+        if (deathLink == (data.get("deathlink") instanceof Boolean bool && bool)) {
+            return;
+        }
+        data.put("deathlink", deathLink);
+        write(data);
+    }
+
+    public static String loadBrowseFolder() {
+        Object value = loadAllSettings().get("browse_folder");
+        return value instanceof String s && !s.isBlank() ? s : null;
+    }
+
+    public static void saveBrowseFolder(String path) {
+        Map<String, Object> data = loadAllSettings();
+        String current = loadBrowseFolder();
+        if (path == null || path.isBlank()) {
+            if (current == null) {
+                return;
+            }
+            data.remove("browse_folder");
+        } else {
+            if (path.equals(current)) {
+                return;
+            }
+            data.put("browse_folder", path);
+        }
+        write(data);
+    }
+
     @SuppressWarnings("unchecked")
     private static Map<String, String> slotsMap(Map<String, Object> data) {
         Object existing = data.get(SLOTS_KEY);
@@ -162,7 +212,12 @@ public class ConfigManager {
         try (Reader reader = new FileReader(file, StandardCharsets.UTF_8)) {
             Type type = new TypeToken<Map<String, Object>>(){}.getType();
             Map<String, Object> data = new Gson().fromJson(reader, type);
-            return data == null ? new HashMap<>() : data;
+            if (data == null) {
+                LOGGER.warn("connection.json is empty in {}", file.getAbsolutePath());
+                return new HashMap<>();
+            }
+            validateConnectionSettings(data);
+            return data;
         } catch (IOException e) {
             LOGGER.error("Failed to load connection settings from {}", file.getAbsolutePath(), e);
             return new HashMap<>();
@@ -170,6 +225,32 @@ public class ConfigManager {
             LOGGER.error("Malformed connection settings in {}", file.getAbsolutePath(), e);
             return new HashMap<>();
         }
+    }
+
+    private static void validateConnectionSettings(Map<String, Object> data) {
+        Object host = data.get("host");
+        if (host != null && String.valueOf(host).isBlank()) {
+            data.remove("host");
+            LOGGER.error("Ignoring blank 'host' in connection.json");
+        }
+
+        Object port = data.get("port");
+        if (port != null) {
+            String portText = String.valueOf(port).trim();
+            int portValue;
+            try {
+                portValue = Integer.parseInt(portText);
+            } catch (NumberFormatException e) {
+                portValue = -1;
+            }
+            if (portValue < 1 || portValue > 65535) {
+                data.remove("port");
+                LOGGER.error("Ignoring invalid 'port' '{}' in connection.json", port);
+            } else {
+                data.put("port", portValue);
+            }
+        }
+
     }
 
     private static Map<String, String> findIgnoreCase(Map<String, Map<String, String>> map, String key) {

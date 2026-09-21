@@ -52,8 +52,16 @@ public class ConnectionListener {
             ConnectionResult result = event.getResult();
 
             if (result == io.github.archipelagomw.network.ConnectionResult.Success) {
+                // A connect handshake that was in flight when the user disconnected
+                // can still deliver a success result afterwards; reject it so the
+                // stale result can't re-enable the connection or update the UI.
+                if (client.isManualDisconnect()) {
+                    LOGGER.info("Ignoring stale connection result after manual disconnect");
+                    return;
+                }
                 JsonElement slotData = event.getSlotData(JsonElement.class);
                 client.setSlotData(slotData);
+                client.markConnected();
                 statusLabel.setText("Connected!");
 
                 app.applySlotData();
@@ -64,6 +72,12 @@ public class ConnectionListener {
                 LOGGER.info("Requesting played songs from data storage: key={}", key);
                 client.dataStorageGet(List.of(key));
             } else {
+                // A reconnect attempt that reaches the server and gets rejected fires
+                // a failure result; keep retrying rather than showing a dialog.
+                if (client.isReconnecting()) {
+                    client.continueReconnect();
+                    return;
+                }
                 // Prevent duplicate error alerts if a socket error already happened
                 if (statusLabel.getText().equals("Connection failed")) return;
 

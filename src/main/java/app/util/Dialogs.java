@@ -13,8 +13,11 @@ public class Dialogs {
 
     private Dialogs() {} // utility class
 
+    /**
+     * Shows a modal error dialog and logs the message rather than the raw exception.
+     */
     public static void showError(String title, String header, String content) {
-        LOGGER.info("Failed to load song. {}", content);
+        LOGGER.info("{}: {}", header, content);
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(title);
         alert.setHeaderText(header);

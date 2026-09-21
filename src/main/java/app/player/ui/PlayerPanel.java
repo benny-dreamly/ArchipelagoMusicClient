@@ -38,9 +38,11 @@ public class PlayerPanel extends VBox {
     private final ScrollPane queueScrollPane;
 
     private final HBox queueButtons;
+    private final Button previousButton;
     private final Button playButton;
     private final Button pauseButton;
     private final Button repeatButton;
+    private final Button nextButton;
     private final Button removeSelectedBtn;
     private final Button clearQueueBtn;
     private final Button shuffleQueueBtn;
@@ -78,10 +80,8 @@ public class PlayerPanel extends VBox {
                 super.updateItem(song, empty);
                 if (empty || song == null) {
                     setText(null);
-                    setStyle("");
                 } else {
                     setText(song.getTitle());
-                    setStyle("-fx-text-fill: black;");
                 }
             }
         });
@@ -119,10 +119,12 @@ public class PlayerPanel extends VBox {
         volumeBox.setAlignment(Pos.CENTER);
 
         playerButtons = new HBox(6);
+        previousButton = new Button("⏮");
         playButton = new Button("▶");
         pauseButton = new Button("⏸");
         repeatButton = new Button("No Repeat");
-        playerButtons.getChildren().addAll(playButton, pauseButton, repeatButton);
+        nextButton = new Button("⏭");
+        playerButtons.getChildren().addAll(previousButton, playButton, pauseButton, repeatButton, nextButton);
 
         // Queue control buttons
         queueButtons = new HBox(6);
@@ -145,6 +147,8 @@ public class PlayerPanel extends VBox {
     // ----- GETTERS -----
     public Button getPlayButton() { return playButton; }
     public Button getPauseButton() { return pauseButton; }
+    public Button getPreviousButton() { return previousButton; }
+    public Button getNextButton() { return nextButton; }
     public Button getRepeatButton() { return repeatButton; }
     public Button getRemoveSelectedBtn() { return removeSelectedBtn; }
     public Button getClearQueueBtn() { return clearQueueBtn; }
