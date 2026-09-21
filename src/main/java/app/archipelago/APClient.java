@@ -95,10 +95,17 @@ public class APClient extends Client {
     @Override
     public void disconnect() {
         manualDisconnect = true;
+        reconnectAttempt.set(0);
         cancelPendingReconnect();
         // Always tear down so an in-progress connect attempt (isConnected() == false)
         // is also cancelled instead of silently coming up after a manual disconnect.
         super.disconnect();
+    }
+
+    @Override
+    public void close() {
+        disconnect();
+        reconnectExecutor.shutdownNow();
     }
 
     @Override
@@ -162,7 +169,9 @@ public class APClient extends Client {
             return;
         }
         synchronized (reconnectExecutor) {
-            if (reconnectTaskScheduled) {
+            // Recheck inside the lock: a connect(), disconnect(), or give-up may
+            // have raced with the fast-path check above before we acquired it.
+            if (reconnectTaskScheduled || manualDisconnect || !hasConnected || gaveUp) {
                 return;
             }
             int attempt = reconnectAttempt.incrementAndGet();

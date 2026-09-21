@@ -303,8 +303,8 @@ public class MusicAppDemo extends Application {
     public void stop() throws Exception {
         super.stop();
         artworkExecutor.shutdownNow();
-        if (client != null && client.isConnected()) {
-            client.disconnect();
+        if (client != null) {
+            client.close();
         }
         System.exit(0); // ensures all threads are killed
     }
@@ -1149,7 +1149,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
 
         // Disconnect any active connection first
         if (client != null && (client.isConnected() || client.isReconnecting())) {
-            client.disconnect();
+            client.close();
             connectionPanel.setConnectButtonText("Connect");
             connectionPanel.disableGameField(false);
             connectionPanel.setGameFieldTooltip(null);
@@ -1170,7 +1170,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         connectionPanel.setConnectionFieldsDisabled(false);
 
         if (client != null) {
-            client.disconnect();
+            client.close();
         }
 
         stateManager.clearUnlocks();
@@ -1233,7 +1233,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
 
     private void disconnectFromServer() {
         // DISCONNECT
-        client.disconnect();
+        client.close();
         connectionPanel.setStatus("Disconnected");
         connectionPanel.setConnectButtonText("Connect"); // toggle button text
 
@@ -1264,6 +1264,9 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         }
         APClient.saveGameNameStatic(gameName);
 
+        if (client != null) {
+            client.close();
+        }
         client = new APClient(host, port, slot, password);
 
         stateManager.resetGameState();
