@@ -485,6 +485,7 @@ public class MusicAppDemo extends Application {
         currentSong = null;
 
         // Clear old state before reloading
+        songHistory.clear();
         albums.clear();
         unlockManager.getUnlockedAlbums().clear();
         unlockManager.getUnlockedSongs().clear();
@@ -543,6 +544,7 @@ public class MusicAppDemo extends Application {
         currentSong = null;
 
         // Clear old state before loading the scanned library
+        songHistory.clear();
         albums.clear();
         bonusLocations.clear();
         unlockManager.getUnlockedAlbums().clear();
@@ -986,7 +988,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         currentPlayer.play();
         playerPanel.setCurrentSongLabel("Currently Playing: " + song.getTitle());
         updateQueueDisplay();
-        highlightCurrentSong(song.getTitle());
+        highlightCurrentSong(album, song.getTitle());
     }
 
     private void playNextInQueue() {
@@ -1028,7 +1030,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         }
     }
 
-    private void highlightCurrentSong(String songTitle) {
+    private void highlightCurrentSong(Album album, String songTitle) {
         if (isUpdatingSelection) return;
 
         TreeItem<String> root = treeView.getRoot();
@@ -1037,6 +1039,9 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         isUpdatingSelection = true;
 
         for (TreeItem<String> albumItem : root.getChildren()) {
+            if (!albumItem.getValue().equals(album.getName())) {
+                continue; // different album — skip (duplicate titles across albums stay distinct)
+            }
             for (TreeItem<String> songItem : albumItem.getChildren()) {
                 if (songItem.getValue().equals(songTitle)) {
                     treeView.getSelectionModel().select(songItem);
