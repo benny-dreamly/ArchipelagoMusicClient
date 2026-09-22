@@ -955,15 +955,16 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         });
 
         Media media = new Media(Paths.get(song.getFilePath()).toUri().toString());
-        currentPlayer = new MediaPlayer(media);
-        currentPlayer.setVolume(playerPanel.getVolumeSlider().getValue() / 100.0);
+        MediaPlayer player = new MediaPlayer(media);
+        currentPlayer = player;
+        player.setVolume(playerPanel.getVolumeSlider().getValue() / 100.0);
         if (boostActive) {
-            currentPlayer.setRate(boostRate);
+            player.setRate(boostRate);
         }
 
-        currentPlayer.currentTimeProperty().addListener((_, _, newTime) -> {
+        player.currentTimeProperty().addListener((_, _, newTime) -> {
             if (!playerPanel.getProgressSlider().isValueChanging()) {
-                Duration total = currentPlayer.getTotalDuration();
+                Duration total = player.getTotalDuration();
                 if (total != null && total.greaterThan(Duration.ZERO)) {
                     playerPanel.getProgressSlider().setValue(newTime.toMillis() / total.toMillis());
                     playerPanel.getElapsedLabel().setText(formatTime(newTime));
@@ -972,14 +973,14 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         });
 
         // Set duration label once media is ready
-        currentPlayer.setOnReady(() -> {
-            Duration total = currentPlayer.getTotalDuration();
+        player.setOnReady(() -> {
+            Duration total = player.getTotalDuration();
             if (total != null) {
                 playerPanel.getDurationLabel().setText(formatTime(total));
             }
         });
 
-        currentPlayer.setOnEndOfMedia(() -> {
+        player.setOnEndOfMedia(() -> {
             if (client != null && client.isConnected()) {
                 client.sendCheck(song.getLocation());
                 Album songAlbum = library.getAlbumForSong(song.getTitle());
@@ -995,16 +996,15 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             }
         });
 
-        currentPlayer.setOnError(() -> {
-            MediaPlayer player = currentPlayer;
-            String errorMessage = player != null && player.getError() != null
+        player.setOnError(() -> {
+            String errorMessage = player.getError() != null
                     ? player.getError().getMessage() : "Unknown error";
             LOGGER.error("Error playing '{}': {}", song.getTitle(), errorMessage);
             showError("Playback Error", "Cannot play song", "Error playing " + song.getTitle() + ": " + errorMessage);
             playNextInQueue();
         });
 
-        currentPlayer.play();
+        player.play();
         playerPanel.setCurrentSongLabel("Currently Playing: " + song.getTitle());
         updateQueueDisplay();
         highlightCurrentSong(album, song.getTitle());
