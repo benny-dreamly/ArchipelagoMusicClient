@@ -65,6 +65,7 @@ public class ConnectionListener {
                 statusLabel.setText("Connected!");
 
                 app.applySlotData();
+                app.startEnergyLinkSync();
 
                 // Load played songs from server data storage
                 pendingRequest = new PendingRequest(client.getSlot(), app.getLoadGeneration());

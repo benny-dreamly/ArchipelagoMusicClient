@@ -48,6 +48,8 @@ public class PlayerPanel extends VBox {
     private final Button shuffleQueueBtn;
     private final Button saveQueueBtn;
     private final Button loadQueueBtn;
+    private final Button boostButton;
+    private final Label energyLabel;
     private final HBox playerButtons;
 
     public PlayerPanel() {
@@ -126,6 +128,9 @@ public class PlayerPanel extends VBox {
         nextButton = new Button("⏭");
         playerButtons.getChildren().addAll(previousButton, playButton, pauseButton, repeatButton, nextButton);
 
+        boostButton = new Button("Fast Boost (Click=1.5x, Double=2x)");
+        energyLabel = new Label("Energy: --");
+
         // Queue control buttons
         queueButtons = new HBox(6);
         removeSelectedBtn = new Button("Remove Selected");
@@ -138,7 +143,7 @@ public class PlayerPanel extends VBox {
                 loadQueueBtn);
 
         getChildren().addAll(currentSongLabel, enableSeekCheck, progressBox, volumeBox, playerButtons,
-                new Label("Queue:"), queueScrollPane, queueButtons);
+                energyLabel, boostButton, new Label("Queue:"), queueScrollPane, queueButtons);
         setAlignment(Pos.CENTER_RIGHT);
         HBox.setHgrow(this, Priority.ALWAYS);
 
@@ -155,6 +160,11 @@ public class PlayerPanel extends VBox {
     public Button getShuffleQueueBtn() { return shuffleQueueBtn; }
     public Button getSaveQueueBtn() { return saveQueueBtn; }
     public Button getLoadQueueBtn() { return loadQueueBtn; }
+    public Button getBoostButton() { return boostButton; }
+
+    public void setEnergyLabel(String text) {
+        energyLabel.setText(text);
+    }
 
     public ListView<Song> getQueueListView() { return queueListView; }
 
