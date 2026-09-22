@@ -67,8 +67,11 @@ public class ConfigManager {
     public static Map<String, String> loadConnectionSettings() {
         Map<String, String> flat = new HashMap<>();
         for (Map.Entry<String, Object> entry : loadAllSettings().entrySet()) {
-            if (entry.getValue() instanceof String value) {
-                flat.put(entry.getKey(), value);
+            Object value = entry.getValue();
+            if (value instanceof String s) {
+                flat.put(entry.getKey(), s);
+            } else if (value instanceof Number n) {
+                flat.put(entry.getKey(), n.toString());
             }
         }
         String password = loadPassword();
