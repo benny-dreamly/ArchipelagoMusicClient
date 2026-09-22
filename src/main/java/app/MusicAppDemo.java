@@ -155,10 +155,10 @@ public class MusicAppDemo extends Application {
     // energy link / playback boost
     private static final double BOOST_RATE_150 = 1.5;
     private static final double BOOST_RATE_200 = 2.0;
-    private static final double BOOST_COST_150 = 1.5;
-    private static final double BOOST_COST_200 = 2.25;
+    private static final double BOOST_COST_150 = 1_500;
+    private static final double BOOST_COST_200 = 2_250;
     private static final Duration BOOST_DURATION = Duration.seconds(30);
-    private static final double SONG_ENERGY_CREDIT = 0.5;
+    private static final double SONG_ENERGY_CREDIT = 500;
     private static final Duration CLICK_WINDOW = Duration.millis(300);
     private boolean boostActive = false;
     private double boostRate = 1.0;
@@ -1051,14 +1051,17 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         if (link != null && client != null && client.isConnected()) {
             Double balance = link.getBalance();
             if (balance != null && balance < cost) {
-                LOGGER.info("Boost rejected: need {} J but only {} J available", cost, balance);
+                LOGGER.info("Boost rejected: need {} but only {} available",
+                        formatEnergy(cost), formatEnergy(balance));
                 connectionPanel.getTextClientWindow().appendOutput(
-                        String.format("Not enough energy (%.2f J needed, %.2f J available)", cost, balance));
+                        String.format("Not enough energy (%s needed, %s available)",
+                                formatEnergy(cost), formatEnergy(balance)));
                 return;
             }
             if (!link.withdraw(cost)) {
                 connectionPanel.getTextClientWindow().appendOutput(
-                        String.format("Not enough energy to boost (%.2f J available)", balance));
+                        String.format("Not enough energy to boost (%s available)",
+                                formatEnergy(balance)));
                 return;
             }
         }

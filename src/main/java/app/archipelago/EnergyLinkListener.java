@@ -114,7 +114,7 @@ public class EnergyLinkListener {
         SetPacket packet = new SetPacket(key, 0.0);
         packet.addDataStorageOperation(SetPacket.Operation.ADD, amount);
         client.dataStorageSet(packet);
-        LOGGER.info("Deposited {} J to EnergyLink '{}'", amount, key);
+        LOGGER.info("Deposited {} to EnergyLink '{}'", formatEnergy(amount), key);
     }
 
     /** Withdraw energy from the shared pool. Returns {@code false} if the balance is too low. */
@@ -125,13 +125,23 @@ public class EnergyLinkListener {
             return false;
         }
         if (balance != null && balance < amount) {
-            LOGGER.info("EnergyLink has {} J; need {} J to withdraw", balance, amount);
+            LOGGER.info("EnergyLink has {}; need {} to withdraw", formatEnergy(balance), formatEnergy(amount));
             return false;
         }
         SetPacket packet = new SetPacket(key, 0.0);
         packet.addDataStorageOperation(SetPacket.Operation.ADD, -amount);
         client.dataStorageSet(packet);
-        LOGGER.info("Withdrew {} J from EnergyLink '{}'", amount, key);
+        LOGGER.info("Withdrew {} from EnergyLink '{}'", formatEnergy(amount), key);
         return true;
+    }
+
+    private static String formatEnergy(double joules) {
+        if (joules >= 1_000_000) {
+            return String.format("%.2f MJ", joules / 1_000_000);
+        }
+        if (joules >= 1_000) {
+            return String.format("%.1f kJ", joules / 1_000);
+        }
+        return String.format("%.1f J", joules);
     }
 }
