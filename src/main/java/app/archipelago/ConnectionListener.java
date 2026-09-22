@@ -71,6 +71,15 @@ public class ConnectionListener {
                 String key = PLAYED_SONGS_KEY + pendingRequest.slot();
                 LOGGER.info("Requesting played songs from data storage: key={}", key);
                 client.dataStorageGet(List.of(key));
+
+                // Load item/location name groups for the text client commands
+                String game = client.getGame();
+                if (game != null && !game.isEmpty()) {
+                    client.dataStorageGet(List.of(
+                            "_read_item_name_groups_" + game,
+                            "_read_location_name_groups_" + game
+                    ));
+                }
             } else {
                 // A reconnect attempt that reaches the server and gets rejected fires
                 // a failure result; keep retrying rather than showing a dialog.

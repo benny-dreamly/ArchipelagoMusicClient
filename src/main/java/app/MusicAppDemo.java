@@ -7,6 +7,7 @@ import app.archipelago.APClient;
 import app.archipelago.ConnectionListener;
 import app.archipelago.DeathLinkListener;
 import app.archipelago.ItemListener;
+import app.archipelago.NameGroupsListener;
 import app.archipelago.PrintJsonListener;
 import app.archipelago.SlotDataHelper;
 import app.logic.FolderScanner;
@@ -1307,8 +1308,10 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
                 client, this));
             itemListener = new ItemListener(this);
             client.getEventManager().registerListener(itemListener);
-            client.getEventManager().registerListener(new PrintJsonListener(client, this,
-                connectionPanel.getTextClientWindow().getOutputArea()));
+            client.getEventManager().registerListener(new PrintJsonListener(client,
+                    connectionPanel.getTextClientWindow()::appendMessage));
+            client.getEventManager().registerListener(new NameGroupsListener(
+                    connectionPanel.getTextClientWindow()::onNameGroupsRetrieved));
             client.getEventManager().registerListener(new DeathLinkListener(this));
             applyDeathLinkEnabled(loadDeathLink());
             client.connect();
