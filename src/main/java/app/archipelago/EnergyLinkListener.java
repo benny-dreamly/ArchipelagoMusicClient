@@ -11,6 +11,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.DoubleConsumer;
 
@@ -31,6 +37,9 @@ public class EnergyLinkListener {
 
     private final AtomicReference<String> keyRef = new AtomicReference<>();
     private final AtomicReference<Double> balanceRef = new AtomicReference<>(null);
+    private final Map<Integer, CompletableFuture<SetReplyEvent>> pendingWithdrawals = new ConcurrentHashMap<>();
+
+    private static final long WITHDRAW_TIMEOUT_MS = 3_000;
 
     /**
      * @param client            the connected AP client
@@ -84,6 +93,11 @@ public class EnergyLinkListener {
         if (key == null || !key.equals(event.key)) {
             return;
         }
+        CompletableFuture<SetReplyEvent> pending = pendingWithdrawals.remove(event.getRequestID());
+        if (pending != null) {
+            pending.complete(event);
+            return;
+        }
         if (event.value instanceof Number n) {
             updateBalance(n.doubleValue());
         }
@@ -129,10 +143,49 @@ public class EnergyLinkListener {
             return false;
         }
         SetPacket packet = new SetPacket(key, 0.0);
+        packet.want_reply = true;
         packet.addDataStorageOperation(SetPacket.Operation.ADD, -amount);
-        client.dataStorageSet(packet);
-        LOGGER.info("Withdrew {} from EnergyLink '{}'", formatEnergy(amount), key);
-        return true;
+        CompletableFuture<SetReplyEvent> reply = new CompletableFuture<>();
+        int requestId = packet.getRequestID();
+        pendingWithdrawals.put(requestId, reply);
+        int sentId = client.dataStorageSet(packet);
+        if (sentId == 0 || sentId != requestId) {
+            pendingWithdrawals.remove(requestId);
+            LOGGER.warn("Failed to send EnergyLink withdrawal for '{}'", key);
+            return false;
+        }
+        try {
+            SetReplyEvent event = reply.get(WITHDRAW_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+            if (!(event.original_value instanceof Number original)
+                    || !(event.value instanceof Number current)) {
+                LOGGER.warn("EnergyLink withdrawal reply for '{}' was not numeric", key);
+                return false;
+            }
+            double originalBalance = original.doubleValue();
+            double currentBalance = current.doubleValue();
+            if (originalBalance < amount) {
+                LOGGER.info("EnergyLink withdrawal for '{}' rejected: original balance {} was below {}",
+                        key, formatEnergy(originalBalance), formatEnergy(amount));
+                return false;
+            }
+            if (Math.abs((originalBalance - amount) - currentBalance) > 1e-9) {
+                LOGGER.warn("EnergyLink withdrawal for '{}' did not apply as expected "
+                        + "(original {} minus {} != {})", key,
+                        formatEnergy(originalBalance), formatEnergy(amount), formatEnergy(currentBalance));
+                return false;
+            }
+            updateBalance(currentBalance);
+            LOGGER.info("Withdrew {} from EnergyLink '{}'", formatEnergy(amount), key);
+            return true;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            pendingWithdrawals.remove(requestId);
+            return false;
+        } catch (ExecutionException | TimeoutException e) {
+            pendingWithdrawals.remove(requestId);
+            LOGGER.warn("Timed out waiting for EnergyLink withdrawal reply for '{}'", key);
+            return false;
+        }
     }
 
     private static String formatEnergy(double joules) {
