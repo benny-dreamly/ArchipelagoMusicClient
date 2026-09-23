@@ -1050,7 +1050,12 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         EnergyLinkListener link = energyLinkListener;
         if (link != null && client != null && client.isConnected()) {
             Double balance = link.getBalance();
-            if (balance != null && balance < cost) {
+            if (balance == null) {
+                LOGGER.info("Boost rejected: EnergyLink is not ready yet");
+                connectionPanel.getTextClientWindow().appendOutput("EnergyLink is not ready for boost yet");
+                return;
+            }
+            if (balance < cost) {
                 LOGGER.info("Boost rejected: need {} but only {} available",
                         formatEnergy(cost), formatEnergy(balance));
                 connectionPanel.getTextClientWindow().appendOutput(
