@@ -41,6 +41,7 @@ public class TextClientWindow {
     private Stage stage;
 
     private boolean ready = false;
+    private APClient readyClient;
     private Map<String, List<String>> itemGroups = Collections.emptyMap();
     private Map<String, List<String>> locationGroups = Collections.emptyMap();
 
@@ -210,6 +211,16 @@ public class TextClientWindow {
     private void handleReadyCommand() {
         APClient client = connectedClient();
         if (client == null) {
+            appendLine("Not connected to a server.");
+            return;
+        }
+
+        boolean connected = !client.isReconnecting() && client.isConnected();
+        if (readyClient != client || !connected) {
+            ready = false;
+            readyClient = client;
+        }
+        if (!connected) {
             appendLine("Not connected to a server.");
             return;
         }
