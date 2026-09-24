@@ -35,6 +35,8 @@ public final class RemotePlayer {
         void onEnded(long positionMs);
 
         void onError(String message);
+
+        void onLoadingChanged(boolean isLoading);
     }
 
     private final Context context;
@@ -166,6 +168,11 @@ public final class RemotePlayer {
             public void onPlayerError(PlaybackException error) {
                 String message = error.getMessage() == null ? "Playback error" : error.getMessage();
                 listener.onError(message);
+            }
+
+            @Override
+            public void onLoadingChanged(boolean isLoading) {
+                listener.onLoadingChanged(isLoading);
             }
         });
         return player;

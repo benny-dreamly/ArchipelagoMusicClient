@@ -102,6 +102,14 @@ public final class PhoneSession {
         sendCommand("next");
     }
 
+    public void sendSeek(long positionMs) {
+        JsonObject json = new JsonObject();
+        json.addProperty("type", "command");
+        json.addProperty("cmd", "seek");
+        json.addProperty("positionMs", positionMs);
+        sendPayload(json.toString());
+    }
+
     public void sendVolume(int value) {
         JsonObject json = new JsonObject();
         json.addProperty("type", "command");
