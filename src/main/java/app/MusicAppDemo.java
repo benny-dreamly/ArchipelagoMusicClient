@@ -965,10 +965,20 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
             });
         });
 
-        playbackEngine.setVolume(playerPanel.getVolumeSlider().getValue() / 100.0);
-        playbackEngine.setRate(boostActive ? boostRate : 1.0);
+        configureEngine(playbackEngine, song);
 
-        playbackEngine.setOnCurrentTime(newTime -> {
+        playbackEngine.loadAndPlay(song);
+        playerPanel.setCurrentSongLabel("Currently Playing: " + song.getTitle());
+        updateQueueDisplay();
+        highlightCurrentSong(album, song.getTitle());
+        publishRemoteState();
+    }
+
+    private void configureEngine(PlaybackEngine engine, Song song) {
+        engine.setVolume(playerPanel.getVolumeSlider().getValue() / 100.0);
+        engine.setRate(boostActive ? boostRate : 1.0);
+
+        engine.setOnCurrentTime(newTime -> {
             if (!playerPanel.getProgressSlider().isValueChanging()) {
                 Duration total = playbackEngine.getTotalDuration();
                 if (total != null && total.greaterThan(Duration.ZERO)) {
@@ -979,7 +989,7 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         });
 
         // Set duration label once media is ready
-        playbackEngine.setOnReady(() -> {
+        engine.setOnReady(() -> {
             Duration total = playbackEngine.getTotalDuration();
             if (total != null) {
                 playerPanel.getDurationLabel().setText(formatTime(total));
@@ -987,7 +997,7 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
             publishRemoteState();
         });
 
-        playbackEngine.setOnEnded(() -> {
+        engine.setOnEnded(() -> {
             if (client != null && client.isConnected()) {
                 client.sendCheck(song.getLocation());
                 Album songAlbum = library.getAlbumForSong(song.getTitle());
@@ -1003,17 +1013,11 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
             }
         });
 
-        playbackEngine.setOnError(errorMessage -> {
+        engine.setOnError(errorMessage -> {
             LOGGER.error("Error playing '{}': {}", song.getTitle(), errorMessage);
             showError("Playback Error", "Cannot play song", "Error playing " + song.getTitle() + ": " + errorMessage);
             playNextInQueue();
         });
-
-        playbackEngine.loadAndPlay(song);
-        playerPanel.setCurrentSongLabel("Currently Playing: " + song.getTitle());
-        updateQueueDisplay();
-        highlightCurrentSong(album, song.getTitle());
-        publishRemoteState();
     }
 
     private void playNextInQueue() {
@@ -1042,6 +1046,11 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         if (musicRoot == null || !musicRoot.isDirectory()) return;
         companionServer = new CompanionServer(musicRoot, COMPANION_HTTP_PORT, COMPANION_WS_PORT);
         companionServer.setCommandHandler(this::handleRemoteCommand);
+        companionServer.setEventHandler(json -> Platform.runLater(() -> {
+            if (playbackEngine instanceof PhonePlayback phone) {
+                phone.handlePhoneEvent(json);
+            }
+        }));
         try {
             companionServer.start();
         } catch (Exception e) {
@@ -1055,10 +1064,11 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
             return t;
         });
         companionTickerTask = companionTicker.scheduleAtFixedRate(
-                () -> Platform.runLater(this::publishRemoteState), 250, 500, TimeUnit.MILLISECONDS);
+                () -> Platform.runLater(this::tickCompanion), 250, 500, TimeUnit.MILLISECONDS);
     }
 
     private void stopCompanionServer() {
+        switchPlaybackMode(false);
         if (companionTickerTask != null) {
             companionTickerTask.cancel(false);
             companionTickerTask = null;
@@ -1071,6 +1081,14 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
             companionServer.stop();
             companionServer = null;
         }
+    }
+
+    private void tickCompanion() {
+        boolean phonePresent = companionServer != null && companionServer.hasActivePhone();
+        if (phonePresent != (playbackEngine instanceof PhonePlayback)) {
+            switchPlaybackMode(phonePresent);
+        }
+        publishRemoteState();
     }
 
     private void publishRemoteState() {
@@ -1108,6 +1126,58 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
 
         server.broadcast(new CompanionState(title, album, stream, durationMs, positionMs,
                 playing, volume, queue, activeSource).toJson());
+    }
+
+    /**
+     * Swaps the audio sink between the desktop speakers and the connected
+     * phone. A phone-mode switch hands the current track over to the phone at
+     * its current position; leaving phone mode resumes that position locally.
+     * Only the active engine plays: no double audio.
+     */
+    private void switchPlaybackMode(boolean phoneMode) {
+        CompanionServer server = companionServer;
+        if (server == null) return;
+        if (phoneMode == (playbackEngine instanceof PhonePlayback)) return;
+
+        PlaybackEngine oldEngine = playbackEngine;
+        Song song = currentSong;
+        Duration resumeAt = oldEngine != null ? oldEngine.getCurrentTime() : Duration.ZERO;
+        boolean wasLoaded = oldEngine != null && oldEngine.isLoaded();
+        boolean wasPlaying = oldEngine != null && oldEngine.isPlaying();
+
+        if (playbackEngine != null) {
+            playbackEngine.stopAndRelease();
+        }
+
+        if (phoneMode) {
+            PhonePlayback phone = new PhonePlayback(server::send,
+                    s -> server.streamPath(new File(s.getFilePath())));
+            playbackEngine = phone;
+            if (song != null && song.getFilePath() != null && wasLoaded) {
+                configureEngine(phone, song);
+                phone.loadAndPlay(song);
+                if (resumeAt != null && resumeAt.greaterThan(Duration.ZERO)) {
+                    phone.seek(resumeAt);
+                }
+                if (!wasPlaying) {
+                    phone.pause();
+                }
+            }
+        } else {
+            LocalPlayback local = new LocalPlayback();
+            playbackEngine = local;
+            if (song != null && song.getFilePath() != null && wasLoaded) {
+                configureEngine(local, song);
+                local.loadAndPlay(song);
+                if (resumeAt != null && resumeAt.greaterThan(Duration.ZERO)) {
+                    local.seek(resumeAt);
+                }
+                if (!wasPlaying) {
+                    local.pause();
+                }
+            }
+        }
+        publishRemoteState();
     }
 
     private void handleRemoteCommand(JsonObject message) {
