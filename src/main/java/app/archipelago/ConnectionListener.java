@@ -65,6 +65,7 @@ public class ConnectionListener {
                 statusLabel.setText("Connected!");
 
                 app.applySlotData();
+                app.startEnergyLinkSync();
 
                 // Load played songs from server data storage
                 pendingRequest = new PendingRequest(client.getSlot(), app.getLoadGeneration());
@@ -104,22 +105,13 @@ public class ConnectionListener {
         int generation = req.generation();
         String key = PLAYED_SONGS_KEY + slot;
         if (!event.containsKey(key)) {
-            LOGGER.info("No played songs found in data storage for key={}", key);
-            Platform.runLater(() -> {
-                if (generation != app.getLoadGeneration()) return;
-                GoalManager goalManager = app.getGoalManager();
-                if (goalManager != null) {
-                    goalManager.loadFromServer(Collections.emptySet(), client);
-                    LOGGER.info("Loaded empty played-song state for slot {}", slot);
-                }
-                app.setPendingPlayedSongs(
-                        Collections.emptySet(),
-                        String.valueOf(slot),
-                        generation
-                );
-            });
+            // Not a played-songs response (e.g. the EnergyLink dataStorageGet from
+            // startEnergyLinkSync()); ignore it so it can't wipe loaded state.
             return;
         }
+        // Accepted the matching played-songs response; stop treating later
+        // Retrieved events (e.g. EnergyLink) as song responses.
+        pendingRequest = null;
 
         List<String> playedList;
         try {
