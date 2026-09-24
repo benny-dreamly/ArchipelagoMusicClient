@@ -6,6 +6,7 @@ package app;
 import app.archipelago.APClient;
 import app.archipelago.ConnectionListener;
 import app.archipelago.DeathLinkListener;
+import app.archipelago.EnergyLinkListener;
 import app.archipelago.ItemListener;
 import app.archipelago.NameGroupsListener;
 import app.archipelago.PrintJsonListener;
@@ -143,6 +144,7 @@ public class MusicAppDemo extends Application {
 
     private APClient client;
     private ItemListener itemListener;
+    private EnergyLinkListener energyLinkListener;
 
     private Song currentSong;
 
@@ -150,6 +152,19 @@ public class MusicAppDemo extends Application {
 
     // playback
     private MediaPlayer currentPlayer;
+
+    // energy link / playback boost
+    private static final double BOOST_RATE_150 = 1.5;
+    private static final double BOOST_RATE_200 = 2.0;
+    private static final double BOOST_COST_150 = 1_500;
+    private static final double BOOST_COST_200 = 2_250;
+    private static final Duration BOOST_DURATION = Duration.seconds(30);
+    private static final double SONG_ENERGY_CREDIT = 500;
+    private static final Duration CLICK_WINDOW = Duration.millis(300);
+    private boolean boostActive = false;
+    private double boostRate = 1.0;
+    private javafx.animation.PauseTransition boostTimer;
+    private javafx.animation.PauseTransition boostClickTimer;
 
 
     private boolean isUpdatingSelection = false;
@@ -941,12 +956,16 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         });
 
         Media media = new Media(Paths.get(song.getFilePath()).toUri().toString());
-        currentPlayer = new MediaPlayer(media);
-        currentPlayer.setVolume(playerPanel.getVolumeSlider().getValue() / 100.0);
+        MediaPlayer player = new MediaPlayer(media);
+        currentPlayer = player;
+        player.setVolume(playerPanel.getVolumeSlider().getValue() / 100.0);
+        if (boostActive) {
+            player.setRate(boostRate);
+        }
 
-        currentPlayer.currentTimeProperty().addListener((_, _, newTime) -> {
+        player.currentTimeProperty().addListener((_, _, newTime) -> {
             if (!playerPanel.getProgressSlider().isValueChanging()) {
-                Duration total = currentPlayer.getTotalDuration();
+                Duration total = player.getTotalDuration();
                 if (total != null && total.greaterThan(Duration.ZERO)) {
                     playerPanel.getProgressSlider().setValue(newTime.toMillis() / total.toMillis());
                     playerPanel.getElapsedLabel().setText(formatTime(newTime));
@@ -955,20 +974,21 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         });
 
         // Set duration label once media is ready
-        currentPlayer.setOnReady(() -> {
-            Duration total = currentPlayer.getTotalDuration();
+        player.setOnReady(() -> {
+            Duration total = player.getTotalDuration();
             if (total != null) {
                 playerPanel.getDurationLabel().setText(formatTime(total));
             }
         });
 
-        currentPlayer.setOnEndOfMedia(() -> {
+        player.setOnEndOfMedia(() -> {
             if (client != null && client.isConnected()) {
                 client.sendCheck(song.getLocation());
                 Album songAlbum = library.getAlbumForSong(song.getTitle());
                 if (goalManager != null && songAlbum != null) {
                     goalManager.markPlayed(song.getTitle(), songAlbum.getName(), client);
                 }
+                creditSongEnergy();
             }
             if (queueManager.getRepeatMode() == QueueManager.RepeatMode.SONG) {
                 playSong(song);
@@ -977,16 +997,15 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             }
         });
 
-        currentPlayer.setOnError(() -> {
-            MediaPlayer player = currentPlayer;
-            String errorMessage = player != null && player.getError() != null
+        player.setOnError(() -> {
+            String errorMessage = player.getError() != null
                     ? player.getError().getMessage() : "Unknown error";
             LOGGER.error("Error playing '{}': {}", song.getTitle(), errorMessage);
             showError("Playback Error", "Cannot play song", "Error playing " + song.getTitle() + ": " + errorMessage);
             playNextInQueue();
         });
 
-        currentPlayer.play();
+        player.play();
         playerPanel.setCurrentSongLabel("Currently Playing: " + song.getTitle());
         updateQueueDisplay();
         highlightCurrentSong(album, song.getTitle());
@@ -1009,6 +1028,95 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             });
             playerPanel.resetProgress();
         }
+    }
+
+    private void onBoostClick() {
+        if (boostClickTimer != null) {
+            // Second click within the window → double-click = 2x boost
+            boostClickTimer.stop();
+            boostClickTimer = null;
+            startBoost(BOOST_RATE_200, BOOST_COST_200);
+            return;
+        }
+        boostClickTimer = new javafx.animation.PauseTransition(CLICK_WINDOW);
+        boostClickTimer.setOnFinished(_ -> {
+            boostClickTimer = null;
+            // No second click followed within the window → single click = 1.5x boost
+            startBoost(BOOST_RATE_150, BOOST_COST_150);
+        });
+        boostClickTimer.play();
+    }
+
+    private void startBoost(double rate, double cost) {
+        EnergyLinkListener link = energyLinkListener;
+        if (link != null && client != null && client.isConnected()) {
+            Double balance = link.getBalance();
+            if (balance == null) {
+                LOGGER.info("Boost rejected: EnergyLink is not ready yet");
+                connectionPanel.getTextClientWindow().appendOutput("EnergyLink is not ready for boost yet");
+                return;
+            }
+            if (balance < cost) {
+                LOGGER.info("Boost rejected: need {} but only {} available",
+                        formatEnergy(cost), formatEnergy(balance));
+                connectionPanel.getTextClientWindow().appendOutput(
+                        String.format("Not enough energy (%s needed, %s available)",
+                                formatEnergy(cost), formatEnergy(balance)));
+                return;
+            }
+            if (!link.withdraw(cost)) {
+                connectionPanel.getTextClientWindow().appendOutput(
+                        String.format("Not enough energy to boost (%s available)",
+                                formatEnergy(balance)));
+                return;
+            }
+        }
+        applyBoost(rate);
+    }
+
+    private void applyBoost(double rate) {
+        boostRate = rate;
+        boostActive = true;
+        if (currentPlayer != null) {
+            currentPlayer.setRate(rate);
+        }
+        if (boostTimer != null) {
+            boostTimer.stop();
+        }
+        boostTimer = new javafx.animation.PauseTransition(BOOST_DURATION);
+        boostTimer.setOnFinished(_ -> endBoost());
+        boostTimer.play();
+        LOGGER.info("Playback boost engaged at {}x for {}s", rate, (int) BOOST_DURATION.toSeconds());
+    }
+
+    private void endBoost() {
+        boostActive = false;
+        boostRate = 1.0;
+        if (boostTimer != null) {
+            boostTimer.stop();
+            boostTimer = null;
+        }
+        if (currentPlayer != null) {
+            currentPlayer.setRate(1.0);
+        }
+        LOGGER.info("Playback boost ended");
+    }
+
+    private void creditSongEnergy() {
+        EnergyLinkListener link = energyLinkListener;
+        if (link != null && client != null && client.isConnected()) {
+            link.deposit(SONG_ENERGY_CREDIT);
+        }
+    }
+
+    static String formatEnergy(double joules) {
+        if (joules >= 1_000_000) {
+            return String.format("%.2f MJ", joules / 1_000_000);
+        }
+        if (joules >= 1_000) {
+            return String.format("%.1f kJ", joules / 1_000);
+        }
+        return String.format("%.1f J", joules);
     }
 
     private void playPreviousTrack() {
@@ -1232,6 +1340,13 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         connectionPanel.disableGameField(disabled);
     }
 
+    public void startEnergyLinkSync() {
+        EnergyLinkListener link = energyLinkListener;
+        if (link != null) {
+            link.sync();
+        }
+    }
+
     private void disconnectFromServer() {
         // DISCONNECT
         client.close();
@@ -1245,6 +1360,15 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         // stop playback
         stopCurrentSong();
         playerPanel.clearPlaybackState();
+
+        // stop any active playback boost and clear energy state
+        endBoost();
+        if (boostClickTimer != null) {
+            boostClickTimer.stop();
+            boostClickTimer = null;
+        }
+        energyLinkListener = null;
+        playerPanel.setEnergyLabel("Energy: --");
 
         // CLEAR ALL UNLOCKED / ENABLED DATA
         stateManager.clearUnlocks();
@@ -1312,6 +1436,9 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
                     connectionPanel.getTextClientWindow()::appendMessage));
             client.getEventManager().registerListener(new NameGroupsListener(
                     connectionPanel.getTextClientWindow()::onNameGroupsRetrieved));
+            energyLinkListener = new EnergyLinkListener(client, value -> Platform.runLater(() ->
+                    playerPanel.setEnergyLabel("Energy: " + formatEnergy(value))));
+            client.getEventManager().registerListener(energyLinkListener);
             client.getEventManager().registerListener(new DeathLinkListener(this));
             applyDeathLinkEnabled(loadDeathLink());
             client.connect();
@@ -1393,6 +1520,10 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
 
         // Next track button
         panel.getNextButton().setOnAction(_ -> playNextInQueue());
+
+        // EnergyLink speed boost: spend energy for a timed playback speed-up
+        // single click = 1.5x, double click = 2x
+        panel.getBoostButton().setOnAction(_ -> onBoostClick());
 
         // Remove selected from the queue (both ListView and underlying queue)
         panel.getRemoveSelectedBtn().setOnAction(_ -> {
