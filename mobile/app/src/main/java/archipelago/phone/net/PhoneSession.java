@@ -38,6 +38,7 @@ public final class PhoneSession {
     }
 
     public static final int DEFAULT_PORT = 8312;
+    public static final int HTTP_PORT = 8311;
 
     private static final Gson GSON = new Gson();
 
@@ -46,6 +47,7 @@ public final class PhoneSession {
 
     private OkHttpClient client;
     private WebSocket webSocket;
+    private String host;
 
     public PhoneSession(Listener listener) {
         this.listener = listener;
@@ -53,6 +55,7 @@ public final class PhoneSession {
 
     public void connect(String host) {
         disconnect();
+        this.host = host;
         OkHttpClient client = new OkHttpClient.Builder()
                 .connectTimeout(5, TimeUnit.SECONDS)
                 .pingInterval(20, TimeUnit.SECONDS)
@@ -62,6 +65,14 @@ public final class PhoneSession {
                 .url("ws://" + host + ":" + DEFAULT_PORT)
                 .build();
         this.webSocket = client.newWebSocket(request, listener(host));
+    }
+
+    public String getHost() {
+        return host;
+    }
+
+    public String streamUrl(String streamPath) {
+        return "http://" + host + ":" + HTTP_PORT + streamPath;
     }
 
     public void disconnect() {
@@ -103,6 +114,35 @@ public final class PhoneSession {
         JsonObject json = new JsonObject();
         json.addProperty("type", "command");
         json.addProperty("cmd", cmd);
+        sendPayload(json.toString());
+    }
+
+    public void sendEvent(String name, long positionMs, long durationMs, String message) {
+        JsonObject json = new JsonObject();
+        json.addProperty("type", "event");
+        json.addProperty("event", name);
+        json.addProperty("positionMs", positionMs);
+        if (durationMs >= 0) {
+            json.addProperty("durationMs", durationMs);
+        }
+        if (message != null) {
+            json.addProperty("message", message);
+        }
+        sendPayload(json.toString());
+    }
+
+    public void sendStarted(String streamPath, String title, long durationMs) {
+        JsonObject json = new JsonObject();
+        json.addProperty("type", "event");
+        json.addProperty("event", "started");
+        json.addProperty("positionMs", 0);
+        json.addProperty("durationMs", durationMs);
+        if (streamPath != null) {
+            json.addProperty("streamPath", streamPath);
+        }
+        if (title != null) {
+            json.addProperty("title", title);
+        }
         sendPayload(json.toString());
     }
 
