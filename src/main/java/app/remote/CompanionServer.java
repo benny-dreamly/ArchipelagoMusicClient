@@ -223,7 +223,7 @@ public final class CompanionServer {
         }
     }
 
-    static List<String> reachableAddresses() {
+    public static List<String> reachableAddresses() {
         List<String> addresses = new ArrayList<>();
         try {
             Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
