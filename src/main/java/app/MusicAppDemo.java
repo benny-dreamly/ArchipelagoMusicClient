@@ -16,8 +16,10 @@ import app.logic.QueueManager;
 import app.logic.SongFileMatcher;
 import app.logic.UnlockManager;
 import app.player.Album;
-import app.player.Song;
 import app.player.AlbumConverter;
+import app.player.LocalPlayback;
+import app.player.PlaybackEngine;
+import app.player.Song;
 import app.player.json.AlbumMetadata;
 import app.player.json.AlbumMetadataLoader;
 import app.player.json.LibraryLoader;
@@ -63,7 +65,6 @@ import javafx.scene.input.TransferMode;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.media.MediaPlayer;
-import javafx.scene.media.Media;
 import javafx.stage.Stage;
 import javafx.stage.DirectoryChooser;
 import javafx.concurrent.Task;
@@ -80,7 +81,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -155,7 +155,7 @@ public class MusicAppDemo extends Application {
     private QueueManager queueManager;
 
     // playback
-    private MediaPlayer currentPlayer;
+    private PlaybackEngine playbackEngine;
 
     // companion phone server
     private static final int COMPANION_HTTP_PORT = 8311;
@@ -507,10 +507,8 @@ public class MusicAppDemo extends Application {
         loadGeneration.incrementAndGet(); // invalidate any in-flight load task
         stopCompanionServer();
         // Stop and dispose current playback
-        if (currentPlayer != null) {
-            currentPlayer.stop();
-            currentPlayer.dispose();
-            currentPlayer = null;
+        if (playbackEngine != null) {
+            playbackEngine.stopAndRelease();
         }
         currentSong = null;
 
@@ -567,10 +565,8 @@ public class MusicAppDemo extends Application {
         stopCompanionServer();
 
         // Stop and dispose current playback
-        if (currentPlayer != null) {
-            currentPlayer.stop();
-            currentPlayer.dispose();
-            currentPlayer = null;
+        if (playbackEngine != null) {
+            playbackEngine.stopAndRelease();
         }
         currentSong = null;
 
@@ -859,7 +855,7 @@ public class MusicAppDemo extends Application {
         updateQueueDisplay();
 
         // If nothing is playing, start the first queued song
-if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING)
+if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.PLAYING)
                 && !queueManager.isEmpty()) {
             Song next = queueManager.poll();
             updateQueueDisplay();
@@ -883,7 +879,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         updateQueueDisplay();
 
         // If nothing is playing, start the first queued song
-        if (currentPlayer == null && !queueManager.isEmpty()) {
+        if (playbackEngine == null && !queueManager.isEmpty()) {
             Song next = queueManager.poll();
             updateQueueDisplay();
             if (next != null) {
@@ -931,12 +927,9 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             return;
         }
 
-        if (currentPlayer != null) {
-            currentPlayer.stop();
-            currentPlayer.dispose(); // release OS resources
+        if (playbackEngine == null) {
+            playbackEngine = new LocalPlayback();
         }
-
-        // Reset progress slider and labels
         playerPanel.resetProgress();
 
         // Extract album art in background
@@ -971,17 +964,12 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             });
         });
 
-        Media media = new Media(Paths.get(song.getFilePath()).toUri().toString());
-        MediaPlayer player = new MediaPlayer(media);
-        currentPlayer = player;
-        player.setVolume(playerPanel.getVolumeSlider().getValue() / 100.0);
-        if (boostActive) {
-            player.setRate(boostRate);
-        }
+        playbackEngine.setVolume(playerPanel.getVolumeSlider().getValue() / 100.0);
+        playbackEngine.setRate(boostActive ? boostRate : 1.0);
 
-        player.currentTimeProperty().addListener((_, _, newTime) -> {
+        playbackEngine.setOnCurrentTime(newTime -> {
             if (!playerPanel.getProgressSlider().isValueChanging()) {
-                Duration total = player.getTotalDuration();
+                Duration total = playbackEngine.getTotalDuration();
                 if (total != null && total.greaterThan(Duration.ZERO)) {
                     playerPanel.getProgressSlider().setValue(newTime.toMillis() / total.toMillis());
                     playerPanel.getElapsedLabel().setText(formatTime(newTime));
@@ -990,15 +978,15 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         });
 
         // Set duration label once media is ready
-        player.setOnReady(() -> {
-            Duration total = player.getTotalDuration();
+        playbackEngine.setOnReady(() -> {
+            Duration total = playbackEngine.getTotalDuration();
             if (total != null) {
                 playerPanel.getDurationLabel().setText(formatTime(total));
             }
             publishRemoteState();
         });
 
-        player.setOnEndOfMedia(() -> {
+        playbackEngine.setOnEnded(() -> {
             if (client != null && client.isConnected()) {
                 client.sendCheck(song.getLocation());
                 Album songAlbum = library.getAlbumForSong(song.getTitle());
@@ -1014,15 +1002,13 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             }
         });
 
-        player.setOnError(() -> {
-            String errorMessage = player.getError() != null
-                    ? player.getError().getMessage() : "Unknown error";
+        playbackEngine.setOnError(errorMessage -> {
             LOGGER.error("Error playing '{}': {}", song.getTitle(), errorMessage);
             showError("Playback Error", "Cannot play song", "Error playing " + song.getTitle() + ": " + errorMessage);
             playNextInQueue();
         });
 
-        player.play();
+        playbackEngine.loadAndPlay(song);
         playerPanel.setCurrentSongLabel("Currently Playing: " + song.getTitle());
         updateQueueDisplay();
         highlightCurrentSong(album, song.getTitle());
@@ -1037,7 +1023,9 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             playSong(next);
         } else {
             playerPanel.setCurrentSongLabel("Currently Playing: None");
-            currentPlayer = null;
+            if (playbackEngine != null) {
+                playbackEngine.stopAndRelease();
+            }
             long id = ++artworkRequestId;
             Platform.runLater(() -> {
                 if (id == artworkRequestId) {
@@ -1104,10 +1092,10 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
                 stream = server.streamPath(new File(currentSong.getFilePath()));
             }
         }
-        if (currentPlayer != null) {
-            playing = currentPlayer.getStatus() == MediaPlayer.Status.PLAYING;
-            positionMs = (long) currentPlayer.getCurrentTime().toMillis();
-            Duration total = currentPlayer.getTotalDuration();
+        if (playbackEngine != null) {
+            playing = playbackEngine.isPlaying();
+            positionMs = (long) playbackEngine.getCurrentTime().toMillis();
+            Duration total = playbackEngine.getTotalDuration();
             if (total != null) durationMs = (long) total.toMillis();
         }
         List<String> queue = queueManager != null
@@ -1125,14 +1113,15 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             switch (cmd) {
                 case "toggle" -> togglePlayPause();
                 case "pause" -> {
-                    if (currentPlayer != null && currentPlayer.getStatus() == MediaPlayer.Status.PLAYING) {
+                    if (playbackEngine != null && playbackEngine.isPlaying()) {
                         togglePlayPause();
                     }
                 }
                 case "play" -> {
-                    if (currentPlayer != null && currentPlayer.getStatus() == MediaPlayer.Status.PAUSED) {
+                    if (playbackEngine != null && playbackEngine.isPaused()) {
                         togglePlayPause();
-                    } else if (currentPlayer == null && queueManager != null && !queueManager.isEmpty()) {
+                    } else if ((playbackEngine == null || !playbackEngine.isLoaded())
+                        && queueManager != null && !queueManager.isEmpty()) {
                         togglePlayPause();
                     }
                 }
@@ -1144,8 +1133,8 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
                     }
                 }
                 case "seek" -> {
-                    if (currentPlayer != null && message.has("positionMs")) {
-                        currentPlayer.seek(Duration.millis(message.get("positionMs").getAsDouble()));
+                    if (playbackEngine != null && playbackEngine.isLoaded() && message.has("positionMs")) {
+                        playbackEngine.seek(Duration.millis(message.get("positionMs").getAsDouble()));
                     }
                 }
                 default -> LOGGER.info("Companion: unknown command '{}'", cmd);
@@ -1201,8 +1190,8 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
     private void applyBoost(double rate) {
         boostRate = rate;
         boostActive = true;
-        if (currentPlayer != null) {
-            currentPlayer.setRate(rate);
+        if (playbackEngine != null) {
+            playbackEngine.setRate(rate);
         }
         if (boostTimer != null) {
             boostTimer.stop();
@@ -1220,8 +1209,8 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             boostTimer.stop();
             boostTimer = null;
         }
-        if (currentPlayer != null) {
-            currentPlayer.setRate(1.0);
+        if (playbackEngine != null) {
+            playbackEngine.setRate(1.0);
         }
         LOGGER.info("Playback boost ended");
     }
@@ -1247,10 +1236,10 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         if (queueManager == null) return;
 
         // If more than a few seconds in, restart the current track instead
-        if (currentPlayer != null && currentSong != null) {
-            Duration current = currentPlayer.getCurrentTime();
+        if (playbackEngine != null && currentSong != null) {
+            Duration current = playbackEngine.getCurrentTime();
             if (current != null && current.greaterThan(Duration.seconds(3))) {
-                currentPlayer.seek(Duration.ZERO);
+                playbackEngine.seek(Duration.ZERO);
                 return;
             }
         }
@@ -1417,9 +1406,8 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
     }
 
     public void stopCurrentSong() {
-        if (currentPlayer != null) {
-            currentPlayer.stop();
-            currentPlayer = null;
+        if (playbackEngine != null) {
+            playbackEngine.stopAndRelease();
         }
         long id = ++artworkRequestId;
         Platform.runLater(() -> {
@@ -1449,10 +1437,10 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
     }
 
     private final ChangeListener<Boolean> seekListener = (_, _, isChanging) -> {
-        if (!isChanging && currentPlayer != null) {
-            Duration total = currentPlayer.getTotalDuration();
+        if (!isChanging && playbackEngine != null && playbackEngine.isLoaded()) {
+            Duration total = playbackEngine.getTotalDuration();
             if (total != null) {
-                currentPlayer.seek(total.multiply(playerPanel.getProgressSlider().getValue()));
+                playbackEngine.seek(total.multiply(playerPanel.getProgressSlider().getValue()));
             }
         }
     };
@@ -1591,8 +1579,8 @@ client.getEventManager().registerListener(new PrintJsonListener(client, this,
         // Play button behaviour
         panel.getPlayButton().setOnAction(_ -> {
             // If paused, resume. If nothing playing but queue has items, start next.
-            if (currentPlayer != null && currentPlayer.getStatus() == MediaPlayer.Status.PAUSED) {
-                currentPlayer.play();
+            if (playbackEngine != null && playbackEngine.isPaused()) {
+                playbackEngine.resume();
                 if (currentSong != null) {
                     playerPanel.setCurrentSongLabel("Currently Playing: " + currentSong.getTitle());
                 }
@@ -1600,7 +1588,7 @@ client.getEventManager().registerListener(new PrintJsonListener(client, this,
             }
 
             if (currentSong != null
-                && (currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING)) {
+                && (playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.PLAYING)) {
                 LOGGER.info("Current song ({})'s file path: {}", currentSong.getTitle(), currentSong.getFilePath());
                 // start current (if file exists)
                 if (currentSong.getFilePath() != null) {
@@ -1608,7 +1596,7 @@ client.getEventManager().registerListener(new PrintJsonListener(client, this,
                 } else {
                     showError("File Not Found", "Cannot play song", "File not found for: " + currentSong.getTitle());
                 }
-            } else if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING)
+            } else if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.PLAYING)
                 && !queueManager.isEmpty()) {
                 Song next = queueManager.poll();
                 updateQueueDisplay();
@@ -1617,13 +1605,13 @@ client.getEventManager().registerListener(new PrintJsonListener(client, this,
         });
 
         panel.getPauseButton().setOnAction(_ -> {
-            if (currentPlayer != null) {
-                MediaPlayer.Status status = currentPlayer.getStatus();
+            if (playbackEngine != null) {
+                MediaPlayer.Status status = playbackEngine.getStatus();
                 if (status == MediaPlayer.Status.PLAYING) {
-                    currentPlayer.pause();
+                    playbackEngine.pause();
                     if (currentSong != null) playerPanel.setCurrentSongLabel("Paused: " + currentSong.getTitle());
                 } else if (status == MediaPlayer.Status.PAUSED) {
-                    currentPlayer.play();
+                    playbackEngine.resume();
                     if (currentSong != null) {
                         playerPanel.setCurrentSongLabel("Currently Playing: " + currentSong.getTitle());
                     }
@@ -1716,8 +1704,8 @@ client.getEventManager().registerListener(new PrintJsonListener(client, this,
 
         // Volume slider updates live during playback
         panel.getVolumeSlider().valueProperty().addListener((_, _, newVal) -> {
-            if (currentPlayer != null) {
-                currentPlayer.setVolume(newVal.doubleValue() / 100.0);
+            if (playbackEngine != null) {
+                playbackEngine.setVolume(newVal.doubleValue() / 100.0);
             }
             publishRemoteState();
         });
@@ -1824,13 +1812,13 @@ client.getEventManager().registerListener(new PrintJsonListener(client, this,
     }
 
     private void togglePlayPause() {
-        if (currentPlayer != null) {
-            MediaPlayer.Status status = currentPlayer.getStatus();
+        if (playbackEngine != null) {
+            MediaPlayer.Status status = playbackEngine.getStatus();
             if (status == MediaPlayer.Status.PLAYING) {
-                currentPlayer.pause();
+                playbackEngine.pause();
                 if (currentSong != null) playerPanel.setCurrentSongLabel("Paused: " + currentSong.getTitle());
             } else if (status == MediaPlayer.Status.PAUSED) {
-                currentPlayer.play();
+                playbackEngine.resume();
                 if (currentSong != null) {
                     playerPanel.setCurrentSongLabel("Currently Playing: " + currentSong.getTitle());
                 }
@@ -1844,14 +1832,14 @@ client.getEventManager().registerListener(new PrintJsonListener(client, this,
     }
 
     private void seekRelative(int seconds) {
-        if (currentPlayer == null || currentPlayer.getStatus() == MediaPlayer.Status.STOPPED) return;
-        Duration current = currentPlayer.getCurrentTime();
-        Duration total = currentPlayer.getTotalDuration();
+        if (playbackEngine == null || playbackEngine.getStatus() == MediaPlayer.Status.STOPPED) return;
+        Duration current = playbackEngine.getCurrentTime();
+        Duration total = playbackEngine.getTotalDuration();
         if (total == null) return;
         Duration newTime = current.add(Duration.seconds(seconds));
         if (newTime.greaterThan(total)) newTime = total;
         if (newTime.lessThan(Duration.ZERO)) newTime = Duration.ZERO;
-        currentPlayer.seek(newTime);
+        playbackEngine.seek(newTime);
     }
 
     private void enterVolumeAdjustMode() {
@@ -1978,7 +1966,7 @@ client.getEventManager().registerListener(new PrintJsonListener(client, this,
         updateQueueDisplay();
 
         // If nothing is playing, start immediately
-        if (currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING) {
+        if (playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.PLAYING) {
             Song next = queueManager.poll();
             updateQueueDisplay();
             if (next != null) {
