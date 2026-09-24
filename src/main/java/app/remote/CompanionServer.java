@@ -5,6 +5,7 @@ package app.remote;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
@@ -13,10 +14,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
@@ -28,6 +32,7 @@ import java.util.function.Consumer;
  * Exposes the desktop player over the LAN: an HTTP file server (Range
  * support via {@link RangeFileHandler}) plus a WebSocket server that
  * broadcasts {@link CompanionState} snapshots and receives phone commands.
+ * A {@code /health} endpoint lets phones verify reachability before dialing in.
  */
 public final class CompanionServer {
 
@@ -56,6 +61,7 @@ public final class CompanionServer {
         httpPool = Executors.newCachedThreadPool();
         httpServer = HttpServer.create(new InetSocketAddress(httpPort), 64);
         httpServer.createContext("/stream", new RangeFileHandler(resolver));
+        httpServer.createContext("/health", this::handleHealth);
         httpServer.setExecutor(httpPool);
         httpServer.start();
 
@@ -194,6 +200,26 @@ public final class CompanionServer {
             }
         } catch (Exception e) {
             LOGGER.debug("Companion: malformed message: {}", message);
+        }
+    }
+
+    private void handleHealth(HttpExchange exchange) {
+        try {
+            JsonObject health = new JsonObject();
+            health.addProperty("ok", true);
+            int clients = wsServer != null ? wsServer.getConnections().size() : 0;
+            health.addProperty("clients", clients);
+            health.addProperty("activePhone", hasActivePhone());
+            byte[] body = health.toString().getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream out = exchange.getResponseBody()) {
+                out.write(body);
+            }
+        } catch (IOException e) {
+            LOGGER.debug("Companion: health response failed: {}", e.getMessage());
+        } finally {
+            exchange.close();
         }
     }
 

@@ -8,7 +8,10 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
+import okhttp3.Call;
+import okhttp3.Callback;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -16,6 +19,8 @@ import okhttp3.WebSocket;
 import okhttp3.WebSocketListener;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.IOException;
 
 /**
  * Talks to the desktop's companion WebSocket server on port 8312.
@@ -69,6 +74,44 @@ public final class PhoneSession {
 
     public String getHost() {
         return host;
+    }
+
+    /**
+     * Probes the desktop's /health endpoint to confirm a companion server is
+     * actually listening at the given host before bothering with the WebSocket.
+     * Result is delivered on the main thread.
+     */
+    public void checkHealth(String host, Consumer<Boolean> callback) {
+        OkHttpClient probe = new OkHttpClient.Builder()
+                .connectTimeout(3, TimeUnit.SECONDS)
+                .readTimeout(3, TimeUnit.SECONDS)
+                .build();
+        Request request = new Request.Builder()
+                .url("http://" + host + ":" + HTTP_PORT + "/health")
+                .build();
+        probe.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NotNull Call call, @NotNull IOException e) {
+                post(() -> callback.accept(false));
+            }
+
+            @Override
+            public void onResponse(@NotNull Call call, @NotNull Response response) {
+                post(() -> callback.accept(isHealthy(response)));
+            }
+        });
+    }
+
+    private static boolean isHealthy(Response response) {
+        try (Response ignored = response) {
+            if (response.isSuccessful() && response.body() != null) {
+                JsonObject json = JsonParser.parseString(response.body().string()).getAsJsonObject();
+                return json.has("ok") && json.get("ok").getAsBoolean();
+            }
+        } catch (Exception ignored) {
+            // fall through
+        }
+        return false;
     }
 
     public String streamUrl(String streamPath) {

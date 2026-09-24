@@ -127,7 +127,15 @@ public class MainActivity extends AppCompatActivity implements PhoneSession.List
         reconnectAttempts = 0;
         uiHandler.removeCallbacks(reconnectTask);
         statusText.setText(R.string.status_connecting);
-        session.connect(host);
+        session.checkHealth(host, reachable -> {
+            if (reachable) {
+                session.connect(host);
+            } else {
+                statusText.setText(getString(R.string.status_no_desktop, host));
+                Toast.makeText(MainActivity.this, getString(R.string.status_no_desktop, host),
+                        Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     @Override

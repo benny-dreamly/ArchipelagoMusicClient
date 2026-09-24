@@ -3,6 +3,7 @@
     <string name="app_name">Archipelago Phone</string>
     <string name="status_not_connected">Not connected</string>
     <string name="status_no_host">Enter the desktop IP address first</string>
+    <string name="status_no_desktop">No desktop found at %1$s — start the companion server there</string>
     <string name="status_connecting">Connecting…</string>
     <string name="status_connected">Connected to desktop</string>
     <string name="status_disconnected">Disconnected: %1$s</string>
