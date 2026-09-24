@@ -20,7 +20,14 @@ public record CompanionState(
         long positionMs,
         boolean playing,
         int volume,
-        List<String> queue) {
+        List<String> queue,
+        String activeSource) {
+
+    public static final String SOURCE_DESKTOP = "desktop";
+    public static final String SOURCE_PHONE = "phone";
+
+    public static final CompanionState EMPTY = new CompanionState(
+            null, null, null, 0, 0, false, 0, List.of(), SOURCE_DESKTOP);
 
     private static final Gson GSON = new Gson();
 

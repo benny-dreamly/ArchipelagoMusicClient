@@ -41,6 +41,8 @@ public final class CompanionServer {
     private WebSocketServer wsServer;
     private ExecutorService httpPool;
     private volatile Consumer<JsonObject> commandHandler;
+    private volatile Consumer<JsonObject> eventHandler;
+    private volatile WebSocket activePhone;
 
     public CompanionServer(File musicRoot, int httpPort, int wsPort) {
         this.resolver = new RootedPathResolver(musicRoot);
@@ -61,11 +63,13 @@ public final class CompanionServer {
             @Override
             public void onOpen(WebSocket conn, ClientHandshake handshake) {
                 LOGGER.info("Companion: phone connected from {}", conn.getRemoteSocketAddress());
+                assignActivePhone();
             }
 
             @Override
             public void onClose(WebSocket conn, int code, String reason, boolean remote) {
                 LOGGER.info("Companion: phone disconnected ({})", reason);
+                assignActivePhone();
             }
 
             @Override
@@ -130,18 +134,66 @@ public final class CompanionServer {
         this.commandHandler = handler;
     }
 
+    public void setEventHandler(Consumer<JsonObject> handler) {
+        this.eventHandler = handler;
+    }
+
+    public boolean hasActivePhone() {
+        WebSocket phone = activePhone;
+        return phone != null && phone.isOpen();
+    }
+
+    /**
+     * Sends a payload to the active phone (the first one that connected).
+     * No-op when no phone is connected. Used to deliver PhonePlayback
+     * commands without touching the broadcast path.
+     */
+    public void send(String json) {
+        WebSocket phone = activePhone;
+        if (phone != null && phone.isOpen()) {
+            phone.send(json);
+        }
+    }
+
+    private void assignActivePhone() {
+        WebSocket current = activePhone;
+        if (current != null && current.isOpen()) {
+            return;
+        }
+        WebSocketServer server = wsServer;
+        WebSocket picked = null;
+        if (server != null) {
+            for (WebSocket conn : server.getConnections()) {
+                if (conn.isOpen()) {
+                    picked = conn;
+                    break;
+                }
+            }
+        }
+        activePhone = picked;
+    }
+
     public String streamPath(File file) {
         return resolver.streamPath(file);
     }
 
     private void handleMessage(String message) {
-        Consumer<JsonObject> handler = commandHandler;
-        if (handler == null) return;
         try {
             JsonObject json = JsonParser.parseString(message).getAsJsonObject();
-            handler.accept(json);
+            String type = json.has("type") ? json.get("type").getAsString() : "command";
+            if ("event".equals(type)) {
+                Consumer<JsonObject> handler = eventHandler;
+                if (handler != null) {
+                    handler.accept(json);
+                }
+                return;
+            }
+            Consumer<JsonObject> handler = commandHandler;
+            if (handler != null) {
+                handler.accept(json);
+            }
         } catch (Exception e) {
-            LOGGER.debug("Companion: malformed command: {}", message);
+            LOGGER.debug("Companion: malformed message: {}", message);
         }
     }
 

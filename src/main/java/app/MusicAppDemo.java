@@ -18,6 +18,7 @@ import app.logic.UnlockManager;
 import app.player.Album;
 import app.player.AlbumConverter;
 import app.player.LocalPlayback;
+import app.player.PhonePlayback;
 import app.player.PlaybackEngine;
 import app.player.Song;
 import app.player.json.AlbumMetadata;
@@ -1102,9 +1103,11 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
                 ? queueManager.asList().stream().map(Song::getTitle).toList()
                 : Collections.emptyList();
         int volume = (int) playerPanel.getVolumeSlider().getValue();
+        String activeSource = playbackEngine instanceof PhonePlayback
+                ? CompanionState.SOURCE_PHONE : CompanionState.SOURCE_DESKTOP;
 
         server.broadcast(new CompanionState(title, album, stream, durationMs, positionMs,
-                playing, volume, queue).toJson());
+                playing, volume, queue, activeSource).toJson());
     }
 
     private void handleRemoteCommand(JsonObject message) {
