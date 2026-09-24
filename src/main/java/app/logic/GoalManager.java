@@ -27,13 +27,15 @@ public class GoalManager {
 
     private final UnlockManager unlockManager;
     private final List<Album> albums;
+    private final Runnable onChange;
 
     private boolean goalSent = false;
     private boolean serverDataLoaded = false;
 
-    public GoalManager(UnlockManager unlockManager, List<Album> albums) {
+    public GoalManager(UnlockManager unlockManager, List<Album> albums, Runnable onChange) {
         this.unlockManager = unlockManager;
         this.albums = albums;
+        this.onChange = onChange;
     }
 
     public void markPlayed(String songTitle, String albumName, Client client) {
@@ -50,6 +52,7 @@ public class GoalManager {
         }
         checkAlbumProgress(albumName);
         checkGoal(client);
+        if (isNew && onChange != null) onChange.run();
     }
 
     private void persistToServer(Client client) {
@@ -135,6 +138,7 @@ public class GoalManager {
                 playedSongs.size());
         persistToServer(client);
         checkGoal(client);
+        if (onChange != null) onChange.run();
     }
 
     public void reset() {
@@ -150,6 +154,24 @@ public class GoalManager {
 
     public Set<String> getPlayedAlbums() {
         return Collections.unmodifiableSet(playedAlbums);
+    }
+
+    public int getPlayedCount(Album album) {
+        int played = 0;
+        for (Song song : album.getSongs()) {
+            if (!unlockManager.getEnabledSets().contains(song.getType())) continue;
+            if (playedSongs.contains(album.getName() + "::" + song.getTitle())) played++;
+        }
+        return played;
+    }
+
+    public int getWorldPlayedCount(List<Album> worldAlbums) {
+        int played = 0;
+        for (Album album : worldAlbums) {
+            if (!unlockManager.getEnabledAlbums().contains(album.getName())) continue;
+            played += getPlayedCount(album);
+        }
+        return played;
     }
 
     public boolean isSongPlayed(String songTitle, String albumName) {

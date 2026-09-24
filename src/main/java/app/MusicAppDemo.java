@@ -385,7 +385,7 @@ public class MusicAppDemo extends Application {
             // initialize AlbumLibrary now we've added the albums and they exist
             library = new AlbumLibrary(albums);
             queueManager = new QueueManager(library, unlockManager);
-            goalManager = new GoalManager(unlockManager, albums);
+            goalManager = new GoalManager(unlockManager, albums, this::onGoalProgressChanged);
 
             // Re-apply slot data against the populated album list in case the
             // connection callback fired before the library finished loading.
@@ -623,7 +623,7 @@ public class MusicAppDemo extends Application {
 
             library = new AlbumLibrary(albums);
             queueManager = new QueueManager(library, unlockManager);
-            goalManager = new GoalManager(unlockManager, albums);
+            goalManager = new GoalManager(unlockManager, albums, this::onGoalProgressChanged);
 
             installTreeCellFactory();
             applyOfflineUnlocks();
@@ -686,14 +686,20 @@ public class MusicAppDemo extends Application {
                         if (item.equals("Albums")) {
                             // Root "Albums" node — show overall world completion
                             UnlockManager.AlbumProgress world = unlockManager.getWorldProgress(library.getAlbums());
-                            setText(item + " (" + world.unlocked() + "/" + world.total() + ")");
+                            int worldPlayed = goalManager != null
+                                    ? goalManager.getWorldPlayedCount(library.getAlbums())
+                                    : world.unlocked();
+                            setText(item + " (" + worldPlayed + "/" + world.total() + ")");
                             getStyleClass().remove("album-unlocked");
                         } else {
                             // Regular album node
                             Album album = library.getAlbumByName(item);
                             if (album != null) {
                                 UnlockManager.AlbumProgress progress = unlockManager.getAlbumProgress(album);
-                                setText(item + " (" + progress.unlocked() + "/" + progress.total() + ")");
+                                int albumPlayed = goalManager != null
+                                        ? goalManager.getPlayedCount(album)
+                                        : progress.unlocked();
+                                setText(item + " (" + albumPlayed + "/" + progress.total() + ")");
                             } else {
                                 setText(item);
                             }
@@ -744,6 +750,10 @@ public class MusicAppDemo extends Application {
         }
         File folder = new File(path);
         return folder.isDirectory() ? folder : null;
+    }
+
+    private void onGoalProgressChanged() {
+        Platform.runLater(() -> refreshTree());
     }
 
     public void refreshTree() {
