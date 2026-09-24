@@ -71,12 +71,11 @@ public class TextClientWindow {
         Runnable sendMessage = () -> {
             String msg = inputField.getText();
             APClient client = clientSupplier.get();
-            if (!msg.isEmpty() && client != null) {
-                if (msg.startsWith("/")) {
-                    handleCommand(msg);
-                } else {
-                    client.sendChat(msg);
-                }
+            if (msg.startsWith("/")) {
+                handleCommand(msg);
+                inputField.clear();
+            } else if (!msg.isEmpty() && client != null) {
+                client.sendChat(msg);
                 inputField.clear();
             }
         };
@@ -106,7 +105,15 @@ public class TextClientWindow {
         outputArea.requestFollowCaret();
     }
 
-    public void onNameGroupsRetrieved(NameGroupsListener.Result result) {
+    public void clearNameGroups() {
+        this.itemGroups = Collections.emptyMap();
+        this.locationGroups = Collections.emptyMap();
+    }
+
+    public void onNameGroupsRetrieved(APClient source, NameGroupsListener.Result result) {
+        if (source != clientSupplier.get()) {
+            return;
+        }
         if (result.itemGroupsPresent()) {
             this.itemGroups = result.itemGroups();
         }

@@ -1405,6 +1405,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         client = new APClient(host, port, slot, password);
 
         stateManager.resetGameState();
+        connectionPanel.getTextClientWindow().clearNameGroups();
         client.setGameName(gameName);
 
         gameFolder.set(getConfigDir());
@@ -1444,9 +1445,11 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             client.getEventManager().registerListener(itemListener);
             client.getEventManager().registerListener(new PrintJsonListener(client,
                     connectionPanel.getTextClientWindow()::appendMessage));
+            APClient source = client;
             client.getEventManager().registerListener(new NameGroupsListener(
                     result -> Platform.runLater(() ->
-                            connectionPanel.getTextClientWindow().onNameGroupsRetrieved(result))));
+                            connectionPanel.getTextClientWindow()
+                                    .onNameGroupsRetrieved(source, result))));
             energyLinkListener = new EnergyLinkListener(client, value -> Platform.runLater(() ->
                     playerPanel.setEnergyLabel("Energy: " + formatEnergy(value))));
             client.getEventManager().registerListener(energyLinkListener);
