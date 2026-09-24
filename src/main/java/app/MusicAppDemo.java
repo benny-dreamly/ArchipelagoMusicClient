@@ -1445,7 +1445,8 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             client.getEventManager().registerListener(new PrintJsonListener(client,
                     connectionPanel.getTextClientWindow()::appendMessage));
             client.getEventManager().registerListener(new NameGroupsListener(
-                    connectionPanel.getTextClientWindow()::onNameGroupsRetrieved));
+                    result -> Platform.runLater(() ->
+                            connectionPanel.getTextClientWindow().onNameGroupsRetrieved(result))));
             energyLinkListener = new EnergyLinkListener(client, value -> Platform.runLater(() ->
                     playerPanel.setEnergyLabel("Energy: " + formatEnergy(value))));
             client.getEventManager().registerListener(energyLinkListener);
