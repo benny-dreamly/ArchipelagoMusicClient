@@ -208,6 +208,11 @@ public class TextClientWindow {
         }
     }
 
+    public void resetReadyState() {
+        this.ready = false;
+        this.readyClient = null;
+    }
+
     private void handleReadyCommand() {
         APClient client = connectedClient();
         if (client == null) {

@@ -63,6 +63,9 @@ public class ConnectionListener {
                 client.setSlotData(slotData);
                 client.markConnected();
                 statusLabel.setText("Connected!");
+                // A fresh handshake resets server-side readiness, so drop any
+                // ready state left over from a previous session or reconnect.
+                app.resetTextClientReadyState();
 
                 app.applySlotData();
                 app.startEnergyLinkSync();

@@ -1342,6 +1342,10 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         }
     };
 
+    public void resetTextClientReadyState() {
+        connectionPanel.getTextClientWindow().resetReadyState();
+    }
+
     public void setConnectButtonText(String text) {
         connectionPanel.setConnectButtonText(text);
     }
