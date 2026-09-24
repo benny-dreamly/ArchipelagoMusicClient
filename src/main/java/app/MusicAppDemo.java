@@ -26,6 +26,8 @@ import app.player.json.SongJSON;
 import app.player.ui.AlbumArtPanel;
 import app.player.ui.ConnectionPanel;
 import app.player.ui.PlayerPanel;
+import app.remote.CompanionServer;
+import app.remote.CompanionState;
 import app.util.AlbumLibrary;
 import app.util.AlbumOrderManager;
 import app.util.SentBonusStore;
@@ -33,6 +35,7 @@ import app.util.StateManager;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -89,6 +92,8 @@ import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -151,6 +156,13 @@ public class MusicAppDemo extends Application {
 
     // playback
     private MediaPlayer currentPlayer;
+
+    // companion phone server
+    private static final int COMPANION_HTTP_PORT = 8311;
+    private static final int COMPANION_WS_PORT = 8312;
+    private CompanionServer companionServer;
+    private ScheduledExecutorService companionTicker;
+    private java.util.concurrent.ScheduledFuture<?> companionTickerTask;
 
     // energy link / playback boost
     private static final double BOOST_RATE_150 = 1.5;
@@ -461,6 +473,8 @@ public class MusicAppDemo extends Application {
                 applyOfflineUnlocks();
             }
 
+            startCompanionServer(getConfigDir());
+
             restoreLibraryControls();
         });
 
@@ -491,6 +505,7 @@ public class MusicAppDemo extends Application {
             itemListener.setLibraryLoading(true);
         }
         loadGeneration.incrementAndGet(); // invalidate any in-flight load task
+        stopCompanionServer();
         // Stop and dispose current playback
         if (currentPlayer != null) {
             currentPlayer.stop();
@@ -549,6 +564,7 @@ public class MusicAppDemo extends Application {
             itemListener.setLibraryLoading(true);
         }
         loadGeneration.incrementAndGet(); // invalidate any in-flight load task
+        stopCompanionServer();
 
         // Stop and dispose current playback
         if (currentPlayer != null) {
@@ -628,6 +644,7 @@ public class MusicAppDemo extends Application {
             applyOfflineUnlocks();
             refreshTree();
 
+            startCompanionServer(folder);
             restoreLibraryControls();
             connectionPanel.setStatus("Browsing " + folder.getName()
                     + " (" + albums.size() + " albums, "
@@ -978,6 +995,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             if (total != null) {
                 playerPanel.getDurationLabel().setText(formatTime(total));
             }
+            publishRemoteState();
         });
 
         player.setOnEndOfMedia(() -> {
@@ -1008,6 +1026,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         playerPanel.setCurrentSongLabel("Currently Playing: " + song.getTitle());
         updateQueueDisplay();
         highlightCurrentSong(album, song.getTitle());
+        publishRemoteState();
     }
 
     private void playNextInQueue() {
@@ -1027,6 +1046,112 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             });
             playerPanel.resetProgress();
         }
+    }
+
+    private void startCompanionServer(File musicRoot) {
+        stopCompanionServer();
+        if (musicRoot == null || !musicRoot.isDirectory()) return;
+        companionServer = new CompanionServer(musicRoot, COMPANION_HTTP_PORT, COMPANION_WS_PORT);
+        companionServer.setCommandHandler(this::handleRemoteCommand);
+        try {
+            companionServer.start();
+        } catch (Exception e) {
+            LOGGER.warn("Could not start companion server: {}", e.getMessage());
+            companionServer = null;
+            return;
+        }
+        companionTicker = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "companion-state-ticker");
+            t.setDaemon(true);
+            return t;
+        });
+        companionTickerTask = companionTicker.scheduleAtFixedRate(
+                () -> Platform.runLater(this::publishRemoteState), 250, 500, TimeUnit.MILLISECONDS);
+    }
+
+    private void stopCompanionServer() {
+        if (companionTickerTask != null) {
+            companionTickerTask.cancel(false);
+            companionTickerTask = null;
+        }
+        if (companionTicker != null) {
+            companionTicker.shutdownNow();
+            companionTicker = null;
+        }
+        if (companionServer != null) {
+            companionServer.stop();
+            companionServer = null;
+        }
+    }
+
+    private void publishRemoteState() {
+        CompanionServer server = companionServer;
+        if (server == null || !server.hasClients()) return;
+
+        String title = null;
+        String album = null;
+        String stream = null;
+        long durationMs = 0;
+        long positionMs = 0;
+        boolean playing = false;
+        if (currentSong != null) {
+            title = currentSong.getTitle();
+            if (library != null) {
+                Album songAlbum = library.getAlbumForSong(title);
+                if (songAlbum != null) album = songAlbum.getName();
+            }
+            if (currentSong.getFilePath() != null) {
+                stream = server.streamPath(new File(currentSong.getFilePath()));
+            }
+        }
+        if (currentPlayer != null) {
+            playing = currentPlayer.getStatus() == MediaPlayer.Status.PLAYING;
+            positionMs = (long) currentPlayer.getCurrentTime().toMillis();
+            Duration total = currentPlayer.getTotalDuration();
+            if (total != null) durationMs = (long) total.toMillis();
+        }
+        List<String> queue = queueManager != null
+                ? queueManager.asList().stream().map(Song::getTitle).toList()
+                : Collections.emptyList();
+        int volume = (int) playerPanel.getVolumeSlider().getValue();
+
+        server.broadcast(new CompanionState(title, album, stream, durationMs, positionMs,
+                playing, volume, queue).toJson());
+    }
+
+    private void handleRemoteCommand(JsonObject message) {
+        Platform.runLater(() -> {
+            String cmd = message.has("cmd") ? message.get("cmd").getAsString() : "";
+            switch (cmd) {
+                case "toggle" -> togglePlayPause();
+                case "pause" -> {
+                    if (currentPlayer != null && currentPlayer.getStatus() == MediaPlayer.Status.PLAYING) {
+                        togglePlayPause();
+                    }
+                }
+                case "play" -> {
+                    if (currentPlayer != null && currentPlayer.getStatus() == MediaPlayer.Status.PAUSED) {
+                        togglePlayPause();
+                    } else if (currentPlayer == null && queueManager != null && !queueManager.isEmpty()) {
+                        togglePlayPause();
+                    }
+                }
+                case "next" -> playNextInQueue();
+                case "volume" -> {
+                    if (message.has("value")) {
+                        double value = message.get("value").getAsDouble();
+                        playerPanel.getVolumeSlider().setValue(Math.max(0, Math.min(100, value)));
+                    }
+                }
+                case "seek" -> {
+                    if (currentPlayer != null && message.has("positionMs")) {
+                        currentPlayer.seek(Duration.millis(message.get("positionMs").getAsDouble()));
+                    }
+                }
+                default -> LOGGER.info("Companion: unknown command '{}'", cmd);
+            }
+            publishRemoteState();
+        });
     }
 
     private void onBoostClick() {
@@ -1173,6 +1298,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         for (Song s : queueManager.asList()) {
             playerPanel.addToQueueDisplay(s);
         }
+        publishRemoteState();
     }
 
     private void removeFromQueue(Song song) {
@@ -1593,6 +1719,7 @@ client.getEventManager().registerListener(new PrintJsonListener(client, this,
             if (currentPlayer != null) {
                 currentPlayer.setVolume(newVal.doubleValue() / 100.0);
             }
+            publishRemoteState();
         });
 
         // Drag-and-drop reordering for queue
@@ -1713,6 +1840,7 @@ client.getEventManager().registerListener(new PrintJsonListener(client, this,
             updateQueueDisplay();
             if (next != null) playSong(next);
         }
+        publishRemoteState();
     }
 
     private void seekRelative(int seconds) {
