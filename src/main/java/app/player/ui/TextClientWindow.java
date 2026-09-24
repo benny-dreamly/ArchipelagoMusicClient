@@ -6,6 +6,7 @@ package app.player.ui;
 import app.archipelago.APClient;
 import app.archipelago.ChatColors;
 import app.archipelago.ChatRun;
+import app.archipelago.NameGroupsListener;
 import io.github.archipelagomw.ClientStatus;
 import io.github.archipelagomw.parts.Game;
 import io.github.archipelagomw.parts.NetworkItem;
@@ -105,10 +106,13 @@ public class TextClientWindow {
         outputArea.requestFollowCaret();
     }
 
-    public void onNameGroupsRetrieved(Map<String, List<String>> itemGroups,
-                                      Map<String, List<String>> locationGroups) {
-        this.itemGroups = itemGroups;
-        this.locationGroups = locationGroups;
+    public void onNameGroupsRetrieved(NameGroupsListener.Result result) {
+        if (result.itemGroupsPresent()) {
+            this.itemGroups = result.itemGroups();
+        }
+        if (result.locationGroupsPresent()) {
+            this.locationGroups = result.locationGroups();
+        }
     }
 
     private void appendLine(String text) {
