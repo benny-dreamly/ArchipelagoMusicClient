@@ -2,8 +2,18 @@
 <resources>
     <string name="app_name">Archipelago Phone</string>
     <string name="status_not_connected">Not connected</string>
+    <string name="status_no_host">Enter the desktop IP address first</string>
+    <string name="status_connecting">Connecting…</string>
+    <string name="status_connected">Connected to desktop</string>
+    <string name="status_disconnected">Disconnected: %1$s</string>
+    <string name="status_playing">Playing</string>
+    <string name="status_paused">Paused</string>
     <string name="ip_hint">Desktop IP address (e.g. 192.168.1.5)</string>
     <string name="connect">Connect</string>
+    <string name="play_pause">Play / Pause</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="next">Next</string>
     <string name="now_playing">Now Playing</string>
     <string name="now_playing_none">—</string>
 </resources>
