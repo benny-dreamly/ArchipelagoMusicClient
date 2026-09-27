@@ -391,6 +391,7 @@ public class APClient extends Client {
 
     public void setSlotData(JsonElement slotData) {
         this.slotData = slotData;
+        LOGGER.info("SLOT_DATA_RECEIVED: {}", slotData);
     }
 
     public JsonElement getSlotData() {
