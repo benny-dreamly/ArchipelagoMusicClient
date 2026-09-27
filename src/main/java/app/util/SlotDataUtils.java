@@ -21,6 +21,7 @@ public class SlotDataUtils {
         if (!slotMap.containsKey(key)) return false;
         Object val = slotMap.get(key);
         if (val instanceof Boolean b) return b;
+        if (val instanceof Number n) return n.intValue() != 0;
         return "true".equalsIgnoreCase(val.toString());
     }
 }
