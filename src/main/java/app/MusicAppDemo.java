@@ -842,6 +842,11 @@ public class MusicAppDemo extends Application {
                 MenuItem queueAll = new MenuItem("Queue All Songs");
                 queueAll.setOnAction(_ -> queueAlbum(item.getValue()));
                 contextMenu.getItems().add(queueAll);
+                if (client != null && client.isConnected() && goalManager != null) {
+                    MenuItem queueUnplayed = new MenuItem("Queue Unplayed");
+                    queueUnplayed.setOnAction(_ -> queueUnplayedAlbum(item.getValue()));
+                    contextMenu.getItems().add(queueUnplayed);
+                }
                 contextMenu.show(treeView, event.getScreenX(), event.getScreenY());
                 event.consume();
             }
@@ -865,6 +870,35 @@ public class MusicAppDemo extends Application {
 
         // If nothing is playing, start the first queued song
 if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING)
+                && !queueManager.isEmpty()) {
+            Song next = queueManager.poll();
+            updateQueueDisplay();
+            if (next != null) {
+                playSong(next);
+            }
+        }
+    }
+
+    private void queueUnplayedAlbum(String albumName) {
+        Album album = library.getAlbumByName(albumName);
+        if (album == null || goalManager == null) return;
+
+        List<Song> queueable = album.getQueueableSongs(unlockManager.getEnabledSets(),
+                unlockManager.getUnlockedSongs(), unlockManager.getUnlockedAlbums());
+        List<Song> unplayed = queueable.stream()
+                .filter(song -> !goalManager.isSongPlayed(song.getTitle(), albumName))
+                .toList();
+        if (unplayed.isEmpty()) {
+            LOGGER.info("No unplayed songs in album '{}'", albumName);
+            return;
+        }
+
+        queueManager.addAll(unplayed);
+        LOGGER.info("Queued {} unplayed songs from album '{}'", unplayed.size(), albumName);
+        updateQueueDisplay();
+
+        // If nothing is playing, start the first queued song
+        if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PLAYING)
                 && !queueManager.isEmpty()) {
             Song next = queueManager.poll();
             updateQueueDisplay();
