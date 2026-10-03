@@ -33,6 +33,10 @@ connection, disables it, enables all unlocks); the chosen folder is persisted to
 - **Played-aware "Queue All Songs"** — `MusicAppDemo.queueAlbum` (MusicAppDemo.java:851) queues every queueable song in an album. When connected to Archipelago, songs whose check id is already played (we track played songs by id) shouldn't be re-queued, so re-queueing an album plays the unplayed checks instead of re-running completed ones. ✅
   - Resolved design: added a second context-menu item **"Queue Unplayed"** (shown while connected) next to the existing "Queue All Songs" — `MusicAppDemo.queueUnplayedAlbum` (MusicAppDemo.java:877) filters through `GoalManager.isSongPlayed` (key: `albumName + "::" + songTitle`, GoalManager.java:44). "Queue All Songs" keeps queueing everything for deliberate re-listens, no extra settings toggle.
 - **Local playback tracking** — `GoalManager` only persists played-song tracking via Archipelago server data storage (`musictools/played_songs_<slot>`, GoalManager.java:23), so played state is effectively Archipelago-only. Separate overhaul (later): track and persist played songs for local/offline libraries (e.g. `queue.json`-style local store) so "Queue Unplayed" and played counts also work in "Browse Folder" / offline mode.
+- **Session restore on reconnect** — on reconnecting to the same slot, restore the queue state and the current song's playback position. Feels like an opt-in toggle rather than a default behavior (you may not want an accidental reconnect to resume/push you into a queue). Where that toggle lives ties into the Settings/Configuration item below.
+
+## Settings / Configuration
+- **Options beyond the UI** — some behaviors (e.g. the session-restore toggle above, or playback tracking scope) don't belong as more UI toggles; they should live in a config file (like `connection.json` does today) so the UI stays uncluttered. Figure out the right home/format for non-UI configuration, and how it feeds these behaviors.
 
 ## Playback / UI
 - **Volume slider** — add a volume control to `PlayerPanel` (currently none) ✅
