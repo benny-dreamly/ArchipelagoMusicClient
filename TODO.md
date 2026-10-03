@@ -66,6 +66,7 @@ connection, disables it, enables all unlocks); the chosen folder is persisted to
   - Risk: another "might never actually work" feature — remote playback needs to work reliably on a phone (seek, volume, queue control, connection) or it isn't worth 6.0.0. If it ships, it's a major because it rewrites the player API; otherwise it stays parked.
 
 ## Testing / Quality
+- **Decompose `MusicAppDemo`** — currently ~1956 lines (god class). Split into focused controllers/components (tree/context menu, playback/energy/link, queue UI, connection/deathlink/energylink, offline/browse folder). Hands-on task to reclaim the solving. Keep behavior identical; run the full gate after each extraction.
 - **Unit tests** — JUnit is configured but unused; start with domain logic tests (already started with `AlbumTest`)
 - **Extract file matching** — pull `assignFilesToSongs` into a standalone utility for testability (it has zero JavaFX dependency) ✅
 - **Logging cleanup** — replace remaining `e.printStackTrace()` calls with SLF4J ✅
