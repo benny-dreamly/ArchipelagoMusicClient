@@ -61,6 +61,8 @@ connection, disables it, enables all unlocks); the chosen folder is persisted to
   - Status: started, but hit issues during testing; couldn't get everything working and tested on a separate computer without completing it. Needs the user's own fixes merged back into the branch before continuing.
   - **Prerequisite: configuration work must land first** — the Settings/Configuration section (proper config format + a general settings popup) is required before this can ship; the rewrite is good but shouldn't go out without real configuration behind it.
   - **Blockers:** Xcode is not realistically installable on this Mac right now — would need an OS upgrade and likely a paid Apple developer certificate to run on real iOS hardware. Also unresolved: is the whole thing actually worth it? (see risk line)
+  - **Android emulator findings:** playback was janky, no audio worked in the emulator, and some text didn't render — adequate to keep this as a "possibility", not a plan.
+  - **Port principle:** the companion server must only bind/listen when remote mode is explicitly enabled (off by default). No port allocation on every launch — that's the argument for the config-first order and for remote mode living behind the settings toggle.
   - Risk: another "might never actually work" feature — remote playback needs to work reliably on a phone (seek, volume, queue control, connection) or it isn't worth 6.0.0. If it ships, it's a major because it rewrites the player API; otherwise it stays parked.
 
 ## Testing / Quality
