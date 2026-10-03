@@ -137,7 +137,7 @@ public class UnlockManager {
         // 2. Unlock albums by type if the corresponding slot is enabled
         if (enabledAlbumsFromSlotData.contains("Re-recordings")) {
             for (Album album : albums) {
-                if ("rerecording".equalsIgnoreCase(album.getType())) {
+                if (isRerecordingType(album.getType())) {
                     enabledAlbums.add(album.getName());
                     enabledSets.add(album.getType());
                 }
@@ -145,9 +145,14 @@ public class UnlockManager {
         }
     }
 
+    static boolean isRerecordingType(String type) {
+        return type != null && type.replace("-", "").equalsIgnoreCase("rerecording");
+    }
+
     private void filterSongCategories(Map<String, Object> slotMap, List<Album> albums) {
         boolean shortSongsEnabled = parseBooleanSlot(slotMap, "include_short_songs");
-        boolean vaultSongsEnabled = parseBooleanSlot(slotMap, "include_vault_songs");
+        boolean vaultSongsEnabled = parseBooleanSlot(slotMap, "include_vault_songs")
+                || parseBooleanSlot(slotMap, "include_vault_tracks");
         boolean deluxeSongsEnabled = parseBooleanSlot(slotMap, "include_deluxe");
         boolean extraSongsEnabled = parseBooleanSlot(slotMap, "include_extra");
 
