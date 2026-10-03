@@ -60,3 +60,9 @@ connection, disables it, enables all unlocks); the chosen folder is persisted to
 - **Extract file matching** — pull `assignFilesToSongs` into a standalone utility for testability (it has zero JavaFX dependency) ✅
 - **Logging cleanup** — replace remaining `e.printStackTrace()` calls with SLF4J ✅
 - **Config validation** — validate JSON configs on load with proper error messages ✅
+
+## Git / Workflow Conventions
+- **main is the integration line** — not branch-protected, so wait to run the gate before pushing: `./gradlew compileJava test checkstyleMain checkstyleTest spotbugsMain spotbugsTest -q`
+- **Short topic branches for anything non-trivial**; time-sensitive fixes/issues can land directly on main
+- **Version bumps are ordinary commits on main** (avoid the protected-main trap from other projects: no PR-only rule here)
+- Everything in this TODO file is fair game for a future session to pick up; treat this file as the durable "future me" scratchpad.
