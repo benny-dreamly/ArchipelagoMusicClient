@@ -38,6 +38,7 @@ connection, disables it, enables all unlocks); the chosen folder is persisted to
 ## Settings / Configuration
 - **Options beyond the UI** — some behaviors (e.g. the session-restore toggle above, or playback tracking scope) don't belong as more UI toggles; they should live in a config file (like `connection.json` does today) so the UI stays uncluttered. Figure out the right home/format for non-UI configuration, and how it feeds these behaviors.
 - **Settings belong in a dedicated place, not crammed into the connection panel** — dark mode (appearance), offline mode, and deathlink are currently toggles squatting in the connection panel; moving them out risks them being harder to find. Prefer a **settings popup/window** (e.g. a gear/settings button) rather than more inline controls, because the default window size can't fit all options when album art is open. Decide which settings move to the popup vs stay in the panel, and weigh discoverability of relocated toggles.
+  - This section is a **prerequisite for the 6.0.0 mobile player** — the configuration format and settings popup should land before remote-control playback ships.
 
 ## Playback / UI
 - **Volume slider** — add a volume control to `PlayerPanel` (currently none) ✅
@@ -58,6 +59,8 @@ connection, disables it, enables all unlocks); the chosen folder is persisted to
 ## Mobile / Remote Player — **6.0.0 target**
 - **Player-system rewrite for remote control** — a whole rewrite of the playback core to allow the phone app to control playback. Sits on the `companion-server` branch with `mobile/` (Android) and `ios/ProtocolCore/` (iOS) built against it.
   - Status: started, but hit issues during testing; couldn't get everything working and tested on a separate computer without completing it. Needs the user's own fixes merged back into the branch before continuing.
+  - **Prerequisite: configuration work must land first** — the Settings/Configuration section (proper config format + a general settings popup) is required before this can ship; the rewrite is good but shouldn't go out without real configuration behind it.
+  - **Blockers:** Xcode is not realistically installable on this Mac right now — would need an OS upgrade and likely a paid Apple developer certificate to run on real iOS hardware. Also unresolved: is the whole thing actually worth it? (see risk line)
   - Risk: another "might never actually work" feature — remote playback needs to work reliably on a phone (seek, volume, queue control, connection) or it isn't worth 6.0.0. If it ships, it's a major because it rewrites the player API; otherwise it stays parked.
 
 ## Testing / Quality
