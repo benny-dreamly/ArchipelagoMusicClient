@@ -13,6 +13,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -28,6 +30,40 @@ public class MusicLibraryLoader {
         try (Reader reader = new FileReader(file, StandardCharsets.UTF_8)) {
             return loadFromReader(reader);
         }
+    }
+
+    public List<Album> loadFromResource(String resourcePath) throws Exception {
+        try (Reader reader = openResource(resourcePath)) {
+            return loadFromReader(reader);
+        }
+    }
+
+    public List<String> loadBonusLocations(File file) throws Exception {
+        try (Reader reader = new FileReader(file, StandardCharsets.UTF_8)) {
+            return readBonusLocations(reader);
+        }
+    }
+
+    public List<String> loadBonusLocationsResource(String resourcePath) throws Exception {
+        try (Reader reader = openResource(resourcePath)) {
+            return readBonusLocations(reader);
+        }
+    }
+
+    private static Reader openResource(String resourcePath) {
+        InputStream is = MusicLibraryLoader.class.getResourceAsStream(resourcePath);
+        if (is == null) {
+            throw new IllegalArgumentException("Resource not found: " + resourcePath);
+        }
+        return new InputStreamReader(is, StandardCharsets.UTF_8);
+    }
+
+    private static List<String> readBonusLocations(Reader reader) {
+        MusicLibraryJSON library = new Gson().fromJson(reader, MusicLibraryJSON.class);
+        if (library == null || library.bonus_locations == null) {
+            return List.of();
+        }
+        return new ArrayList<>(library.bonus_locations);
     }
 
     public List<Album> loadFromReader(Reader reader) {
@@ -85,15 +121,5 @@ public class MusicLibraryLoader {
 
         LOGGER.info("Loaded music library: {} albums from music_library.json", albums.size());
         return albums;
-    }
-
-    public List<String> loadBonusLocations(File file) throws Exception {
-        try (Reader reader = new FileReader(file, StandardCharsets.UTF_8)) {
-            MusicLibraryJSON library = gson.fromJson(reader, MusicLibraryJSON.class);
-            if (library == null || library.bonus_locations == null) {
-                return List.of();
-            }
-            return new ArrayList<>(library.bonus_locations);
-        }
     }
 }

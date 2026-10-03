@@ -1,0 +1,32 @@
+{
+  "artist": "Sample Discography",
+  "bonus_locations": [
+    "Welcome Note",
+    "Hidden Track"
+  ],
+  "albums": [
+    {
+      "name": "First Impressions",
+      "type": "standard",
+      "full_album_unlock": false,
+      "path": "",
+      "songs": [
+        { "title": "Opening Act", "location": "Opening Act", "type": "normal", "requires": "|Opening Act|" },
+        { "title": "Signal Fire", "location": "Signal Fire", "type": "normal", "requires": "|Signal Fire|" },
+        { "title": "Home Movie Demo", "location": "Home Movie Demo", "type": "short", "requires": "|Home Movie Demo|" },
+        { "title": "Last Verse", "location": "Last Verse", "type": "normal", "requires": "|Last Verse|" }
+      ]
+    },
+    {
+      "name": "Second Chances",
+      "type": "standard",
+      "full_album_unlock": false,
+      "path": "",
+      "songs": [
+        { "title": "Fresh Start", "location": "Fresh Start", "type": "normal", "requires": "|Fresh Start|" },
+        { "title": "Golden Hour", "location": "Golden Hour", "type": "normal", "requires": "|Golden Hour|" },
+        { "title": "Curtain Call", "location": "Curtain Call", "type": "normal", "requires": "|Curtain Call|" }
+      ]
+    }
+  ]
+}

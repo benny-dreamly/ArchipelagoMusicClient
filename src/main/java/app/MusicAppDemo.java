@@ -336,15 +336,26 @@ public class MusicAppDemo extends Application {
                 File musicLibraryFile = new File(gameFolder, "music_library.json");
 
                 // Primary: music_library.json (new hierarchical format)
+                MusicLibraryLoader musicLoader = new MusicLibraryLoader();
                 if (musicLibraryFile.exists()) {
-                    MusicLibraryLoader musicLoader = new MusicLibraryLoader();
                     try {
                         List<Album> loaded = musicLoader.loadFromFile(musicLibraryFile);
                         List<String> bonus = new ArrayList<>(musicLoader.loadBonusLocations(musicLibraryFile));
                         return new LoadResult(loaded, true, bonus);
                     } catch (Exception e) {
-                        LOGGER.warn("Failed to load music_library.json, falling back to locations.json", e);
+                        LOGGER.warn("Failed to load music_library.json, falling back to bundled sample", e);
                     }
+                }
+
+                // Fallback: bundled music_library.json (current format), so a fresh
+                // install or a game without per-game config still loads a sample library.
+                try {
+                    List<Album> loaded = musicLoader.loadFromResource("/music_library.json");
+                    List<String> bonus = new ArrayList<>(musicLoader.loadBonusLocationsResource("/music_library.json"));
+                    LOGGER.info("No music_library.json in game folder; using bundled sample library");
+                    return new LoadResult(loaded, true, bonus);
+                } catch (Exception e) {
+                    LOGGER.warn("Bundled music_library.json unavailable, falling back to locations.json", e);
                 }
 
                 // Fallback: locations.json (legacy flat format)
@@ -1231,17 +1242,21 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             generateDefaultAlbumFolders(albums); // creates default
         }
 
-        // Optionally copy default locations.json
-        File localLocations = new File(gameFolder, "locations.json");
-        if (!localLocations.exists()) {
-            try (InputStream in = getClass().getResourceAsStream("/locations.json");
-                 FileOutputStream out = new FileOutputStream(localLocations)) {
+        File legacyLocations = new File(gameFolder, "locations.json");
+        File musicLibraryFile = new File(gameFolder, "music_library.json");
+        // Seed the bundled sample music_library.json for brand-new game folders.
+        // Folders with an existing library in either format keep their own data.
+        if (!musicLibraryFile.exists() && !legacyLocations.exists()) {
+            try (InputStream in = getClass().getResourceAsStream("/music_library.json");
+                 FileOutputStream out = new FileOutputStream(musicLibraryFile)) {
                 if (in != null) {
                     in.transferTo(out);
-                    LOGGER.info("Copied default locations.json to {}", localLocations.getAbsolutePath());
+                    LOGGER.info("Copied bundled sample music_library.json to {}",
+                            musicLibraryFile.getAbsolutePath());
                 }
             } catch (IOException e) {
-                LOGGER.error("Failed to copy default locations.json to {}", localLocations.getAbsolutePath(), e);
+                LOGGER.error("Failed to copy bundled sample music_library.json to {}",
+                        musicLibraryFile.getAbsolutePath(), e);
             }
         }
     }
