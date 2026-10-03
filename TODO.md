@@ -46,7 +46,7 @@ connection, disables it, enables all unlocks); the chosen folder is persisted to
 - **Next/Previous song buttons** — no dedicated next/prev buttons in the player UI; skipping forward currently works only via the `N` key / `playNextInQueue()`, and there is no skip-backward at all ✅
 - **Dark mode** — presentable dark theme ✅
 - **Album art** — display cover art from the file's metadata if available ✅
-- **Crossfade / gapless playback** — smooth transitions between songs
+- **Crossfade / gapless playback** — smooth transitions between songs. Previously attempted on the `crossfade` branch but never worked well; the refactors since mean it would have to be recreated from scratch if attempted again. Parked — may never work, fine to leave as a stretch goal.
 - **Search/filter tree** — filter the album tree by song or album name ✅
 
 ## Archipelago
@@ -54,6 +54,11 @@ connection, disables it, enables all unlocks); the chosen folder is persisted to
 - **Deathlink support** — stop/skip playback on deathlink ✅
 - **Auto-reconnect** — retry connection if the server drops ✅
 - **Track completion percentage** — show unlock progress per album/world ✅
+
+## Mobile / Remote Player — **6.0.0 target**
+- **Player-system rewrite for remote control** — a whole rewrite of the playback core to allow the phone app to control playback. Sits on the `companion-server` branch with `mobile/` (Android) and `ios/ProtocolCore/` (iOS) built against it.
+  - Status: started, but hit issues during testing; couldn't get everything working and tested on a separate computer without completing it. Needs the user's own fixes merged back into the branch before continuing.
+  - Risk: another "might never actually work" feature — remote playback needs to work reliably on a phone (seek, volume, queue control, connection) or it isn't worth 6.0.0. If it ships, it's a major because it rewrites the player API; otherwise it stays parked.
 
 ## Testing / Quality
 - **Unit tests** — JUnit is configured but unused; start with domain logic tests (already started with `AlbumTest`)
