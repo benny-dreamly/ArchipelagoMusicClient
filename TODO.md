@@ -30,6 +30,8 @@ connection, disables it, enables all unlocks); the chosen folder is persisted to
 - **Drag-to-reorder queue** — reorder songs in the queue by dragging ✅
 - **"Play Next"** — right-click a song to insert at the front of the queue instead of the back ✅
 - **Now-playing indicator in queue** — highlight the currently playing entry and keep it visible ✅
+- **Played-aware "Queue All Songs"** — `MusicAppDemo.queueAlbum` (MusicAppDemo.java:851) queues every queueable song in an album. When connected to Archipelago, songs whose check id is already played (we track played songs by id) shouldn't be re-queued, so re-queueing an album plays the unplayed checks instead of re-running completed ones.
+  - Open question (avoid a bloated settings toggle): how to still allow deliberately re-listening to a fully-played album. Ideas: add a second context-menu item "Queue Unplayed" alongside "Queue All Songs"; or gate on modifier key; or treat full-album replay as an explicit separate flow. Decide before implementing.
 
 ## Playback / UI
 - **Volume slider** — add a volume control to `PlayerPanel` (currently none) ✅
