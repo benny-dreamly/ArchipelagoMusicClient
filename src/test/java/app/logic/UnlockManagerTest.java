@@ -27,6 +27,7 @@ class UnlockManagerTest {
             {
               "slot_data_keys": {
                 "1989": {"type": "album", "display_name": "1989"},
+                "1989_tv": {"type": "album", "display_name": "1989 (Taylor's Version)"},
                 "folklore": {"type": "album", "display_name": "folklore"},
                 "re_recordings": {"type": "album", "display_name": "Re-recordings"},
                 "include_short_songs": {"type": "song_category", "display_name": "Short Songs"},
@@ -255,6 +256,28 @@ class UnlockManagerTest {
         List<Album> albums = List.of(rerecording, folklore);
 
         unlockManager.applySlotData(Map.of("re_recordings", 1), albums);
+
+        assertTrue(unlockManager.getEnabledAlbums().contains("1989 (Taylor's Version)"));
+        assertFalse(unlockManager.getEnabledAlbums().contains("folklore"));
+    }
+
+    @Test
+    void applySlotData_rerecordingsSlot_doesNotOverrideDisabledPerAlbumKey() {
+        Album rerecording = new Album("1989 (Taylor's Version)", "rerecording");
+        List<Album> albums = List.of(rerecording);
+
+        unlockManager.applySlotData(Map.of("re_recordings", 1, "1989_tv", 0), albums);
+
+        assertFalse(unlockManager.getEnabledAlbums().contains("1989 (Taylor's Version)"));
+    }
+
+    @Test
+    void applySlotData_rerecordingsSlot_stillEnablesPerAlbumKeyWins() {
+        Album rerecording = new Album("1989 (Taylor's Version)", "rerecording");
+        Album folklore = new Album("folklore", "standard");
+        List<Album> albums = List.of(rerecording, folklore);
+
+        unlockManager.applySlotData(Map.of("re_recordings", 1, "1989_tv", 1), albums);
 
         assertTrue(unlockManager.getEnabledAlbums().contains("1989 (Taylor's Version)"));
         assertFalse(unlockManager.getEnabledAlbums().contains("folklore"));

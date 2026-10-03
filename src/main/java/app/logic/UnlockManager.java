@@ -134,10 +134,13 @@ public class UnlockManager {
             }
         }
 
-        // 2. Unlock albums by type if the corresponding slot is enabled
+        // 2. Unlock albums by type if the corresponding slot is enabled, but only for
+        //    albums without a dedicated per-album key (per-album keys take precedence
+        //    so a disabled Taylor's Version album stays disabled)
+        Set<String> gatedAlbumNames = SlotDataHelper.getAlbumDisplayNamesPresentInSlotData(slotMap);
         if (enabledAlbumsFromSlotData.contains("Re-recordings")) {
             for (Album album : albums) {
-                if (isRerecordingType(album.getType())) {
+                if (isRerecordingType(album.getType()) && !gatedAlbumNames.contains(album.getName())) {
                     enabledAlbums.add(album.getName());
                     enabledSets.add(album.getType());
                 }

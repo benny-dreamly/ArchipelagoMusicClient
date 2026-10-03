@@ -66,6 +66,24 @@ public class SlotDataHelper {
         return enabled;
     }
 
+    public static Set<String> getAlbumDisplayNamesPresentInSlotData(Map<String, Object> slotData) {
+        Set<String> names = new HashSet<>();
+        if (slotOptions.isEmpty() || slotData == null) return names;
+
+        for (Map.Entry<String, Object> entry : slotData.entrySet()) {
+            String key = entry.getKey();
+            // ignore unknown keys
+            if (!slotOptions.containsKey(key)) continue;
+
+            SlotOption option = slotOptions.get(key);
+            if (option != null && "album".equals(option.type)) {
+                names.add(option.display_name);
+            }
+        }
+
+        return names;
+    }
+
     public static Set<String> getEnabledCategories(Map<String, Object> slotData) {
         Set<String> enabled = new HashSet<>();
         if (slotOptions.isEmpty() || slotData == null) return enabled;
