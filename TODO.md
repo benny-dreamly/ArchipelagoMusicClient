@@ -37,6 +37,7 @@ connection, disables it, enables all unlocks); the chosen folder is persisted to
 
 ## Settings / Configuration
 - **Options beyond the UI** — some behaviors (e.g. the session-restore toggle above, or playback tracking scope) don't belong as more UI toggles; they should live in a config file (like `connection.json` does today) so the UI stays uncluttered. Figure out the right home/format for non-UI configuration, and how it feeds these behaviors.
+- **Settings belong in a dedicated place, not crammed into the connection panel** — dark mode (appearance), offline mode, and deathlink are currently toggles squatting in the connection panel; moving them out risks them being harder to find. Prefer a **settings popup/window** (e.g. a gear/settings button) rather than more inline controls, because the default window size can't fit all options when album art is open. Decide which settings move to the popup vs stay in the panel, and weigh discoverability of relocated toggles.
 
 ## Playback / UI
 - **Volume slider** — add a volume control to `PlayerPanel` (currently none) ✅
