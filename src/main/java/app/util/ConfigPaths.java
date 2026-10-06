@@ -26,6 +26,18 @@ public class ConfigPaths {
         return new File(configDir.getParentFile(), "connection.json");
     }
 
+    /** Global (non-per-game) application settings, sibling of connection.json. */
+    public static File getSettingsFile() {
+        File configDir = getConfigDir();
+        return new File(configDir.getParentFile(), "settings.json");
+    }
+
+    /** Global session snapshot (queue + playback position) for session restore. */
+    public static File getSessionFile() {
+        File configDir = getConfigDir();
+        return new File(configDir.getParentFile(), "session.json");
+    }
+
     public static void checkIfGameFolderExists(File gameFolder, Logger logger){
         // Ensure the per-game folder exists
         if (!gameFolder.exists()) {
