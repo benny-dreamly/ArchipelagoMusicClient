@@ -69,7 +69,9 @@ public class ConnectionListener {
 
                 app.applySlotData();
                 app.startEnergyLinkSync();
-                app.tryApplySessionRestore();
+                // Debounced so the restore applies only after the starting-inventory
+                // items have updated unlock state, not before.
+                app.scheduleSessionRestoreApply();
 
                 // Load played songs from server data storage
                 pendingRequest = new PendingRequest(client.getSlot(), app.getLoadGeneration());

@@ -139,6 +139,7 @@ public class MusicAppDemo extends Application {
     private final AtomicInteger loadGeneration = new AtomicInteger(0);
     private record PendingSessionRestore(SessionStore.Snapshot snapshot, int generation) {}
     private PendingSessionRestore pendingSessionRestore;
+    private final Timeline sessionRestoreDebounce = new Timeline();
     private Duration pendingSeek;
     private boolean volumeAdjustMode = false;
     private final StringBuilder volumeInput = new StringBuilder();
@@ -502,9 +503,9 @@ public class MusicAppDemo extends Application {
 
             restoreLibraryControls();
 
-            // Library is ready — apply a pending session restore if the
-            // connection already succeeded (otherwise ConnectionListener does it).
-            tryApplySessionRestore();
+            // Library is ready — schedule a pending session restore so it applies
+            // only after the starting-inventory items have updated unlock state.
+            scheduleSessionRestoreApply();
         });
 
         loadTask.setOnFailed(_ -> {
@@ -1601,11 +1602,30 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
     }
 
     /**
-     * Applies the pending restore once both the library and the connection are
-     * ready. Called from the library load callback and from ConnectionListener;
-     * whichever runs second wins. Only applies while the queue is empty so it
-     * can never clobber live state — auto-reconnect never reaches here because
-     * it doesn't reload the library.
+     * Requests that the pending session restore be applied after a short
+     * quiescence. The library fires one ReceiveItemEvent per starting-inventory
+     * item with no batch-complete signal, so instead we debounce on the item
+     * stream: every item event re-arms this timer, and the restore only applies
+     * once item events have stopped arriving and unlock state is settled.
+     * No-op when nothing is pending. Must be called on the FX thread.
+     */
+    public void scheduleSessionRestoreApply() {
+        if (pendingSessionRestore == null) {
+            return;
+        }
+        sessionRestoreDebounce.stop();
+        sessionRestoreDebounce.getKeyFrames().setAll(
+                new KeyFrame(Duration.millis(150), _ -> tryApplySessionRestore()));
+        sessionRestoreDebounce.play();
+    }
+
+    /**
+     * Applies the pending restore once the library and connection are ready and
+     * the starting-inventory item burst has settled (via
+     * {@link #scheduleSessionRestoreApply}, re-armed on every item event). Only
+     * applies while the queue is empty so it can never clobber live state; if
+     * nothing is playable yet (items still arriving) the restore stays pending.
+     * Auto-reconnect never reaches here because it doesn't reload the library.
      */
     public void tryApplySessionRestore() {
         PendingSessionRestore pending = pendingSessionRestore;
@@ -1617,40 +1637,52 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             return;
         }
         if (client == null || !client.isConnected() || queueManager == null || library == null) {
-            return; // not ready yet — the other callback applies it
+            return; // not ready yet — the debounce re-runs this once ready
         }
-        pendingSessionRestore = null;
-
         if (!queueManager.isEmpty()) {
             LOGGER.info("Session restore skipped: queue is not empty");
+            pendingSessionRestore = null; // the user has taken over — abandon it
             return;
         }
-        if (!pending.snapshot().hasContent()) {
+
+        SessionStore.Snapshot snapshot = pending.snapshot();
+        if (!snapshot.hasContent()) {
+            pendingSessionRestore = null;
             return;
         }
 
         List<Song> resolved = new ArrayList<>();
-        for (Map<String, String> entry : pending.snapshot().queue()) {
+        for (Map<String, String> entry : snapshot.queue()) {
             Song song = findSong(entry.get("title"), entry.get("type"));
             if (song != null
                     && unlockManager.canQueue(song, library.getAlbumForSong(song.getTitle()))) {
                 resolved.add(song);
             }
         }
-        queueManager.replaceAll(resolved);
-        updateQueueDisplay();
-
-        SessionStore.Snapshot snapshot = pending.snapshot();
         Song current = snapshot.currentTitle() != null
                 ? findSong(snapshot.currentTitle(), snapshot.currentType())
                 : null;
-        if (current != null
-                && unlockManager.canPlay(current, library.getAlbumForSong(current.getTitle()))) {
+        boolean currentPlayable = current != null
+                && unlockManager.canPlay(current, library.getAlbumForSong(current.getTitle()));
+
+        if (resolved.isEmpty() && !currentPlayable) {
+            // Nothing is playable yet — usually the starting-inventory items that
+            // would unlock these songs have not been applied. Keep the restore
+            // pending so the next item event's debounce re-attempts it once
+            // unlock state is complete.
+            LOGGER.debug("Session restore deferred: no songs playable yet (items may still be arriving)");
+            return;
+        }
+
+        pendingSessionRestore = null;
+        queueManager.replaceAll(resolved);
+        updateQueueDisplay();
+        if (currentPlayable) {
             pendingSeek = Duration.millis((double) Math.max(0, snapshot.positionMs()));
             playSong(current);
         }
         LOGGER.info("Session restored: {} queued songs{}", resolved.size(),
-                current != null ? ", resuming \"" + current.getTitle() + "\"" : "");
+                currentPlayable ? ", resuming \"" + current.getTitle() + "\"" : "");
     }
 
     private Song findSong(String title, String type) {
