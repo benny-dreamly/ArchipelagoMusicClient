@@ -247,6 +247,7 @@ public class MusicAppDemo extends Application {
         scene.getStylesheets().add(getClass().getResource("/app.css").toExternalForm());
         stage.setScene(scene);
         stage.setTitle("Archipelago Music Client");
+        setWindowIcons(stage);
         stage.show();
 
         setupKeyboardShortcuts(scene);
@@ -323,6 +324,17 @@ public class MusicAppDemo extends Application {
             client.close();
         }
         System.exit(0); // ensures all threads are killed
+    }
+
+    private void setWindowIcons(Stage stage) {
+        try {
+            Image icon = new Image(getClass().getResourceAsStream("/icons/app-icon-512.png"));
+            if (!icon.isError()) {
+                stage.getIcons().add(icon);
+            }
+        } catch (Exception e) {
+            LOGGER.warn("Could not set the window icon, continuing with the default.", e);
+        }
     }
 
     private record LoadResult(List<Album> albums, boolean usingMusicLibrary, List<String> bonusLocations) {}

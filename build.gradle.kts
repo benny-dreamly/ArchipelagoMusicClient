@@ -138,14 +138,18 @@ tasks.test {
     useJUnitPlatform()
 }
 
-// --- macOS app icon & packaging ---
+// --- App icon & packaging (per-platform) ---
 
-// Rebuilds src/main/resources/icons/AppIcon.icns from app-icon-1024.png.
-// Run this again after dropping in your real 1024x1024 PNG:
+val isMacOs = System.getProperty("os.name").startsWith("Mac", ignoreCase = true)
+val isWindowsOs = System.getProperty("os.name").startsWith("Windows", ignoreCase = true)
+
+// Rebuilds packaging/AppIcon.icns from app-icon-1024.png (macOS only; needs sips + iconutil).
+// Run again after dropping in your real 1024x1024 PNG:
 //   ./gradlew generateIcns
 tasks.register<Exec>("generateIcns") {
     group = "packaging"
-    description = "Rebuilds AppIcon.icns from src/main/resources/icons/app-icon-1024.png (macOS only; needs sips + iconutil)"
+    description = "Rebuilds packaging/AppIcon.icns from src/main/resources/icons/app-icon-1024.png (macOS; sips + iconutil)"
+    onlyIf { isMacOs }
     val png = file("src/main/resources/icons/app-icon-1024.png")
     val iconset = layout.buildDirectory.dir("icons/AppIcon.iconset").get().asFile
     val icns = file("packaging/AppIcon.icns")
@@ -167,21 +171,63 @@ tasks.register<Exec>("generateIcns") {
     """.trimIndent())
 }
 
-// Builds a real macOS .app (jpackage, bundled with your JDK). The bundled app
-// is named "Archipelago Music Client", uses AppIcon.icns for the Dock, and the
-// Activity Monitor process name becomes "Archipelago Music Client" instead of "java".
-//   ./gradlew packageApp    # -> build/pkg/Archipelago Music Client.app
+// Rebuilds packaging/AppIcon.ico from the 1024px source (Windows jpackage needs .ico).
+// Pure format assembly, no extra tooling required. Run after replacing the PNG:
+//   ./gradlew generateIco
+tasks.register<Exec>("generateIco") {
+    group = "packaging"
+    description = "Rebuilds packaging/AppIcon.ico from src/main/resources/icons/app-icon-1024.png"
+    val png = file("src/main/resources/icons/app-icon-1024.png")
+    val ico = file("packaging/AppIcon.ico")
+    inputs.file(png)
+    outputs.file(ico)
+    commandLine("python3", "-c", """
+        import struct
+        import subprocess
+        import tempfile
+
+        src = '${png.absolutePath}'
+        dst = '${ico.absolutePath}'
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as f:
+            small = f.name
+        subprocess.run(['sips', '-z', '256', '256', src, '--out', small], check=True, capture_output=True)
+        with open(small, 'rb') as f:
+            data = f.read()
+        # ICO with a single PNG-compressed entry (Windows Vista+ supports PNG entries).
+        # The u8 width/height can't hold 256, so 0 means 256.
+        header = struct.pack('<HHH', 0, 1, 1)
+        entry = struct.pack('<BBBBHHII', 0, 0, 0, 0, 1, 32, len(data), 6 + 16)
+        with open(dst, 'wb') as f:
+            f.write(header + entry + data)
+    """.trimIndent())
+}
+
+// Builds the native app with jpackage (backed by your JDK). On macOS it produces
+// "Archipelago Music Client.app": correct Dock icon, and the Activity Monitor
+// process name becomes "Archipelago Music Client" instead of "java". On Windows
+// it produces the .exe with our .ico; on Linux an executable with the icon PNG.
+//   ./gradlew packageApp    # -> build/pkg/Archipelago Music Client.<app|exe|bin>
 tasks.register<Exec>("packageApp") {
     group = "packaging"
-    description = "Builds 'Archipelago Music Client.app' with jpackage (macOS)"
+    description = "Builds the native 'Archipelago Music Client' app with jpackage for the current OS"
     dependsOn("shadowJar")
     val fatJar = tasks.named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar")
         .get().archiveFile.get().asFile
     val outputDir = layout.buildDirectory.dir("pkg").get().asFile
-    val icon = file("packaging/AppIcon.icns")
+    val icon = if (isWindowsOs) {
+        file("packaging/AppIcon.ico")
+    } else if (isMacOs) {
+        file("packaging/AppIcon.icns")
+    } else {
+        file("src/main/resources/icons/app-icon-512.png")
+    }
     inputs.file(fatJar)
     inputs.file(icon)
     outputs.dir(outputDir)
+    doFirst {
+        // jpackage refuses to overwrite an existing destination bundle.
+        outputDir.resolve("Archipelago Music Client.app").deleteRecursively()
+    }
     commandLine(
         "jpackage",
         "--type", "app-image",

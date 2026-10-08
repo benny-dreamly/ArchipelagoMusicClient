@@ -37,15 +37,12 @@ public class Main {
         String logFile = new File(logDir, "MusicAppDemo-" + timestamp + ".log").getAbsolutePath();
         System.setProperty("org.slf4j.simpleLogger.logFile", logFile);
 
-        setDockIcon();
+        setAppIcon();
 
         MusicAppDemo.main(args);
     }
 
-    private static void setDockIcon() {
-        if (!System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("mac")) {
-            return;
-        }
+    private static void setAppIcon() {
         try {
             if (!Taskbar.isTaskbarSupported() || !Taskbar.getTaskbar().isSupported(Taskbar.Feature.ICON_IMAGE)) {
                 return;
@@ -60,7 +57,7 @@ public class Main {
                 }
             }
         } catch (Exception e) {
-            LOGGER.warn("Could not set the Dock icon, continuing with the default.", e);
+            LOGGER.warn("Could not set the app icon, continuing with the default.", e);
         }
     }
 }
