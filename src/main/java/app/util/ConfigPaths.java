@@ -26,6 +26,12 @@ public class ConfigPaths {
         return new File(configDir.getParentFile(), "connection.json");
     }
 
+    /** Global locally-tracked played songs (album::song keys), sibling of connection.json. */
+    public static File getPlayHistoryFile() {
+        File configDir = getConfigDir();
+        return new File(configDir.getParentFile(), "play_history.json");
+    }
+
     public static void checkIfGameFolderExists(File gameFolder, Logger logger){
         // Ensure the per-game folder exists
         if (!gameFolder.exists()) {
