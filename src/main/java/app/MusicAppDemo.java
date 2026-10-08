@@ -29,6 +29,7 @@ import app.player.ui.ConnectionPanel;
 import app.player.ui.PlayerPanel;
 import app.util.AlbumLibrary;
 import app.util.AlbumOrderManager;
+import app.util.PlayHistoryStore;
 import app.util.SentBonusStore;
 import app.util.StateManager;
 import com.google.gson.Gson;
@@ -404,6 +405,9 @@ public class MusicAppDemo extends Application {
             library = new AlbumLibrary(albums);
             queueManager = new QueueManager(library, unlockManager);
             goalManager = new GoalManager(unlockManager, albums, this::onGoalProgressChanged);
+            // Seed locally-tracked plays; a later server response replaces them (strict
+            // separation so offline listening never inflates a slot's server state).
+            goalManager.loadFromLocal(PlayHistoryStore.load());
 
             // Re-apply slot data against the populated album list in case the
             // connection callback fired before the library finished loading.
@@ -642,6 +646,7 @@ public class MusicAppDemo extends Application {
             library = new AlbumLibrary(albums);
             queueManager = new QueueManager(library, unlockManager);
             goalManager = new GoalManager(unlockManager, albums, this::onGoalProgressChanged);
+            goalManager.loadFromLocal(PlayHistoryStore.load());
 
             installTreeCellFactory();
             applyOfflineUnlocks();
@@ -849,7 +854,7 @@ public class MusicAppDemo extends Application {
                 MenuItem queueAll = new MenuItem("Queue All Songs");
                 queueAll.setOnAction(_ -> queueAlbum(item.getValue()));
                 contextMenu.getItems().add(queueAll);
-                if (client != null && client.isConnected() && goalManager != null) {
+                if (goalManager != null) {
                     MenuItem queueUnplayed = new MenuItem("Queue Unplayed");
                     queueUnplayed.setOnAction(_ -> queueUnplayedAlbum(item.getValue()));
                     contextMenu.getItems().add(queueUnplayed);
@@ -1046,11 +1051,14 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         player.setOnEndOfMedia(() -> {
             if (client != null && client.isConnected()) {
                 client.sendCheck(song.getLocation());
-                Album songAlbum = library.getAlbumForSong(song.getTitle());
-                if (goalManager != null && songAlbum != null) {
-                    goalManager.markPlayed(song.getTitle(), songAlbum.getName(), client);
-                }
                 creditSongEnergy();
+            }
+            Album songAlbum = library.getAlbumForSong(song.getTitle());
+            if (goalManager != null && songAlbum != null) {
+                // Connected or not, record the play; GoalManager routes it to
+                // the server or the local play_history.json accordingly.
+                goalManager.markPlayed(song.getTitle(), songAlbum.getName(),
+                        client != null && client.isConnected() ? client : null);
             }
             if (queueManager.getRepeatMode() == QueueManager.RepeatMode.SONG) {
                 playSong(song);

@@ -5,6 +5,7 @@ package app.logic;
 
 import app.player.Album;
 import app.player.Song;
+import app.util.PlayHistoryStore;
 import io.github.archipelagomw.Client;
 import io.github.archipelagomw.ClientStatus;
 import io.github.archipelagomw.network.client.SetPacket;
@@ -45,10 +46,15 @@ public class GoalManager {
         boolean isNew = playedSongs.add(key);
         LOGGER.info("Marked song as played: {} (album: {}) [new={}]", songTitle, albumName, isNew);
 
-        if (serverDataLoaded) {
-            persistToServer(client);
+        if (client != null && client.isConnected()) {
+            if (serverDataLoaded) {
+                persistToServer(client);
+            } else {
+                LOGGER.debug("Deferring persist until server data is loaded");
+            }
         } else {
-            LOGGER.debug("Deferring persist until server data is loaded");
+            // Offline / Browse Folder / disconnected: local tracking only.
+            PlayHistoryStore.save(playedSongs);
         }
         checkAlbumProgress(albumName);
         checkGoal(client);
@@ -100,6 +106,8 @@ public class GoalManager {
 
     private void checkGoal(Client client) {
         if (goalSent) return;
+        // Local/offline tracking never sends goals — only a live connection can.
+        if (client == null || !client.isConnected()) return;
 
         boolean allPlayed = true;
         int enabledAlbumCount = 0;
@@ -124,8 +132,11 @@ public class GoalManager {
     }
 
     public void loadFromServer(Set<String> savedPlayedSongs, Client client) {
-        playedSongs.addAll(savedPlayedSongs);
+        // Strict separation from local tracking: the server is authoritative
+        // while connected, so locally-tracked plays are replaced, never merged.
+        playedSongs.clear();
         playedAlbums.clear();
+        playedSongs.addAll(savedPlayedSongs);
 
         for (Album album : albums) {
             if (isAlbumFullyPlayed(album)) {
@@ -134,10 +145,25 @@ public class GoalManager {
         }
 
         serverDataLoaded = true;
-        LOGGER.info("Loaded {} played songs from server (merged, total={})", savedPlayedSongs.size(),
+        LOGGER.info("Loaded {} played songs from server (total={})", savedPlayedSongs.size(),
                 playedSongs.size());
         persistToServer(client);
         checkGoal(client);
+        if (onChange != null) onChange.run();
+    }
+
+    public void loadFromLocal(Set<String> localPlayedSongs) {
+        playedSongs.clear();
+        playedAlbums.clear();
+        playedSongs.addAll(localPlayedSongs);
+
+        for (Album album : albums) {
+            if (isAlbumFullyPlayed(album)) {
+                playedAlbums.add(album.getName());
+            }
+        }
+
+        LOGGER.info("Loaded {} locally-tracked played songs", playedSongs.size());
         if (onChange != null) onChange.run();
     }
 
