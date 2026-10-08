@@ -434,7 +434,6 @@ public class MusicAppDemo extends Application {
             usingMusicLibrary = result.usingMusicLibrary();
             bonusLocations.clear();
             bonusLocations.addAll(result.bonusLocations());
-            bonusLocations.removeAll(SentBonusStore.load());
 
             if (!usingMusicLibrary) {
                 generateDefaultAlbumFolders(albums);
@@ -855,8 +854,10 @@ public class MusicAppDemo extends Application {
 
         if (!bonusLocations.isEmpty()) {
             boolean bonusMatches = "bonus".contains(query);
+            Set<String> sentForSlot = Set.copyOf(SentBonusStore.load(connectionPanel.getSlot()));
             TreeItem<String> bonusItem = new TreeItem<>("Bonus");
             for (String location : bonusLocations) {
+                if (sentForSlot.contains(location)) continue;
                 if (bonusMatches || location.toLowerCase(Locale.ROOT).contains(query)) {
                     bonusItem.getChildren().add(new TreeItem<>(location));
                 }
@@ -2091,7 +2092,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         if (client != null && client.isConnected()) {
             if (client.sendCheck(location)) {
                 bonusLocations.remove(location);
-                SentBonusStore.markSent(location);
+                SentBonusStore.markSent(connectionPanel.getSlot(), location);
                 Platform.runLater(this::refreshTree);
                 LOGGER.info("Sent bonus check: {}", location);
             } else {
