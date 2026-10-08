@@ -61,9 +61,10 @@ public class UnlockManager {
             // Song not in an album: just check if the song is unlocked
             return isSongUnlocked(song.getTitle());
         }
-        // For songs in an album: the album itself must be unlocked, then either
-        // full-album unlocked OR the song itself unlocked
-        return isAlbumUnlocked(album.getName()) && (album.isFullAlbumUnlock() || isSongUnlocked(song.getTitle()));
+        // For songs in an album: the album itself must be unlocked and the song itself
+        // must be unlocked (the full_album_unlock flag only affects how items unlock
+        // the songs, not the play/queue gate)
+        return isAlbumUnlocked(album.getName()) && isSongUnlocked(song.getTitle());
     }
 
     public boolean canQueue(Song song, Album album) {
@@ -72,7 +73,7 @@ public class UnlockManager {
         }
         return enabledSets.contains(song.getType())
                 && isAlbumUnlocked(album.getName())
-                && (album.isFullAlbumUnlock() || isSongUnlocked(song.getTitle()));
+                && isSongUnlocked(song.getTitle());
     }
 
     public void unlockSong(String songTitle) {

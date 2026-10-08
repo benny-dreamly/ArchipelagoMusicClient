@@ -64,11 +64,20 @@ class UnlockManagerTest {
     }
 
     @Test
-    void canPlay_fullAlbumUnlockAlbumUnlocked_returnsTrue() {
+    void canPlay_fullAlbumUnlockAlbumUnlocked_songUnlocked_returnsTrue() {
+        Song song = new Song("Shake It Off", "standard");
+        Album album = new Album("1989", "standard", true);
+        unlockManager.unlockSong(song.getTitle());
+        unlockManager.getUnlockedAlbums().add(album.getName());
+        assertTrue(unlockManager.canPlay(song, album));
+    }
+
+    @Test
+    void canPlay_fullAlbumUnlockAlbumUnlocked_songLocked_returnsFalse() {
         Song song = new Song("Shake It Off", "standard");
         Album album = new Album("1989", "standard", true);
         unlockManager.getUnlockedAlbums().add(album.getName());
-        assertTrue(unlockManager.canPlay(song, album));
+        assertFalse(unlockManager.canPlay(song, album));
     }
 
     @Test
@@ -133,6 +142,7 @@ class UnlockManagerTest {
     void canQueue_fullAlbumUnlockTypeEnabledAlbumUnlocked_returnsTrue() {
         Song song = new Song("Shake It Off", "standard");
         Album album = new Album("1989", "standard", true);
+        unlockManager.unlockSong(song.getTitle());
         unlockManager.getEnabledSets().add("standard");
         unlockManager.getUnlockedAlbums().add(album.getName());
         assertTrue(unlockManager.canQueue(song, album));
@@ -190,7 +200,9 @@ class UnlockManagerTest {
         assertFalse(unlockManager.canPlay(song, album));
         assertFalse(unlockManager.canQueue(song, album));
 
-        // Album item received → whole album playable, no per-song items needed (ItemListener case 1)
+        // Album item received → album unlocks and each song whose requirements are
+        // met is added to unlockedSongs (ItemListener case 1), then it is playable
+        unlockManager.unlockSong(song.getTitle());
         unlockManager.getUnlockedAlbums().add(album.getName());
         unlockManager.getEnabledSets().add(album.getType());
         assertTrue(unlockManager.canPlay(song, album));
