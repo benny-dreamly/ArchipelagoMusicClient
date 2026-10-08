@@ -222,6 +222,11 @@ tasks.register<Exec>("packageApp") {
     val fatJar = tasks.named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar")
         .get().archiveFile.get().asFile
     val outputDir = layout.buildDirectory.dir("pkg").get().asFile
+    // Bundle name jpackage produces under outputDir: "<name>.app" on macOS,
+    // "<name>" on Windows and Linux.
+    val bundleDir = outputDir.resolve(
+        if (isMacOs) "Archipelago Music Client.app" else "Archipelago Music Client"
+    )
     val icon = if (isWindowsOs) {
         file("packaging/AppIcon.ico")
     } else if (isMacOs) {
@@ -234,7 +239,7 @@ tasks.register<Exec>("packageApp") {
     outputs.dir(outputDir)
     doFirst {
         // jpackage refuses to overwrite an existing destination bundle.
-        outputDir.resolve("Archipelago Music Client.app").deleteRecursively()
+        bundleDir.deleteRecursively()
     }
     commandLine(
         "jpackage",
