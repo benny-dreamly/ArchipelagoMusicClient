@@ -171,23 +171,28 @@ tasks.register<Exec>("generateIcns") {
     """.trimIndent())
 }
 
-// Rebuilds packaging/AppIcon.ico from the 1024px source (Windows jpackage needs .ico).
-// Pure format assembly, no extra tooling required. Run after replacing the PNG:
+// Regenerates packaging/AppIcon.ico (Windows jpackage needs .ico) from the
+// 1024px source. macOS-only (uses sips to resize); the .ico is committed to the
+// repo, so Windows/Linux builds use the committed copy and never run this.
+// Run after replacing the PNG:
 //   ./gradlew generateIco
 tasks.register<Exec>("generateIco") {
     group = "packaging"
-    description = "Rebuilds packaging/AppIcon.ico from src/main/resources/icons/app-icon-1024.png"
+    description = "Rebuilds packaging/AppIcon.ico from src/main/resources/icons/app-icon-1024.png (macOS; sips)"
+    onlyIf { isMacOs }
     val png = file("src/main/resources/icons/app-icon-1024.png")
     val ico = file("packaging/AppIcon.ico")
     inputs.file(png)
     outputs.file(ico)
-    commandLine("python3", "-c", """
+    commandLine(
+        "python3", "-c", """
         import struct
         import subprocess
+        import sys
         import tempfile
 
-        src = '${png.absolutePath}'
-        dst = '${ico.absolutePath}'
+        src = sys.argv[1]
+        dst = sys.argv[2]
         with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as f:
             small = f.name
         subprocess.run(['sips', '-z', '256', '256', src, '--out', small], check=True, capture_output=True)
@@ -199,7 +204,10 @@ tasks.register<Exec>("generateIco") {
         entry = struct.pack('<BBBBHHII', 0, 0, 0, 0, 1, 32, len(data), 6 + 16)
         with open(dst, 'wb') as f:
             f.write(header + entry + data)
-    """.trimIndent())
+    """.trimIndent(),
+        png.absolutePath,
+        ico.absolutePath,
+    )
 }
 
 // Builds the native app with jpackage (backed by your JDK). On macOS it produces
