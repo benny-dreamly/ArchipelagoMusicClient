@@ -3,13 +3,21 @@
  */
 package app;
 
+import java.awt.Taskbar;
+import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
+import javax.imageio.ImageIO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Main {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
+
     public static void main(String[] args) {
         String userHome = System.getProperty("user.home");
         String os = System.getProperty("os.name").toLowerCase(Locale.ROOT);
@@ -29,6 +37,27 @@ public class Main {
         String logFile = new File(logDir, "MusicAppDemo-" + timestamp + ".log").getAbsolutePath();
         System.setProperty("org.slf4j.simpleLogger.logFile", logFile);
 
+        setAppIcon();
+
         MusicAppDemo.main(args);
+    }
+
+    private static void setAppIcon() {
+        try {
+            if (!Taskbar.isTaskbarSupported() || !Taskbar.getTaskbar().isSupported(Taskbar.Feature.ICON_IMAGE)) {
+                return;
+            }
+            try (InputStream in = Main.class.getResourceAsStream("/icons/app-icon-512.png")) {
+                if (in == null) {
+                    return;
+                }
+                BufferedImage icon = ImageIO.read(in);
+                if (icon != null) {
+                    Taskbar.getTaskbar().setIconImage(icon);
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.warn("Could not set the app icon, continuing with the default.", e);
+        }
     }
 }
