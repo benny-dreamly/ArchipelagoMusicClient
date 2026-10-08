@@ -185,7 +185,13 @@ public class ConfigManager {
         if (moved) {
             LOGGER.info("Migrating app settings {} into {}",
                     APP_SETTING_KEYS, getSettingsFile().getAbsolutePath());
-            write(connection);
+            // Persist the new home first so a mid-migration failure can't lose
+            // preferences; only drop the legacy keys once settings.json is written.
+            if (writeSettings(settings)) {
+                write(connection);
+            } else {
+                LOGGER.error("Settings write failed; keeping legacy keys in connection.json");
+            }
         }
         return settings;
     }
