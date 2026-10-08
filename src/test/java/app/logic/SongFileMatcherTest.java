@@ -138,6 +138,28 @@ class SongFileMatcherTest {
     }
 
     @Test
+    void testFindBestMatchLaterTitleWinsOverEarlierAlias() {
+        Song earlier = new Song("Alpha", "normal", "Alpha", "", List.of("Beta"));
+        Song later = new Song("Beta", "normal");
+        List<Song> songs = List.of(earlier, later);
+
+        Song matched = SongFileMatcher.findBestMatch("beta", songs);
+        assertNotNull(matched);
+        assertEquals("Beta", matched.getTitle());
+    }
+
+    @Test
+    void testFindBestMatchEarlierTitleStillWinsOverLaterAlias() {
+        Song earlier = new Song("Beta", "normal");
+        Song later = new Song("Alpha", "normal", "Alpha", "", List.of("Beta"));
+        List<Song> songs = List.of(earlier, later);
+
+        Song matched = SongFileMatcher.findBestMatch("beta", songs);
+        assertNotNull(matched);
+        assertEquals("Beta", matched.getTitle());
+    }
+
+    @Test
     void testAssignFilesToSongsMatchesUsingAlias() throws IOException {
         File albumFolder = tempDir.toFile();
         File audioFile = new File(albumFolder, "2-01 Some Chords (Dillon Francis Remix).mp3");

@@ -51,6 +51,16 @@ public class SongFileMatcher {
     }
 
     static Song findBestMatch(String normalizedFilename, List<Song> songs) {
+        // Exact title matches take precedence over aliases regardless of song
+        // order: a later song whose title equals the file wins over an earlier
+        // song's alias. Feat-stripped, truncation, and edit-distance tiers keep
+        // their relative per-song order below.
+        for (Song song : songs) {
+            if (normalizedFileEquals(normalizedFilename, normalizeSongTitle(song.getTitle()))) {
+                return song;
+            }
+        }
+
         Song matchedSong = null;
         int bestDistance = Integer.MAX_VALUE;
 
