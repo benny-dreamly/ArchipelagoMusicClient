@@ -54,36 +54,39 @@ public class SongFileMatcher {
         Song matchedSong = null;
         int bestDistance = Integer.MAX_VALUE;
 
+        String lowerFile = normalizedFilename.toLowerCase(Locale.ROOT);
+
         for (Song song : songs) {
-            String normalizedSong = normalizeSongTitle(song.getTitle());
+            // Try the title first, then any file-name aliases the song declares.
+            for (String matchName : song.getMatchNames()) {
+                String normalizedSong = normalizeSongTitle(matchName);
 
-            if (normalizedFileEquals(normalizedFilename, normalizedSong)) {
-                return song;
-            }
-
-            if (normalizedFileEquals(stripFeatCredit(normalizedFilename), stripFeatCredit(normalizedSong))) {
-                return song;
-            }
-
-            // --- Catch iTunes/OS truncated filenames ---
-            // If the filename was cut off at the end but shares a long prefix (e.g. >= 15 chars).
-            // Only treat it as truncation when the cut is mid-word; a clean prefix that ends at
-            // a word boundary is a distinct complete title, not a truncated one
-            // (e.g. "Is It Over Now? (Taylor's Version)" vs "... (From The Vault)").
-            String lowerFile = normalizedFilename.toLowerCase(Locale.ROOT);
-            String lowerSong = normalizedSong.toLowerCase(Locale.ROOT);
-
-            if (lowerFile.length() >= 15 && lowerSong.length() >= 15) {
-                if (isMidWordPrefix(lowerFile, lowerSong) || isMidWordPrefix(lowerSong, lowerFile)) {
+                if (normalizedFileEquals(normalizedFilename, normalizedSong)) {
                     return song;
                 }
-            }
 
-            int dist = levenshteinDistance(normalizedFilename.toLowerCase(Locale.ROOT),
-                normalizedSong.toLowerCase(Locale.ROOT));
-            if (dist < 5 && dist < bestDistance) { // tweak threshold if needed
-                matchedSong = song;
-                bestDistance = dist;
+                if (normalizedFileEquals(stripFeatCredit(normalizedFilename), stripFeatCredit(normalizedSong))) {
+                    return song;
+                }
+
+                // --- Catch iTunes/OS truncated filenames ---
+                // If the filename was cut off at the end but shares a long prefix (e.g. >= 15 chars).
+                // Only treat it as truncation when the cut is mid-word; a clean prefix that ends at
+                // a word boundary is a distinct complete title, not a truncated one
+                // (e.g. "Is It Over Now? (Taylor's Version)" vs "... (From The Vault)").
+                String lowerSong = normalizedSong.toLowerCase(Locale.ROOT);
+
+                if (lowerFile.length() >= 15 && lowerSong.length() >= 15) {
+                    if (isMidWordPrefix(lowerFile, lowerSong) || isMidWordPrefix(lowerSong, lowerFile)) {
+                        return song;
+                    }
+                }
+
+                int dist = levenshteinDistance(lowerFile, lowerSong);
+                if (dist < 5 && dist < bestDistance) { // tweak threshold if needed
+                    matchedSong = song;
+                    bestDistance = dist;
+                }
             }
         }
 
