@@ -107,7 +107,8 @@ public class MusicLibraryLoader {
                 String songType = songJSON.type != null ? songJSON.type : "normal";
                 String location = songJSON.location != null ? songJSON.location : songJSON.title;
                 String requires = songJSON.requires != null ? songJSON.requires : "";
-                Song song = new Song(songJSON.title, songType, location, requires);
+                List<String> aliases = songJSON.aliases;
+                Song song = new Song(songJSON.title, songType, location, requires, aliases);
 
                 if (songJSON.path != null) {
                     song.setFilePath(songJSON.path);

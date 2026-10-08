@@ -107,6 +107,76 @@ class SongFileMatcherTest {
     }
 
     @Test
+    void testFindBestMatchMatchesAliasWhenTitleDoesNot() {
+        // Title ("Some Chords - Dillon Francis Remix") does not resemble the file
+        // name, but the declared alias ("Some Chords (Dillon Francis Remix)") does.
+        Song song = new Song("Some Chords - Dillon Francis Remix", "normal", "Some Chords - Dillon Francis Remix",
+                "", List.of("Some Chords (Dillon Francis Remix)"));
+        List<Song> songs = List.of(song);
+
+        Song matched = SongFileMatcher.findBestMatch("Some Chords (Dillon Francis Remix)", songs);
+        assertNotNull(matched);
+        assertEquals("Some Chords - Dillon Francis Remix", matched.getTitle());
+    }
+
+    @Test
+    void testFindBestMatchAliasFallsBackWhenNoMatch() {
+        Song song = new Song("Some Chords - Dillon Francis Remix", "normal", "Some Chords - Dillon Francis Remix",
+                "", List.of("Some Chords (Dillon Francis Remix)"));
+        List<Song> songs = List.of(song);
+
+        assertNull(SongFileMatcher.findBestMatch("Totally Unrelated File Name", songs));
+    }
+
+    @Test
+    void testFindBestMatchTitleWinsOverAlias() {
+        Song song = new Song("Blank Space", "normal", "Blank Space",
+                "", List.of("Something Completely Different"));
+        List<Song> songs = List.of(song);
+
+        assertEquals("Blank Space", SongFileMatcher.findBestMatch("blank space", songs).getTitle());
+    }
+
+    @Test
+    void testFindBestMatchLaterTitleWinsOverEarlierAlias() {
+        Song earlier = new Song("Alpha", "normal", "Alpha", "", List.of("Beta"));
+        Song later = new Song("Beta", "normal");
+        List<Song> songs = List.of(earlier, later);
+
+        Song matched = SongFileMatcher.findBestMatch("beta", songs);
+        assertNotNull(matched);
+        assertEquals("Beta", matched.getTitle());
+    }
+
+    @Test
+    void testFindBestMatchEarlierTitleStillWinsOverLaterAlias() {
+        Song earlier = new Song("Beta", "normal");
+        Song later = new Song("Alpha", "normal", "Alpha", "", List.of("Beta"));
+        List<Song> songs = List.of(earlier, later);
+
+        Song matched = SongFileMatcher.findBestMatch("beta", songs);
+        assertNotNull(matched);
+        assertEquals("Beta", matched.getTitle());
+    }
+
+    @Test
+    void testAssignFilesToSongsMatchesUsingAlias() throws IOException {
+        File albumFolder = tempDir.toFile();
+        File audioFile = new File(albumFolder, "2-01 Some Chords (Dillon Francis Remix).mp3");
+        assertTrue(audioFile.createNewFile());
+
+        Song song = new Song("Some Chords - Dillon Francis Remix", "normal", "Some Chords - Dillon Francis Remix",
+                "", List.of("Some Chords (Dillon Francis Remix)"));
+        Album album = new Album("Test Album", "standard");
+        album.getSongs().add(song);
+        album.setFolderPath(albumFolder.getAbsolutePath());
+
+        SongFileMatcher.assignFilesToSongs(List.of(album));
+
+        assertEquals(audioFile.getAbsolutePath(), song.getFilePath());
+    }
+
+    @Test
     void testAssignFilesToSongsMatching() throws IOException {
         File albumFolder = tempDir.toFile();
         File audioFile = new File(albumFolder, "01 - Style.mp3");

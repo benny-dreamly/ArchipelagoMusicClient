@@ -259,6 +259,7 @@ public class MusicAppDemo extends Application {
         scene.getStylesheets().add(getClass().getResource("/app.css").toExternalForm());
         stage.setScene(scene);
         stage.setTitle("Archipelago Music Client");
+        setWindowIcons(stage);
         stage.show();
 
         setupKeyboardShortcuts(scene);
@@ -353,6 +354,17 @@ public class MusicAppDemo extends Application {
         System.exit(0); // ensures all threads are killed
     }
 
+    private void setWindowIcons(Stage stage) {
+        try {
+            Image icon = new Image(getClass().getResourceAsStream("/icons/app-icon-512.png"));
+            if (!icon.isError()) {
+                stage.getIcons().add(icon);
+            }
+        } catch (Exception e) {
+            LOGGER.warn("Could not set the window icon, continuing with the default.", e);
+        }
+    }
+
     private record LoadResult(List<Album> albums, boolean usingMusicLibrary, List<String> bonusLocations) {}
 
     private Task<LoadResult> getLoadTask() {
@@ -362,43 +374,50 @@ public class MusicAppDemo extends Application {
             protected LoadResult call() throws Exception {
                 File gameFolder = getConfigDir();
                 File musicLibraryFile = new File(gameFolder, "music_library.json");
-
-                // Primary: music_library.json (new hierarchical format)
+                File localLocations = new File(gameFolder, "locations.json");
                 MusicLibraryLoader musicLoader = new MusicLibraryLoader();
+                LibraryLoader loader = new LibraryLoader();
+
+                // Primary: music_library.json (new hierarchical format). The user's
+                // own data — in either format — must win over the bundled sample.
                 if (musicLibraryFile.exists()) {
                     try {
                         List<Album> loaded = musicLoader.loadFromFile(musicLibraryFile);
                         List<String> bonus = new ArrayList<>(musicLoader.loadBonusLocations(musicLibraryFile));
                         return new LoadResult(loaded, true, bonus);
                     } catch (Exception e) {
-                        LOGGER.warn("Failed to load music_library.json, falling back to bundled sample", e);
+                        LOGGER.warn("Failed to load music_library.json, trying locations.json", e);
                     }
                 }
 
-                // Fallback: bundled music_library.json (current format), so a fresh
+                // Legacy: locations.json in the game folder (flat format)
+                if (localLocations.exists()) {
+                    try (Reader reader = new FileReader(localLocations, StandardCharsets.UTF_8)) {
+                        List<SongJSON> rawSongs = loader.loadSongsFromReader(reader);
+                        Map<String, AlbumMetadata> metadata = AlbumMetadataLoader.loadAlbumMetadata(gameFolder);
+                        AlbumConverter converter = new AlbumConverter(metadata);
+                        List<Album> result = converter.convert(rawSongs);
+                        List<String> bonus = new ArrayList<>(converter.getBonusLocations());
+                        LOGGER.info("Loaded {} albums from locations.json in game folder", result.size());
+                        return new LoadResult(result, false, bonus);
+                    } catch (Exception e) {
+                        LOGGER.warn("Failed to load locations.json in game folder, falling back to bundled sample", e);
+                    }
+                }
+
+                // Fallback: bundled music_library.json (current sample), so a fresh
                 // install or a game without per-game config still loads a sample library.
                 try {
                     List<Album> loaded = musicLoader.loadFromResource("/music_library.json");
                     List<String> bonus = new ArrayList<>(musicLoader.loadBonusLocationsResource("/music_library.json"));
-                    LOGGER.info("No music_library.json in game folder; using bundled sample library");
+                    LOGGER.info("No music_library.json or locations.json in game folder; using bundled sample library");
                     return new LoadResult(loaded, true, bonus);
                 } catch (Exception e) {
-                    LOGGER.warn("Bundled music_library.json unavailable, falling back to locations.json", e);
+                    LOGGER.warn("Bundled music_library.json unavailable, falling back to bundled locations.json", e);
                 }
 
-                // Fallback: locations.json (legacy flat format)
-                LibraryLoader loader = new LibraryLoader();
-                File localLocations = new File(gameFolder, "locations.json");
-                List<SongJSON> rawSongs;
-
-                if (localLocations.exists()) {
-                    try (Reader reader = new FileReader(localLocations, StandardCharsets.UTF_8)) {
-                        rawSongs = loader.loadSongsFromReader(reader);
-                    }
-                } else {
-                    rawSongs = loader.loadSongs("/locations.json");
-                }
-
+                // Fallback: bundled locations.json (legacy sample)
+                List<SongJSON> rawSongs = loader.loadSongs("/locations.json");
                 Map<String, AlbumMetadata> metadata = AlbumMetadataLoader.loadAlbumMetadata(gameFolder);
                 AlbumConverter converter = new AlbumConverter(metadata);
                 List<Album> result = converter.convert(rawSongs);

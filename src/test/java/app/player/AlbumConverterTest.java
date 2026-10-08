@@ -39,6 +39,16 @@ class AlbumConverterTest {
     }
 
     @Test
+    void convert_songLocationDefaultsToName() {
+        AlbumConverter converter = new AlbumConverter(Map.of());
+        SongJSON song = createSong("Some Chords - Dillon Francis Remix", "5 Years of mau5", List.of());
+
+        List<Album> albums = converter.convert(List.of(song));
+
+        assertEquals("Some Chords - Dillon Francis Remix", albums.get(0).getSongs().get(0).getLocation());
+    }
+
+    @Test
     void convert_nullOrBlankRegion_groupsUnderSongs() {
         AlbumConverter converter = new AlbumConverter(Map.of());
         SongJSON songNull = createSong("Track 1", null, List.of());
