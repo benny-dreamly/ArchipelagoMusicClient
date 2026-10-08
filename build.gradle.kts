@@ -25,6 +25,16 @@ application {
     mainClass.set("app.Main")
 }
 
+// macOS-only Dock identity for `gradle run` (menu bar name + Dock tile).
+// The Activity Monitor process name still shows "java" without a bundled .app;
+// packageApp produces the real .app with the proper process name.
+tasks.named<JavaExec>("run") {
+    if (System.getProperty("os.name").startsWith("Mac", ignoreCase = true)) {
+        val dockIcon = file("packaging/AppIcon.icns").absolutePath
+        jvmArgs("-Xdock:name=Archipelago Music Client", "-Xdock:icon=$dockIcon")
+    }
+}
+
 javafx {
     version = "25"
     modules = listOf("javafx.controls", "javafx.media")
@@ -126,4 +136,62 @@ tasks.withType<JavaCompile>().configureEach {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+// --- macOS app icon & packaging ---
+
+// Rebuilds src/main/resources/icons/AppIcon.icns from app-icon-1024.png.
+// Run this again after dropping in your real 1024x1024 PNG:
+//   ./gradlew generateIcns
+tasks.register<Exec>("generateIcns") {
+    group = "packaging"
+    description = "Rebuilds AppIcon.icns from src/main/resources/icons/app-icon-1024.png (macOS only; needs sips + iconutil)"
+    val png = file("src/main/resources/icons/app-icon-1024.png")
+    val iconset = layout.buildDirectory.dir("icons/AppIcon.iconset").get().asFile
+    val icns = file("packaging/AppIcon.icns")
+    inputs.file(png)
+    outputs.file(icns)
+    workingDir = iconset
+    doFirst {
+        iconset.mkdirs()
+    }
+    commandLine("bash", "-c", """
+        set -e
+        for spec in "16 icon_16x16.png" "32 icon_16x16@2x.png" "32 icon_32x32.png" "64 icon_32x32@2x.png" \
+                    "128 icon_128x128.png" "256 icon_128x128@2x.png" "256 icon_256x256.png" "512 icon_256x256@2x.png" \
+                    "512 icon_512x512.png" "1024 icon_512x512@2x.png"; do
+          read -r size out <<< "${'$'}spec"
+          sips -z "${'$'}size" "${'$'}size" "${png.absolutePath}" --out "${'$'}out" >/dev/null
+        done
+        iconutil -c icns . -o "${icns.absolutePath}"
+    """.trimIndent())
+}
+
+// Builds a real macOS .app (jpackage, bundled with your JDK). The bundled app
+// is named "Archipelago Music Client", uses AppIcon.icns for the Dock, and the
+// Activity Monitor process name becomes "Archipelago Music Client" instead of "java".
+//   ./gradlew packageApp    # -> build/pkg/Archipelago Music Client.app
+tasks.register<Exec>("packageApp") {
+    group = "packaging"
+    description = "Builds 'Archipelago Music Client.app' with jpackage (macOS)"
+    dependsOn("shadowJar")
+    val fatJar = tasks.named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar")
+        .get().archiveFile.get().asFile
+    val outputDir = layout.buildDirectory.dir("pkg").get().asFile
+    val icon = file("packaging/AppIcon.icns")
+    inputs.file(fatJar)
+    inputs.file(icon)
+    outputs.dir(outputDir)
+    commandLine(
+        "jpackage",
+        "--type", "app-image",
+        "--name", "Archipelago Music Client",
+        "--app-version", project.version.toString(),
+        "--input", fatJar.parentFile.absolutePath,
+        "--main-jar", fatJar.name,
+        "--main-class", "app.Main",
+        "--icon", icon.absolutePath,
+        "--dest", outputDir.absolutePath,
+        "--java-options", "--enable-native-access=javafx.graphics",
+    )
 }
