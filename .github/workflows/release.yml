@@ -54,14 +54,25 @@ jobs:
         shell: bash
         run: bash ./gradlew packageApp -PappVersion=${{ steps.version.outputs.version_no_v }}
 
-      - name: Zip the bundle
+      - name: Zip the bundle (macOS or Linux)
         shell: bash
+        if: runner.os != 'Windows'
         run: |
           set -euo pipefail
           cd build/pkg
           dir=$(ls -1 | head -n 1)
           mkdir -p ../../dist
-          jar --create --file "../../dist/ArchipelagoMusicClient-${{ steps.version.outputs.version_no_v }}-${{ matrix.bundle_name }}.zip" "$dir"
+          # -y keeps symlinks; jar/Compress-Archive-style tools mangle them and
+          # strip exec bits off the launcher, which breaks the bundle.
+          zip -ry "../../dist/ArchipelagoMusicClient-${{ steps.version.outputs.version_no_v }}-${{ matrix.bundle_name }}.zip" "$dir"
+
+      - name: Zip the bundle (Windows)
+        shell: pwsh
+        if: runner.os == 'Windows'
+        run: |
+          $dir = (Get-ChildItem -Directory build/pkg | Select-Object -First 1).Name
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Compress-Archive -Path "build/pkg/$dir" -DestinationPath "dist/ArchipelagoMusicClient-${{ steps.version.outputs.version_no_v }}-${{ matrix.bundle_name }}.zip"
 
       - name: Upload bundle artifact
         uses: actions/upload-artifact@v4
