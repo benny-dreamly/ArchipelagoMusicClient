@@ -62,7 +62,7 @@ public class AlbumConverter {
                 }
             }
 
-            album.addSong(new Song(raw.name, songType, "", requires));
+            album.addSong(new Song(raw.name, songType, raw.name, requires));
         }
 
         return new ArrayList<>(albums.values());
