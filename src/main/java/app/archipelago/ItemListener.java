@@ -175,6 +175,10 @@ public class ItemListener {
         app.refreshTree();
 
         LOGGER.info("Received item: {} from {}'s {}", itemName, playerName, locationName);
+        // Re-arm the session-restore debounce: each item extends the quiet window
+        // so the restore only fires once the whole starting-inventory burst has
+        // been applied to unlock state.
+        app.scheduleSessionRestoreApply();
     }
 
     private void unlockRequirementsSatisfied() {

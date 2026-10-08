@@ -26,12 +26,17 @@ import java.util.List;
 import java.util.Map;
 
 import static app.util.ConfigPaths.getConnectionConfigFile;
+import static app.util.ConfigPaths.getSettingsFile;
 
 public class ConfigManager {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
 
     private static final String SLOTS_KEY = "slots";
+
+    /** Keys that live in settings.json rather than connection.json. */
+    private static final List<String> APP_SETTING_KEYS =
+            List.of("dark_mode", "deathlink", "session_restore");
 
     private ConfigManager() {} // utility class
 
@@ -82,31 +87,42 @@ public class ConfigManager {
     }
 
     public static boolean loadDarkMode() {
-        Object value = loadAllSettings().get("dark_mode");
-        return value instanceof Boolean bool && bool;
+        return loadSettings().get("dark_mode") instanceof Boolean bool && bool;
     }
 
     public static void saveDarkMode(boolean darkMode) {
-        Map<String, Object> data = loadAllSettings();
+        Map<String, Object> data = loadSettings();
         if (darkMode == (data.get("dark_mode") instanceof Boolean bool && bool)) {
             return;
         }
         data.put("dark_mode", darkMode);
-        write(data);
+        writeSettings(data);
     }
 
     public static boolean loadDeathLink() {
-        Object value = loadAllSettings().get("deathlink");
-        return value instanceof Boolean bool && bool;
+        return loadSettings().get("deathlink") instanceof Boolean bool && bool;
     }
 
     public static void saveDeathLink(boolean deathLink) {
-        Map<String, Object> data = loadAllSettings();
+        Map<String, Object> data = loadSettings();
         if (deathLink == (data.get("deathlink") instanceof Boolean bool && bool)) {
             return;
         }
         data.put("deathlink", deathLink);
-        write(data);
+        writeSettings(data);
+    }
+
+    public static boolean loadSessionRestore() {
+        return loadSettings().get("session_restore") instanceof Boolean bool && bool;
+    }
+
+    public static void saveSessionRestore(boolean sessionRestore) {
+        Map<String, Object> data = loadSettings();
+        if (sessionRestore == (data.get("session_restore") instanceof Boolean bool && bool)) {
+            return;
+        }
+        data.put("session_restore", sessionRestore);
+        writeSettings(data);
     }
 
     public static String loadBrowseFolder() {
@@ -148,6 +164,57 @@ public class ConfigManager {
             return migrated;
         }
         return readGlobalSettings();
+    }
+
+    /**
+     * Reads settings.json, first migrating any app-setting keys that still live
+     * in connection.json so older installs keep their preferences.
+     */
+    private static Map<String, Object> loadSettings() {
+        Map<String, Object> settings = readJsonFile(getSettingsFile());
+
+        Map<String, Object> connection = loadAllSettings();
+        boolean moved = false;
+        for (String key : APP_SETTING_KEYS) {
+            if (!settings.containsKey(key) && connection.containsKey(key)) {
+                settings.put(key, connection.get(key));
+                connection.remove(key);
+                moved = true;
+            }
+        }
+        if (moved) {
+            LOGGER.info("Migrating app settings {} into {}",
+                    APP_SETTING_KEYS, getSettingsFile().getAbsolutePath());
+            // Persist the new home first so a mid-migration failure can't lose
+            // preferences; only drop the legacy keys once settings.json is written.
+            if (writeSettings(settings)) {
+                write(connection);
+            } else {
+                LOGGER.error("Settings write failed; keeping legacy keys in connection.json");
+            }
+        }
+        return settings;
+    }
+
+    private static boolean writeSettings(Map<String, Object> data) {
+        return writeJsonFile(getSettingsFile(), data, "settings");
+    }
+
+    private static Map<String, Object> readJsonFile(File file) {
+        if (!file.exists()) {
+            return new HashMap<>();
+        }
+        try (Reader reader = new FileReader(file, StandardCharsets.UTF_8)) {
+            Type type = new TypeToken<Map<String, Object>>(){}.getType();
+            Map<String, Object> data = new Gson().fromJson(reader, type);
+            return data == null ? new HashMap<>() : data;
+        } catch (IOException e) {
+            LOGGER.error("Failed to load settings from {}", file.getAbsolutePath(), e);
+            return new HashMap<>();
+        } catch (JsonSyntaxException e) {
+            LOGGER.error("Malformed settings in {}", file.getAbsolutePath(), e);
+            return new HashMap<>();
+        }
     }
 
     private static Map<String, Object> migrateLegacySettings() {
@@ -285,7 +352,10 @@ public class ConfigManager {
     }
 
     private static boolean write(Map<String, Object> data) {
-        File file = getConnectionConfigFile();
+        return writeJsonFile(getConnectionConfigFile(), data, "connection settings");
+    }
+
+    private static boolean writeJsonFile(File file, Map<String, Object> data, String label) {
         File parent = file.getParentFile();
         if (parent != null) {
             //noinspection ResultOfMethodCallIgnored
@@ -293,10 +363,10 @@ public class ConfigManager {
         }
         try (Writer writer = new FileWriter(file, StandardCharsets.UTF_8)) {
             new GsonBuilder().setPrettyPrinting().create().toJson(data, writer);
-            LOGGER.info("Saved connection settings to {}", file.getAbsolutePath());
+            LOGGER.info("Saved {} to {}", label, file.getAbsolutePath());
             return true;
         } catch (IOException e) {
-            LOGGER.error("Failed to save connection settings to {}", file.getAbsolutePath(), e);
+            LOGGER.error("Failed to save {} to {}", label, file.getAbsolutePath(), e);
             return false;
         }
     }
