@@ -5,6 +5,7 @@ package app.player.ui;
 
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Tooltip;
@@ -30,6 +31,7 @@ public class SettingsWindow {
     private final CheckBox darkModeCheck;
     private final CheckBox deathLinkCheck;
     private final CheckBox sessionRestoreCheck;
+    private final Button convertLibraryButton;
 
     public SettingsWindow(Stage owner) {
         stage = new Stage();
@@ -49,15 +51,23 @@ public class SettingsWindow {
                 "When connecting to the same game and slot, restore the queue\n"
                         + "and resume the current song at its previous position."));
 
+        convertLibraryButton = new Button("Generate music_library.json from locations.json");
+        convertLibraryButton.setMaxWidth(Double.MAX_VALUE);
+        convertLibraryButton.setTooltip(new Tooltip(
+                "Rebuilds the game folder's music_library.json from its locations.json,\n"
+                        + "merging album_metadata.json and albumFolders.json when present.\n"
+                        + "An existing music_library.json is backed up to .bak before overwriting."));
+
         VBox root = new VBox(8);
         root.setPadding(new Insets(12));
         root.getChildren().addAll(
                 new Label("Appearance"), darkModeCheck,
                 new Label("Gameplay"), deathLinkCheck,
-                new Label("Session"), sessionRestoreCheck
+                new Label("Session"), sessionRestoreCheck,
+                new Label("Library"), convertLibraryButton
         );
 
-        scene = new Scene(root, 300, 160);
+        scene = new Scene(root, 340, 200);
         if (darkModeCheck.isSelected()) {
             scene.getStylesheets().add(getClass().getResource(DARK_CSS).toExternalForm());
         }
@@ -83,6 +93,10 @@ public class SettingsWindow {
 
     public CheckBox getSessionRestoreCheck() {
         return sessionRestoreCheck;
+    }
+
+    public Button getConvertLibraryButton() {
+        return convertLibraryButton;
     }
 
     /** Adds or removes the dark stylesheet on the settings window itself. */
