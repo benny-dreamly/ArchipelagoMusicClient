@@ -17,8 +17,9 @@ import app.logic.QueueManager;
 import app.logic.SongFileMatcher;
 import app.logic.UnlockManager;
 import app.player.Album;
-import app.player.Song;
 import app.player.AlbumConverter;
+import app.player.ReversedAudioCache;
+import app.player.Song;
 import app.player.json.AlbumMetadata;
 import app.player.json.AlbumMetadataLoader;
 import app.player.json.LibraryLoader;
@@ -82,6 +83,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Locale;
@@ -95,6 +97,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
@@ -162,6 +165,10 @@ public class MusicAppDemo extends Application {
 
     // playback
     private MediaPlayer currentPlayer;
+
+    // audio reversal trap
+    private final ReversedAudioCache reversedAudioCache = new ReversedAudioCache();
+    private volatile boolean reverseTrapActive;
 
     // energy link / playback boost
     private static final double BOOST_RATE_150 = 1.5;
@@ -1067,7 +1074,34 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             });
         });
 
-        Media media = new Media(Paths.get(song.getFilePath()).toUri().toString());
+        Path mediaPath = Paths.get(song.getFilePath());
+        if (reverseTrapActive) {
+            startReversedPlayback(song, album, mediaPath, restoreSeek);
+        } else {
+            playMedia(song, album, mediaPath, false, restoreSeek);
+        }
+    }
+
+    private void startReversedPlayback(Song song, Album album, Path originalPath, Duration restoreSeek) {
+        LOGGER.info("Audio Reversal trap active: playing '{}' reversed", song.getTitle());
+        playerPanel.setCurrentSongLabel("Reversing " + song.getTitle() + "…");
+        CompletableFuture<Path> reversedPlayback = reversedAudioCache.getReversedAsync(originalPath);
+        var unused = reversedPlayback.whenComplete((reversedPath, error) -> {
+            if (error != null) {
+                LOGGER.warn("Could not reverse '{}' ({}), playing it normally", song.getTitle(), error);
+                Platform.runLater(() -> {
+                    if (currentSong == song) playMedia(song, album, originalPath, false, restoreSeek);
+                });
+                return;
+            }
+            Platform.runLater(() -> {
+                if (currentSong == song) playMedia(song, album, reversedPath, true, restoreSeek);
+            });
+        });
+    }
+
+    private void playMedia(Song song, Album album, Path mediaPath, boolean reversed, Duration restoreSeek) {
+        Media media = new Media(mediaPath.toUri().toString());
         MediaPlayer player = new MediaPlayer(media);
         currentPlayer = player;
         player.setVolume(playerPanel.getVolumeSlider().getValue() / 100.0);
@@ -1123,7 +1157,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         });
 
         player.play();
-        playerPanel.setCurrentSongLabel("Currently Playing: " + song.getTitle());
+        playerPanel.setCurrentSongLabel("Currently Playing: " + song.getTitle() + (reversed ? " (reversed)" : ""));
         updateQueueDisplay();
         highlightCurrentSong(album, song.getTitle());
     }
@@ -2102,6 +2136,18 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
                         + "This bonus location is not defined for your game on this server.");
             }
         }
+    }
+
+    public void activateReverseTrap(int seconds) {
+        reverseTrapActive = true;
+        connectionPanel.getTextClientWindow().appendOutput(
+                "🔀 Audio Reversal trap! Songs play in reverse for " + seconds + " seconds");
+        LOGGER.info("Audio Reversal trap activated for {} seconds", seconds);
+        Timeline trapTimer = new Timeline(new KeyFrame(Duration.seconds(seconds), _ -> {
+            reverseTrapActive = false;
+            connectionPanel.getTextClientWindow().appendOutput("Audio Reversal trap wore off");
+        }));
+        trapTimer.play();
     }
 
     private void handleTreeSelection(TreeItem<String> newSel) {

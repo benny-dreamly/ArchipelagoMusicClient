@@ -19,6 +19,9 @@ import static app.MusicAppDemo.LOGGER;
 
 public class ItemListener {
 
+    private static final String AUDIO_REVERSAL_TRAP = "Audio Reversal";
+    private static final int REVERSE_TRAP_SECONDS = 60;
+
     private final MusicAppDemo app;
 
     private final Set<String> receivedItems = new HashSet<>();
@@ -107,6 +110,12 @@ public class ItemListener {
 
     private void processItem(String itemName, String locationName, String playerName) {
         receivedItems.add(itemName);
+
+        if (itemName.equalsIgnoreCase(AUDIO_REVERSAL_TRAP)) {
+            LOGGER.info("Audio Reversal trap received from {}'s {}", playerName, locationName);
+            app.activateReverseTrap(REVERSE_TRAP_SECONDS);
+            return;
+        }
 
         switch (itemName) {
             case "Vault Tracks" -> // Optionally unlock the vault songs if you want immediate access
