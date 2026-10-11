@@ -98,6 +98,10 @@ public class UnlockManager {
         }
     }
 
+    public void enableAlbumForDisplay(String albumName) {
+        enabledAlbums.add(albumName);
+    }
+
     public void applySlotData(Map<String, Object> slotMap, List<Album> albums) {
         applyAlbumUnlocks(slotMap, albums);
         filterSongCategories(slotMap, albums);
