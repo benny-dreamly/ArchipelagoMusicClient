@@ -154,6 +154,10 @@ public class MusicLibraryConverter {
 
         MusicLibraryConverter converter = new MusicLibraryConverter();
         try {
+            if (out.exists() && Files.isSameFile(locationsFile.toPath(), out.toPath())) {
+                throw new IllegalArgumentException(
+                        "Output must differ from the input locations.json: " + out.getAbsolutePath());
+            }
             MusicLibraryJSON library = converter.convert(locationsFile, configDir);
             converter.write(library, out);
             int songs = 0;
