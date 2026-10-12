@@ -5,6 +5,7 @@ package app.player.json;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 
 import org.slf4j.Logger;
@@ -133,8 +134,8 @@ public class MusicLibraryConverter {
             Type type = new TypeToken<Map<String, String>>() {}.getType();
             Map<String, String> folders = new Gson().fromJson(reader, type);
             return folders == null ? Map.of() : folders;
-        } catch (IOException e) {
-            LOGGER.warn("Could not read albumFolders.json in {}", configDir.getAbsolutePath());
+        } catch (IOException | JsonSyntaxException e) {
+            LOGGER.warn("Could not read albumFolders.json in {}", configDir.getAbsolutePath(), e);
             return Map.of();
         }
     }

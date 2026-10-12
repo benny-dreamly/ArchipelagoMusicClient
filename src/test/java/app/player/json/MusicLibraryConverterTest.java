@@ -181,6 +181,21 @@ class MusicLibraryConverterTest {
     }
 
     @Test
+    void convert_malformedAlbumFolders_usesEmptyFolders(@TempDir Path tempDir) throws Exception {
+        Path locations = tempDir.resolve("locations.json");
+        Files.writeString(locations, """
+                [ { "name": "Style", "region": "1989", "category": ["1989"], "requires": [] } ]
+                """.trim(), StandardCharsets.UTF_8);
+        Files.writeString(tempDir.resolve("albumFolders.json"), "{ not json",
+                StandardCharsets.UTF_8);
+
+        MusicLibraryConverter converter = new MusicLibraryConverter();
+        MusicLibraryJSON library = converter.convert(locations.toFile(), tempDir.toFile());
+
+        assertEquals("", library.albums.get(0).path);
+    }
+
+    @Test
     void roundtrip_fileToMusicLibraryFile(@TempDir Path tempDir) throws Exception {
         Path locations = tempDir.resolve("locations.json");
         Files.writeString(locations, """
