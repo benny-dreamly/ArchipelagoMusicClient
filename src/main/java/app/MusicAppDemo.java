@@ -565,6 +565,7 @@ public class MusicAppDemo extends Application {
 
         File musicLibraryFile = new File(gameFolder, "music_library.json");
         MusicLibraryConverter converter = new MusicLibraryConverter();
+        settingsWindow.getConvertLibraryButton().setDisable(true);
         Task<MusicLibraryJSON> task = new Task<>() {
             @Override
             protected MusicLibraryJSON call() throws Exception {
@@ -578,22 +579,30 @@ public class MusicAppDemo extends Application {
             }
         };
         task.setOnSucceeded(_ -> {
-            MusicLibraryJSON library = task.getValue();
-            int songs = 0;
-            for (MusicLibraryJSON.AlbumJSON album : library.albums) {
-                songs += album.songs.size();
+            try {
+                MusicLibraryJSON library = task.getValue();
+                int songs = 0;
+                for (MusicLibraryJSON.AlbumJSON album : library.albums) {
+                    songs += album.songs.size();
+                }
+                connectionPanel.getTextClientWindow().appendOutput("Converted locations.json -> music_library.json ("
+                        + library.albums.size() + " albums, " + songs + " songs)");
+                reloadGameLibrary(gameFolder);
+            } finally {
+                settingsWindow.getConvertLibraryButton().setDisable(false);
             }
-            connectionPanel.getTextClientWindow().appendOutput("Converted locations.json -> music_library.json ("
-                    + library.albums.size() + " albums, " + songs + " songs)");
-            reloadGameLibrary(gameFolder);
         });
         task.setOnFailed(_ -> {
-            Throwable err = task.getException();
-            LOGGER.error("Failed to convert locations.json to music_library.json", err);
-            String detail = err == null ? "Unknown error"
-                    : (err.getMessage() == null || err.getMessage().isBlank()
-                    ? err.getClass().getSimpleName() : err.getMessage());
-            showError("Conversion Failed", "Could not convert locations.json", detail);
+            try {
+                Throwable err = task.getException();
+                LOGGER.error("Failed to convert locations.json to music_library.json", err);
+                String detail = err == null ? "Unknown error"
+                        : (err.getMessage() == null || err.getMessage().isBlank()
+                        ? err.getClass().getSimpleName() : err.getMessage());
+                showError("Conversion Failed", "Could not convert locations.json", detail);
+            } finally {
+                settingsWindow.getConvertLibraryButton().setDisable(false);
+            }
         });
         new Thread(task).start();
     }
