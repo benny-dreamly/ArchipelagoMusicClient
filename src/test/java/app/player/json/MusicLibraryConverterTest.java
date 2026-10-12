@@ -9,6 +9,7 @@ import app.player.Song;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -193,6 +194,22 @@ class MusicLibraryConverterTest {
         MusicLibraryJSON library = converter.convert(locations.toFile(), tempDir.toFile());
 
         assertEquals("", library.albums.get(0).path);
+    }
+
+    @Test
+    void main_writesToFilenameOnlyOutputPath(@TempDir Path tempDir) throws Exception {
+        Path locations = tempDir.resolve("locations.json");
+        Files.writeString(locations, """
+                [ { "name": "Style", "region": "1989", "category": ["1989"], "requires": [] } ]
+                """.trim(), StandardCharsets.UTF_8);
+        File out = new File("cli-filename-only-out.json");
+        try {
+            MusicLibraryConverter.main(new String[]{locations.toString(), out.getName()});
+            assertTrue(out.getAbsoluteFile().isFile());
+            assertEquals("1989", new MusicLibraryLoader().loadFromFile(out).get(0).getName());
+        } finally {
+            Files.deleteIfExists(out.toPath());
+        }
     }
 
     @Test

@@ -86,7 +86,7 @@ public class MusicLibraryConverter {
 
     public void write(MusicLibraryJSON library, File out) throws IOException {
         Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
-        Path outPath = out.toPath();
+        Path outPath = out.toPath().toAbsolutePath();
         Path temp = Files.createTempFile(outPath.getParent(), out.getName(), ".tmp");
         try {
             try (Writer writer = Files.newBufferedWriter(temp, StandardCharsets.UTF_8)) {
