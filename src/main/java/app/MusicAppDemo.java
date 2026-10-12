@@ -22,15 +22,19 @@ import app.player.AlbumConverter;
 import app.player.json.AlbumMetadata;
 import app.player.json.AlbumMetadataLoader;
 import app.player.json.LibraryLoader;
+import app.player.json.MusicLibraryConverter;
+import app.player.json.MusicLibraryJSON;
 import app.player.json.MusicLibraryLoader;
 import app.player.json.SongJSON;
 import app.player.ui.AlbumArtPanel;
 import app.player.ui.ConnectionPanel;
 import app.player.ui.PlayerPanel;
+import app.player.ui.SettingsWindow;
 import app.util.AlbumLibrary;
 import app.util.AlbumOrderManager;
 import app.util.PlayHistoryStore;
 import app.util.SentBonusStore;
+import app.util.SessionStore;
 import app.util.StateManager;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -39,6 +43,8 @@ import com.google.gson.reflect.TypeToken;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -79,7 +85,9 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Paths;
+
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -110,6 +118,8 @@ import static app.util.ConfigManager.loadDeathLink;
 import static app.util.ConfigManager.saveDeathLink;
 import static app.util.ConfigManager.loadBrowseFolder;
 import static app.util.ConfigManager.saveBrowseFolder;
+import static app.util.ConfigManager.loadSessionRestore;
+import static app.util.ConfigManager.saveSessionRestore;
 import static app.util.ConfigPaths.getConfigDir;
 import static app.util.ConfigPaths.getAlbumConfigFile;
 import static app.util.ConfigPaths.checkIfGameFolderExists;
@@ -132,6 +142,10 @@ public class MusicAppDemo extends Application {
     private boolean usingMusicLibrary = false;
     private boolean offlineMode = false;
     private final AtomicInteger loadGeneration = new AtomicInteger(0);
+    private record PendingSessionRestore(SessionStore.Snapshot snapshot, int generation) {}
+    private PendingSessionRestore pendingSessionRestore;
+    private final Timeline sessionRestoreDebounce = new Timeline();
+    private Duration pendingSeek;
     private boolean volumeAdjustMode = false;
     private final StringBuilder volumeInput = new StringBuilder();
     private final java.util.LinkedList<Song> songHistory = new java.util.LinkedList<>();
@@ -180,7 +194,9 @@ public class MusicAppDemo extends Application {
     private ConnectionPanel connectionPanel;
     private PlayerPanel playerPanel;
     private AlbumArtPanel albumArtPanel;
+    private SettingsWindow settingsWindow;
     private HBox albumPanel;
+    private Scene scene;
     private final ContextMenu contextMenu = new ContextMenu();
     @SuppressWarnings("FieldCanBeLocal")
     private HBox bottomBar;
@@ -244,10 +260,11 @@ public class MusicAppDemo extends Application {
         VBox.setVgrow(albumPanel, javafx.scene.layout.Priority.ALWAYS);
 
         root = new VBox(10, albumPanel, bottomBar);
-        Scene scene = new Scene(root, 800, 600);
+        scene = new Scene(root, 800, 600);
         scene.getStylesheets().add(getClass().getResource("/app.css").toExternalForm());
         stage.setScene(scene);
         stage.setTitle("Archipelago Music Client");
+        setWindowIcons(stage);
         stage.show();
 
         setupKeyboardShortcuts(scene);
@@ -284,12 +301,6 @@ public class MusicAppDemo extends Application {
             }
         });
 
-        // Dark mode toggle
-        if (loadDarkMode()) {
-            scene.getStylesheets().add(getClass().getResource("/dark.css").toExternalForm());
-        }
-        connectionPanel.getDarkModeCheck().setSelected(loadDarkMode());
-
         // Browse Folder mode
         connectionPanel.getBrowseFolderBtn().setOnAction(_ -> {
             DirectoryChooser chooser = new DirectoryChooser();
@@ -299,31 +310,67 @@ public class MusicAppDemo extends Application {
                 browseFolder(selected);
             }
         });
-        connectionPanel.getDarkModeCheck().selectedProperty().addListener((_, _, isDark) -> {
-            scene.getStylesheets().remove(getClass().getResource("/dark.css").toExternalForm());
+
+        // Dark mode toggle
+        if (loadDarkMode()) {
+            scene.getStylesheets().add(getClass().getResource("/dark.css").toExternalForm());
+        }
+
+        // Dedicated settings window: dark mode, deathlink, session restore
+        settingsWindow = new SettingsWindow(stage);
+        connectionPanel.getOpenSettingsButton().setOnAction(_ -> settingsWindow.show());
+        settingsWindow.getDarkModeCheck().selectedProperty().addListener((_, _, isDark) -> {
+            String darkCss = getClass().getResource("/dark.css").toExternalForm();
+            scene.getStylesheets().remove(darkCss);
             if (isDark) {
-                scene.getStylesheets().add(getClass().getResource("/dark.css").toExternalForm());
+                scene.getStylesheets().add(darkCss);
             }
+            settingsWindow.setDarkMode(isDark);
             saveDarkMode(isDark);
         });
 
         // Deathlink toggle
-        connectionPanel.getDeathLinkCheck().setSelected(loadDeathLink());
-        connectionPanel.getDeathLinkCheck().selectedProperty().addListener((_, _, enabled) -> {
+        settingsWindow.getDeathLinkCheck().selectedProperty().addListener((_, _, enabled) -> {
             saveDeathLink(enabled);
             applyDeathLinkEnabled(enabled);
         });
+
+        // Session restore toggle
+        settingsWindow.getSessionRestoreCheck().selectedProperty().addListener((_, _, enabled) ->
+                saveSessionRestore(enabled));
+
+        // Library converter: rebuild music_library.json from locations.json
+        settingsWindow.getConvertLibraryButton().setOnAction(_ -> convertLocationsToLibrary());
+
+        // Periodically snapshot the queue and playback position while the
+        // library exists, so a later same-slot connect can restore it.
+        Timeline sessionSaver = new Timeline(new KeyFrame(Duration.seconds(5),
+                _ -> maybeSaveSessionSnapshot()));
+        sessionSaver.setCycleCount(Timeline.INDEFINITE);
+        sessionSaver.play();
     }
 
 
     @Override
     public void stop() throws Exception {
         super.stop();
+        maybeSaveSessionSnapshot(); // persist queue + position for session restore
         artworkExecutor.shutdownNow();
         if (client != null) {
             client.close();
         }
         System.exit(0); // ensures all threads are killed
+    }
+
+    private void setWindowIcons(Stage stage) {
+        try {
+            Image icon = new Image(getClass().getResourceAsStream("/icons/app-icon-512.png"));
+            if (!icon.isError()) {
+                stage.getIcons().add(icon);
+            }
+        } catch (Exception e) {
+            LOGGER.warn("Could not set the window icon, continuing with the default.", e);
+        }
     }
 
     private record LoadResult(List<Album> albums, boolean usingMusicLibrary, List<String> bonusLocations) {}
@@ -335,43 +382,50 @@ public class MusicAppDemo extends Application {
             protected LoadResult call() throws Exception {
                 File gameFolder = getConfigDir();
                 File musicLibraryFile = new File(gameFolder, "music_library.json");
-
-                // Primary: music_library.json (new hierarchical format)
+                File localLocations = new File(gameFolder, "locations.json");
                 MusicLibraryLoader musicLoader = new MusicLibraryLoader();
+                LibraryLoader loader = new LibraryLoader();
+
+                // Primary: music_library.json (new hierarchical format). The user's
+                // own data — in either format — must win over the bundled sample.
                 if (musicLibraryFile.exists()) {
                     try {
                         List<Album> loaded = musicLoader.loadFromFile(musicLibraryFile);
                         List<String> bonus = new ArrayList<>(musicLoader.loadBonusLocations(musicLibraryFile));
                         return new LoadResult(loaded, true, bonus);
                     } catch (Exception e) {
-                        LOGGER.warn("Failed to load music_library.json, falling back to bundled sample", e);
+                        LOGGER.warn("Failed to load music_library.json, trying locations.json", e);
                     }
                 }
 
-                // Fallback: bundled music_library.json (current format), so a fresh
+                // Legacy: locations.json in the game folder (flat format)
+                if (localLocations.exists()) {
+                    try (Reader reader = new FileReader(localLocations, StandardCharsets.UTF_8)) {
+                        List<SongJSON> rawSongs = loader.loadSongsFromReader(reader);
+                        Map<String, AlbumMetadata> metadata = AlbumMetadataLoader.loadAlbumMetadata(gameFolder);
+                        AlbumConverter converter = new AlbumConverter(metadata);
+                        List<Album> result = converter.convert(rawSongs);
+                        List<String> bonus = new ArrayList<>(converter.getBonusLocations());
+                        LOGGER.info("Loaded {} albums from locations.json in game folder", result.size());
+                        return new LoadResult(result, false, bonus);
+                    } catch (Exception e) {
+                        LOGGER.warn("Failed to load locations.json in game folder, falling back to bundled sample", e);
+                    }
+                }
+
+                // Fallback: bundled music_library.json (current sample), so a fresh
                 // install or a game without per-game config still loads a sample library.
                 try {
                     List<Album> loaded = musicLoader.loadFromResource("/music_library.json");
                     List<String> bonus = new ArrayList<>(musicLoader.loadBonusLocationsResource("/music_library.json"));
-                    LOGGER.info("No music_library.json in game folder; using bundled sample library");
+                    LOGGER.info("No music_library.json or locations.json in game folder; using bundled sample library");
                     return new LoadResult(loaded, true, bonus);
                 } catch (Exception e) {
-                    LOGGER.warn("Bundled music_library.json unavailable, falling back to locations.json", e);
+                    LOGGER.warn("Bundled music_library.json unavailable, falling back to bundled locations.json", e);
                 }
 
-                // Fallback: locations.json (legacy flat format)
-                LibraryLoader loader = new LibraryLoader();
-                File localLocations = new File(gameFolder, "locations.json");
-                List<SongJSON> rawSongs;
-
-                if (localLocations.exists()) {
-                    try (Reader reader = new FileReader(localLocations, StandardCharsets.UTF_8)) {
-                        rawSongs = loader.loadSongsFromReader(reader);
-                    }
-                } else {
-                    rawSongs = loader.loadSongs("/locations.json");
-                }
-
+                // Fallback: bundled locations.json (legacy sample)
+                List<SongJSON> rawSongs = loader.loadSongs("/locations.json");
                 Map<String, AlbumMetadata> metadata = AlbumMetadataLoader.loadAlbumMetadata(gameFolder);
                 AlbumConverter converter = new AlbumConverter(metadata);
                 List<Album> result = converter.convert(rawSongs);
@@ -388,7 +442,6 @@ public class MusicAppDemo extends Application {
             usingMusicLibrary = result.usingMusicLibrary();
             bonusLocations.clear();
             bonusLocations.addAll(result.bonusLocations());
-            bonusLocations.removeAll(SentBonusStore.load());
 
             if (!usingMusicLibrary) {
                 generateDefaultAlbumFolders(albums);
@@ -478,6 +531,10 @@ public class MusicAppDemo extends Application {
             }
 
             restoreLibraryControls();
+
+            // Library is ready — schedule a pending session restore so it applies
+            // only after the starting-inventory items have updated unlock state.
+            scheduleSessionRestoreApply();
         });
 
         loadTask.setOnFailed(_ -> {
@@ -501,6 +558,61 @@ public class MusicAppDemo extends Application {
     }
 
     @SuppressWarnings("unused")
+    private void convertLocationsToLibrary() {
+        File gameFolder = getConfigDir();
+        File locationsFile = new File(gameFolder, "locations.json");
+        if (!locationsFile.isFile()) {
+            showError("No locations.json", "locations.json not found",
+                    "This game folder has no locations.json to convert:\n" + gameFolder.getAbsolutePath());
+            return;
+        }
+
+        File musicLibraryFile = new File(gameFolder, "music_library.json");
+        MusicLibraryConverter converter = new MusicLibraryConverter();
+        settingsWindow.getConvertLibraryButton().setDisable(true);
+        Task<MusicLibraryJSON> task = new Task<>() {
+            @Override
+            protected MusicLibraryJSON call() throws Exception {
+                File backup = new File(gameFolder, "music_library.json.bak");
+                if (musicLibraryFile.exists() && !backup.exists()) {
+                    Files.copy(musicLibraryFile.toPath(), backup.toPath());
+                }
+                MusicLibraryJSON library = converter.convert(locationsFile, gameFolder);
+                converter.write(library, musicLibraryFile);
+                return library;
+            }
+        };
+        task.setOnSucceeded(_ -> {
+            try {
+                MusicLibraryJSON library = task.getValue();
+                int songs = 0;
+                for (MusicLibraryJSON.AlbumJSON album : library.albums) {
+                    songs += album.songs.size();
+                }
+                connectionPanel.getTextClientWindow().appendOutput("Converted locations.json -> music_library.json ("
+                        + library.albums.size() + " albums, " + songs + " songs)");
+                if (savedBrowseFolder() == null) {
+                    reloadGameLibrary(gameFolder);
+                }
+            } finally {
+                settingsWindow.getConvertLibraryButton().setDisable(false);
+            }
+        });
+        task.setOnFailed(_ -> {
+            try {
+                Throwable err = task.getException();
+                LOGGER.error("Failed to convert locations.json to music_library.json", err);
+                String detail = err == null ? "Unknown error"
+                        : (err.getMessage() == null || err.getMessage().isBlank()
+                        ? err.getClass().getSimpleName() : err.getMessage());
+                showError("Conversion Failed", "Could not convert locations.json", detail);
+            } finally {
+                settingsWindow.getConvertLibraryButton().setDisable(false);
+            }
+        });
+        new Thread(task).start();
+    }
+
     private void reloadGameLibrary(File gameFolder) {
         // Buffer item events before invalidating generation
         if (itemListener != null) {
@@ -809,8 +921,10 @@ public class MusicAppDemo extends Application {
 
         if (!bonusLocations.isEmpty()) {
             boolean bonusMatches = "bonus".contains(query);
+            Set<String> sentForSlot = Set.copyOf(SentBonusStore.load(connectionPanel.getSlot()));
             TreeItem<String> bonusItem = new TreeItem<>("Bonus");
             for (String location : bonusLocations) {
+                if (sentForSlot.contains(location)) continue;
                 if (bonusMatches || location.toLowerCase(Locale.ROOT).contains(query)) {
                     bonusItem.getChildren().add(new TreeItem<>(location));
                 }
@@ -944,8 +1058,17 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         return unlockManager.getEnabledSets();
     }
 
+    public void enableAlbumForDisplay(String albumName) {
+        unlockManager.enableAlbumForDisplay(albumName);
+    }
+
     private void playSong(Song song) {
         if (song == null) return;
+
+        // One-shot seek requested by a session restore; consume it so a
+        // failed start can't leak it into a later song.
+        Duration restoreSeek = pendingSeek;
+        pendingSeek = null;
 
         Album album = library.getAlbumForSong(song.getTitle());
         boolean canPlay = unlockManager.canPlay(song, album);
@@ -1038,6 +1161,11 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             Duration total = player.getTotalDuration();
             if (total != null) {
                 playerPanel.getDurationLabel().setText(formatTime(total));
+                if (restoreSeek != null
+                        && restoreSeek.greaterThan(Duration.ZERO)
+                        && restoreSeek.lessThan(total)) {
+                    player.seek(restoreSeek);
+                }
             }
         });
 
@@ -1237,6 +1365,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         for (Song s : queueManager.asList()) {
             playerPanel.addToQueueDisplay(s);
         }
+        maybeSaveSessionSnapshot();
     }
 
     private void removeFromQueue(Song song) {
@@ -1419,6 +1548,10 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
     }
 
     private void disconnectFromServer() {
+        // Snapshot the session before playback is torn down so reconnecting to
+        // the same slot can restore it.
+        maybeSaveSessionSnapshot();
+
         // DISCONNECT
         client.close();
         connectionPanel.setStatus("Disconnected");
@@ -1477,6 +1610,9 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
 
         ensureGameDefaults(gameFolder.get());
         reloadGameLibrary(gameFolder.get());
+        // After the reload bumped the load generation, so the pending restore
+        // tracks the library load this connect kicked off.
+        armSessionRestore(gameName, slot);
 
         client.setOnErrorCallback(ex -> {
             connectionPanel.setStatus("Connection failed");
@@ -1529,6 +1665,161 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             showError("Connection Failed", "Failed to connect to Archipelago server", ex.getMessage());
             connectionPanel.setConnectButtonText("Connect");
         }
+    }
+
+    // Session restore -----------------------------------------------------
+
+    /**
+     * Arms a pending session restore when the session-restore setting is on and
+     * the persisted snapshot belongs to the game/slot being connected to. Must
+     * run after {@link #reloadGameLibrary} so the pending restore tracks the
+     * library load this connect started.
+     */
+    private void armSessionRestore(String gameName, String slot) {
+        pendingSessionRestore = null;
+        if (!loadSessionRestore()) {
+            return;
+        }
+        SessionStore.Snapshot snapshot = SessionStore.load();
+        if (snapshot == null || !snapshot.hasContent()) {
+            return;
+        }
+        if (!snapshot.game().equals(gameName) || !snapshot.slot().equals(slot)) {
+            LOGGER.info("Session restore skipped: snapshot is for game={} slot={}, "
+                    + "connecting to game={} slot={}",
+                    snapshot.game(), snapshot.slot(), gameName, slot);
+            return;
+        }
+        pendingSessionRestore = new PendingSessionRestore(snapshot, loadGeneration.get());
+        LOGGER.info("Session restore armed: {} queued songs, current={} ({} ms)",
+                snapshot.queue().size(), snapshot.currentTitle(), snapshot.positionMs());
+    }
+
+    /**
+     * Requests that the pending session restore be applied after a short
+     * quiescence. The library fires one ReceiveItemEvent per starting-inventory
+     * item with no batch-complete signal, so instead we debounce on the item
+     * stream: every item event re-arms this timer, and the restore only applies
+     * once item events have stopped arriving and unlock state is settled.
+     * No-op when nothing is pending. Must be called on the FX thread.
+     */
+    public void scheduleSessionRestoreApply() {
+        if (pendingSessionRestore == null) {
+            return;
+        }
+        sessionRestoreDebounce.stop();
+        sessionRestoreDebounce.getKeyFrames().setAll(
+                new KeyFrame(Duration.millis(150), _ -> tryApplySessionRestore()));
+        sessionRestoreDebounce.play();
+    }
+
+    /**
+     * Applies the pending restore once the library and connection are ready and
+     * the starting-inventory item burst has settled (via
+     * {@link #scheduleSessionRestoreApply}, re-armed on every item event). Only
+     * applies while the queue is empty so it can never clobber live state; if
+     * nothing is playable yet (items still arriving) the restore stays pending.
+     * Auto-reconnect never reaches here because it doesn't reload the library.
+     */
+    public void tryApplySessionRestore() {
+        PendingSessionRestore pending = pendingSessionRestore;
+        if (pending == null) {
+            return;
+        }
+        if (pending.generation() != loadGeneration.get()) {
+            pendingSessionRestore = null; // superseded by a newer load
+            return;
+        }
+        if (client == null || !client.isConnected() || queueManager == null || library == null) {
+            return; // not ready yet — the debounce re-runs this once ready
+        }
+        if (!queueManager.isEmpty()) {
+            LOGGER.info("Session restore skipped: queue is not empty");
+            pendingSessionRestore = null; // the user has taken over — abandon it
+            return;
+        }
+
+        SessionStore.Snapshot snapshot = pending.snapshot();
+        if (!snapshot.hasContent()) {
+            pendingSessionRestore = null;
+            return;
+        }
+
+        List<Song> resolved = new ArrayList<>();
+        for (Map<String, String> entry : snapshot.queue()) {
+            Song song = findSong(entry.get("title"), entry.get("type"));
+            if (song != null
+                    && unlockManager.canQueue(song, library.getAlbumForSong(song.getTitle()))) {
+                resolved.add(song);
+            }
+        }
+        Song current = snapshot.currentTitle() != null
+                ? findSong(snapshot.currentTitle(), snapshot.currentType())
+                : null;
+        boolean currentPlayable = current != null
+                && unlockManager.canPlay(current, library.getAlbumForSong(current.getTitle()));
+
+        if (resolved.isEmpty() && !currentPlayable) {
+            // Nothing is playable yet — usually the starting-inventory items that
+            // would unlock these songs have not been applied. Keep the restore
+            // pending so the next item event's debounce re-attempts it once
+            // unlock state is complete.
+            LOGGER.debug("Session restore deferred: no songs playable yet (items may still be arriving)");
+            return;
+        }
+
+        pendingSessionRestore = null;
+        queueManager.replaceAll(resolved);
+        updateQueueDisplay();
+        if (currentPlayable) {
+            pendingSeek = Duration.millis((double) Math.max(0, snapshot.positionMs()));
+            playSong(current);
+        }
+        LOGGER.info("Session restored: {} queued songs{}", resolved.size(),
+                currentPlayable ? ", resuming \"" + current.getTitle() + "\"" : "");
+    }
+
+    private Song findSong(String title, String type) {
+        if (title == null || library == null) {
+            return null;
+        }
+        for (Album album : albums) {
+            for (Song song : album.getSongs()) {
+                if (song.getTitle().equals(title) && (type == null || song.getType().equals(type))) {
+                    return song;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Persists the current queue and playback position when session restore is
+     * enabled. Skipped when disconnected with nothing queued so a fresh or
+     * failed connection can't overwrite the previous session's snapshot with
+     * the empty state left behind by the library reload.
+     */
+    private void maybeSaveSessionSnapshot() {
+        if (queueManager == null || settingsWindow == null
+                || !settingsWindow.getSessionRestoreCheck().isSelected()) {
+            return;
+        }
+        boolean connected = client != null && client.isConnected();
+        boolean hasState = !queueManager.isEmpty() || currentSong != null;
+        if (!connected && !hasState) {
+            return;
+        }
+        long positionMs = 0;
+        if (currentPlayer != null && currentPlayer.getCurrentTime() != null) {
+            positionMs = (long) currentPlayer.getCurrentTime().toMillis();
+        }
+        SessionStore.save(new SessionStore.Snapshot(
+                connectionPanel.getGameName(),
+                connectionPanel.getSlot(),
+                queueManager.toEntries(),
+                currentSong != null ? currentSong.getTitle() : null,
+                currentSong != null ? currentSong.getType() : null,
+                positionMs));
     }
 
     private void createBottomBar() {
@@ -1875,7 +2166,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         if (client != null && client.isConnected()) {
             if (client.sendCheck(location)) {
                 bonusLocations.remove(location);
-                SentBonusStore.markSent(location);
+                SentBonusStore.markSent(connectionPanel.getSlot(), location);
                 Platform.runLater(this::refreshTree);
                 LOGGER.info("Sent bonus check: {}", location);
             } else {

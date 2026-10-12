@@ -6,8 +6,11 @@ package app.player;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -19,6 +22,7 @@ public class Song {
     private final String type;
     private final String location;
     private final String requires;
+    private final List<String> aliases;
 
     private String filePath;
 
@@ -31,10 +35,16 @@ public class Song {
     }
 
     public Song(String title, String type, String location, String requires) {
+        this(title, type, location, requires, List.of());
+    }
+
+    public Song(String title, String type, String location, String requires, List<String> aliases) {
         this.title = title;
         this.type = type;
         this.location = location;
         this.requires = requires != null ? requires : "";
+        this.aliases = aliases == null ? List.of()
+                : aliases.stream().filter(Objects::nonNull).toList();
     }
 
     public String getTitle() {
@@ -51,6 +61,20 @@ public class Song {
 
     public String getRequires() {
         return requires;
+    }
+
+    public List<String> getAliases() {
+        return aliases;
+    }
+
+    public List<String> getMatchNames() {
+        if (aliases.isEmpty()) {
+            return List.of(title);
+        }
+        List<String> names = new ArrayList<>(1 + aliases.size());
+        names.add(title);
+        names.addAll(aliases);
+        return names;
     }
 
     public Set<String> getRequiredItems() {

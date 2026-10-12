@@ -25,5 +25,6 @@ public class MusicLibraryJSON {
         public String path;
         public String type;
         public String requires;
+        public List<String> aliases;
     }
 }

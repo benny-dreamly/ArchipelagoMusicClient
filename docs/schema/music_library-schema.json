@@ -68,6 +68,13 @@
                   "type": "string",
                   "description": "Pipe-delimited item names required before this song can be played (e.g. '|Disc 1|' or '|Disc 1|Disc 2|'). Empty string means no requirement.",
                   "default": ""
+                },
+                "aliases": {
+                  "type": "array",
+                  "description": "Optional alternative names used when matching this song against audio files in the album folder (e.g. a file named '2-01 Some Chords (Dillon Francis Remix).mp3' for a song titled 'Some Chords - Dillon Francis Remix'). The title is tried first.",
+                  "items": {
+                    "type": "string"
+                  }
                 }
               },
               "required": ["title"]
