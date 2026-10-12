@@ -564,16 +564,21 @@ public class MusicAppDemo extends Application {
         }
 
         File musicLibraryFile = new File(gameFolder, "music_library.json");
-        try {
-            File backup = new File(gameFolder, "music_library.json.bak");
-            if (musicLibraryFile.exists() && !backup.exists()) {
-                Files.copy(musicLibraryFile.toPath(), backup.toPath());
+        MusicLibraryConverter converter = new MusicLibraryConverter();
+        Task<MusicLibraryJSON> task = new Task<>() {
+            @Override
+            protected MusicLibraryJSON call() throws Exception {
+                File backup = new File(gameFolder, "music_library.json.bak");
+                if (musicLibraryFile.exists() && !backup.exists()) {
+                    Files.copy(musicLibraryFile.toPath(), backup.toPath());
+                }
+                MusicLibraryJSON library = converter.convert(locationsFile, gameFolder);
+                converter.write(library, musicLibraryFile);
+                return library;
             }
-
-            MusicLibraryConverter converter = new MusicLibraryConverter();
-            MusicLibraryJSON library = converter.convert(locationsFile, gameFolder);
-            converter.write(library, musicLibraryFile);
-
+        };
+        task.setOnSucceeded(_ -> {
+            MusicLibraryJSON library = task.getValue();
             int songs = 0;
             for (MusicLibraryJSON.AlbumJSON album : library.albums) {
                 songs += album.songs.size();
@@ -581,11 +586,16 @@ public class MusicAppDemo extends Application {
             connectionPanel.getTextClientWindow().appendOutput("Converted locations.json -> music_library.json ("
                     + library.albums.size() + " albums, " + songs + " songs)");
             reloadGameLibrary(gameFolder);
-        } catch (Exception e) {
-            LOGGER.error("Failed to convert locations.json to music_library.json", e);
-            showError("Conversion Failed", "Could not convert locations.json",
-                    String.valueOf(e.getMessage()));
-        }
+        });
+        task.setOnFailed(_ -> {
+            Throwable err = task.getException();
+            LOGGER.error("Failed to convert locations.json to music_library.json", err);
+            String detail = err == null ? "Unknown error"
+                    : (err.getMessage() == null || err.getMessage().isBlank()
+                    ? err.getClass().getSimpleName() : err.getMessage());
+            showError("Conversion Failed", "Could not convert locations.json", detail);
+        });
+        new Thread(task).start();
     }
 
     private void reloadGameLibrary(File gameFolder) {
