@@ -1042,6 +1042,10 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         return unlockManager.getEnabledSets();
     }
 
+    public void enableAlbumForDisplay(String albumName) {
+        unlockManager.enableAlbumForDisplay(albumName);
+    }
+
     private void playSong(Song song) {
         if (song == null) return;
 

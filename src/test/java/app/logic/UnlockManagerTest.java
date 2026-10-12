@@ -248,6 +248,18 @@ class UnlockManagerTest {
     }
 
     @Test
+    void enableAlbumForDisplay_marksAlbumVisible() {
+        unlockManager.enableAlbumForDisplay("Taylor Swift");
+        assertTrue(unlockManager.getEnabledAlbums().contains("Taylor Swift"));
+    }
+
+    @Test
+    void enableAlbumForDisplay_doesNotFireOnChange() {
+        unlockManager.enableAlbumForDisplay("Taylor Swift");
+        assertEquals(0, onChangeCount);
+    }
+
+    @Test
     void applySlotData_enablesAlbumsFromSlotData() {
         Album tswift = new Album("1989", "standard");
         Album folklore = new Album("folklore", "standard");
