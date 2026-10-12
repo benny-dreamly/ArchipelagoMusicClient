@@ -76,6 +76,19 @@ class MusicLibraryConverterTest {
     }
 
     @Test
+    void convert_firstSongCategoryDeterminesAlbumType() {
+        MusicLibraryConverter converter = new MusicLibraryConverter();
+        List<SongJSON> songs = List.of(
+                song("Track 1", "Misc", List.of("Misc"), List.of()),
+                song("Track 2", "Misc", List.of("Misc", "Re-recordings"), List.of()));
+
+        MusicLibraryJSON library = converter.convert(songs, Map.of(), Map.of());
+
+        assertEquals("standard", library.albums.get(0).type);
+        assertEquals("re-recording", library.albums.get(0).songs.get(1).type);
+    }
+
+    @Test
     void convert_bonusLocationsRegion_droppedIntoBonusList() {
         MusicLibraryConverter converter = new MusicLibraryConverter();
         List<SongJSON> songs = List.of(

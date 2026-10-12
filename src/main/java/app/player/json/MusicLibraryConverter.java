@@ -61,16 +61,12 @@ public class MusicLibraryConverter {
             MusicLibraryJSON.AlbumJSON album = albums.computeIfAbsent(albumName, name -> {
                 MusicLibraryJSON.AlbumJSON a = new MusicLibraryJSON.AlbumJSON();
                 a.name = name;
-                a.type = "standard";
+                a.type = detectAlbumType(raw.category);
                 a.full_album_unlock = meta.getOrDefault(name, new AlbumMetadata(false)).isFullAlbumUnlock();
                 a.path = folders.getOrDefault(name, "");
                 a.songs = new ArrayList<>();
                 return a;
             });
-
-            if (containsIgnoreCase(raw.category, "Re-recordings")) {
-                album.type = "re-recording";
-            }
 
             MusicLibraryJSON.SongJSON song = new MusicLibraryJSON.SongJSON();
             song.title = raw.name;
@@ -103,6 +99,10 @@ public class MusicLibraryConverter {
         } finally {
             Files.deleteIfExists(temp);
         }
+    }
+
+    private static String detectAlbumType(List<String> categories) {
+        return containsIgnoreCase(categories, "Re-recordings") ? "re-recording" : "standard";
     }
 
     private static String inferSongType(List<String> category) {
