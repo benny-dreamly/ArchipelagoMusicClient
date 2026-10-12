@@ -67,7 +67,7 @@ public class SettingsWindow {
                 new Label("Library"), convertLibraryButton
         );
 
-        scene = new Scene(root, 340, 200);
+        scene = new Scene(root, 340, 300);
         if (darkModeCheck.isSelected()) {
             scene.getStylesheets().add(getClass().getResource(DARK_CSS).toExternalForm());
         }
