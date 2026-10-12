@@ -138,6 +138,16 @@ tasks.test {
     useJUnitPlatform()
 }
 
+// Generates music_library.json from a Manual-world locations.json (merging
+// album_metadata.json and albumFolders.json from the same folder when present).
+//   ./gradlew convertLocations --args="<locations.json> [output-music_library.json]"
+tasks.register<JavaExec>("convertLocations") {
+    group = "tools"
+    description = "Generate music_library.json from locations.json (and optional legacy album_metadata.json/albumFolders.json)"
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("app.player.json.MusicLibraryConverter")
+}
+
 // --- App icon & packaging (per-platform) ---
 
 val isMacOs = System.getProperty("os.name").startsWith("Mac", ignoreCase = true)

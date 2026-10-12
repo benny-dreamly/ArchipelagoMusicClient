@@ -22,6 +22,8 @@ import app.player.AlbumConverter;
 import app.player.json.AlbumMetadata;
 import app.player.json.AlbumMetadataLoader;
 import app.player.json.LibraryLoader;
+import app.player.json.MusicLibraryConverter;
+import app.player.json.MusicLibraryJSON;
 import app.player.json.MusicLibraryLoader;
 import app.player.json.SongJSON;
 import app.player.ui.AlbumArtPanel;
@@ -82,7 +84,9 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Paths;
+
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -334,6 +338,9 @@ public class MusicAppDemo extends Application {
         settingsWindow.getSessionRestoreCheck().selectedProperty().addListener((_, _, enabled) ->
                 saveSessionRestore(enabled));
 
+        // Library converter: rebuild music_library.json from locations.json
+        settingsWindow.getConvertLibraryButton().setOnAction(_ -> convertLocationsToLibrary());
+
         // Periodically snapshot the queue and playback position while the
         // library exists, so a later same-slot connect can restore it.
         Timeline sessionSaver = new Timeline(new KeyFrame(Duration.seconds(5),
@@ -547,6 +554,61 @@ public class MusicAppDemo extends Application {
     }
 
     @SuppressWarnings("unused")
+    private void convertLocationsToLibrary() {
+        File gameFolder = getConfigDir();
+        File locationsFile = new File(gameFolder, "locations.json");
+        if (!locationsFile.isFile()) {
+            showError("No locations.json", "locations.json not found",
+                    "This game folder has no locations.json to convert:\n" + gameFolder.getAbsolutePath());
+            return;
+        }
+
+        File musicLibraryFile = new File(gameFolder, "music_library.json");
+        MusicLibraryConverter converter = new MusicLibraryConverter();
+        settingsWindow.getConvertLibraryButton().setDisable(true);
+        Task<MusicLibraryJSON> task = new Task<>() {
+            @Override
+            protected MusicLibraryJSON call() throws Exception {
+                File backup = new File(gameFolder, "music_library.json.bak");
+                if (musicLibraryFile.exists() && !backup.exists()) {
+                    Files.copy(musicLibraryFile.toPath(), backup.toPath());
+                }
+                MusicLibraryJSON library = converter.convert(locationsFile, gameFolder);
+                converter.write(library, musicLibraryFile);
+                return library;
+            }
+        };
+        task.setOnSucceeded(_ -> {
+            try {
+                MusicLibraryJSON library = task.getValue();
+                int songs = 0;
+                for (MusicLibraryJSON.AlbumJSON album : library.albums) {
+                    songs += album.songs.size();
+                }
+                connectionPanel.getTextClientWindow().appendOutput("Converted locations.json -> music_library.json ("
+                        + library.albums.size() + " albums, " + songs + " songs)");
+                if (savedBrowseFolder() == null) {
+                    reloadGameLibrary(gameFolder);
+                }
+            } finally {
+                settingsWindow.getConvertLibraryButton().setDisable(false);
+            }
+        });
+        task.setOnFailed(_ -> {
+            try {
+                Throwable err = task.getException();
+                LOGGER.error("Failed to convert locations.json to music_library.json", err);
+                String detail = err == null ? "Unknown error"
+                        : (err.getMessage() == null || err.getMessage().isBlank()
+                        ? err.getClass().getSimpleName() : err.getMessage());
+                showError("Conversion Failed", "Could not convert locations.json", detail);
+            } finally {
+                settingsWindow.getConvertLibraryButton().setDisable(false);
+            }
+        });
+        new Thread(task).start();
+    }
+
     private void reloadGameLibrary(File gameFolder) {
         // Buffer item events before invalidating generation
         if (itemListener != null) {
