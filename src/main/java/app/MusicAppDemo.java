@@ -565,9 +565,9 @@ public class MusicAppDemo extends Application {
 
         File musicLibraryFile = new File(gameFolder, "music_library.json");
         try {
-            if (musicLibraryFile.exists()) {
-                File backup = new File(gameFolder, "music_library.json.bak");
-                Files.copy(musicLibraryFile.toPath(), backup.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            File backup = new File(gameFolder, "music_library.json.bak");
+            if (musicLibraryFile.exists() && !backup.exists()) {
+                Files.copy(musicLibraryFile.toPath(), backup.toPath());
             }
 
             MusicLibraryConverter converter = new MusicLibraryConverter();
