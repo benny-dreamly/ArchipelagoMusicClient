@@ -587,7 +587,9 @@ public class MusicAppDemo extends Application {
                 }
                 connectionPanel.getTextClientWindow().appendOutput("Converted locations.json -> music_library.json ("
                         + library.albums.size() + " albums, " + songs + " songs)");
-                reloadGameLibrary(gameFolder);
+                if (savedBrowseFolder() == null) {
+                    reloadGameLibrary(gameFolder);
+                }
             } finally {
                 settingsWindow.getConvertLibraryButton().setDisable(false);
             }
