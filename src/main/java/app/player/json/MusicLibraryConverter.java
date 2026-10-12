@@ -162,8 +162,8 @@ public class MusicLibraryConverter {
             }
             LOGGER.info("Wrote music_library.json with {} albums and {} songs to {}",
                     library.albums.size(), songs, out.getAbsolutePath());
-        } catch (IOException e) {
-            LOGGER.error("Conversion failed: {}", e.getMessage());
+        } catch (IOException | RuntimeException e) {
+            LOGGER.error("Conversion failed for {}", locationsFile.getAbsolutePath(), e);
             System.exit(1);
         }
     }
