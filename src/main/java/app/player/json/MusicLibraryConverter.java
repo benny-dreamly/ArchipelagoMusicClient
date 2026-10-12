@@ -17,7 +17,6 @@ import java.io.Reader;
 import java.io.Writer;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -94,7 +93,7 @@ public class MusicLibraryConverter {
             }
             try {
                 Files.move(temp, outPath, StandardCopyOption.ATOMIC_MOVE);
-            } catch (AtomicMoveNotSupportedException e) {
+            } catch (IOException e) {
                 Files.move(temp, outPath, StandardCopyOption.REPLACE_EXISTING);
             }
         } finally {
