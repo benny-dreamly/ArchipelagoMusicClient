@@ -16,7 +16,10 @@ import java.io.Reader;
 import java.io.Writer;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -86,8 +89,19 @@ public class MusicLibraryConverter {
 
     public void write(MusicLibraryJSON library, File out) throws IOException {
         Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
-        try (Writer writer = Files.newBufferedWriter(out.toPath(), StandardCharsets.UTF_8)) {
-            gson.toJson(library, writer);
+        Path outPath = out.toPath();
+        Path temp = Files.createTempFile(outPath.getParent(), out.getName(), ".tmp");
+        try {
+            try (Writer writer = Files.newBufferedWriter(temp, StandardCharsets.UTF_8)) {
+                gson.toJson(library, writer);
+            }
+            try {
+                Files.move(temp, outPath, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(temp, outPath, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(temp);
         }
     }
 

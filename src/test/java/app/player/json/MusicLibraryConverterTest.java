@@ -152,6 +152,22 @@ class MusicLibraryConverterTest {
     }
 
     @Test
+    void write_replacesExistingFile_andLeavesNoTempFiles(@TempDir Path tempDir) throws Exception {
+        Path out = tempDir.resolve("music_library.json");
+        Files.writeString(out, "{}", StandardCharsets.UTF_8);
+
+        MusicLibraryConverter converter = new MusicLibraryConverter();
+        MusicLibraryJSON library = converter.convert(
+                List.of(song("Style", "1989", List.of("1989"), List.of())), Map.of(), Map.of());
+        converter.write(library, out.toFile());
+
+        assertEquals(1, new MusicLibraryLoader().loadFromFile(out.toFile()).size());
+        try (var stream = Files.list(tempDir)) {
+            assertEquals(1, stream.filter(p -> p.getFileName().toString().contains("music_library.json")).count());
+        }
+    }
+
+    @Test
     void roundtrip_fileToMusicLibraryFile(@TempDir Path tempDir) throws Exception {
         Path locations = tempDir.resolve("locations.json");
         Files.writeString(locations, """
