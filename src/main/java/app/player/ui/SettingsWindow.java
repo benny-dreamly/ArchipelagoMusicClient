@@ -32,6 +32,7 @@ public class SettingsWindow {
     private final CheckBox deathLinkCheck;
     private final CheckBox sessionRestoreCheck;
     private final Button convertLibraryButton;
+    private final Button openConfigFolderButton;
 
     public SettingsWindow(Stage owner) {
         stage = new Stage();
@@ -58,16 +59,23 @@ public class SettingsWindow {
                         + "merging album_metadata.json and albumFolders.json when present.\n"
                         + "An existing music_library.json is backed up to .bak before overwriting."));
 
+        openConfigFolderButton = new Button("Open Config Folder");
+        openConfigFolderButton.setMaxWidth(Double.MAX_VALUE);
+        openConfigFolderButton.setTooltip(new Tooltip(
+                "Opens this game's config folder in your file manager, where files such as\n"
+                        + "music_library.json, locations.json, albumOrder.json and queue.json live."));
+
         VBox root = new VBox(8);
         root.setPadding(new Insets(12));
         root.getChildren().addAll(
                 new Label("Appearance"), darkModeCheck,
                 new Label("Gameplay"), deathLinkCheck,
                 new Label("Session"), sessionRestoreCheck,
-                new Label("Library"), convertLibraryButton
+                new Label("Library"), convertLibraryButton,
+                new Label("Configuration"), openConfigFolderButton
         );
 
-        scene = new Scene(root, 340, 300);
+        scene = new Scene(root, 340, 360);
         if (darkModeCheck.isSelected()) {
             scene.getStylesheets().add(getClass().getResource(DARK_CSS).toExternalForm());
         }
@@ -97,6 +105,10 @@ public class SettingsWindow {
 
     public Button getConvertLibraryButton() {
         return convertLibraryButton;
+    }
+
+    public Button getOpenConfigFolderButton() {
+        return openConfigFolderButton;
     }
 
     /** Adds or removes the dark stylesheet on the settings window itself. */
