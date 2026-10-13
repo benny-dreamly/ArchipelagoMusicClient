@@ -208,4 +208,52 @@ class SongFileMatcherTest {
         assertDoesNotThrow(() -> SongFileMatcher.assignFilesToSongs(List.of(nullPathAlbum, fakePathAlbum)));
         assertNull(song.getFilePath());
     }
+
+    @Test
+    void testBuildCandidatesStripsArtistAlbumTrackPrefix() {
+        List<String> candidates = SongFileMatcher.buildCandidates(
+                "Vargskelethor - Super Ghostbusters - 01 Ghostbusters.mp3", "");
+
+        assertTrue(candidates.contains("Ghostbusters"), candidates.toString());
+    }
+
+    @Test
+    void testBuildCandidatesStripsFolderPrefix() {
+        List<String> candidates = SongFileMatcher.buildCandidates(
+                "Vargskelethor - Super Ghostbusters - 01 Ghostbusters.mp3",
+                "Vargskelethor - Super Ghostbusters - ");
+
+        assertTrue(candidates.contains("Ghostbusters"), candidates.toString());
+    }
+
+    @Test
+    void testCommonFolderPrefixTrimsToSeparator() {
+        File[] files = {
+                new File("Vargskelethor - Super Ghostbusters - 01 Ghostbusters.mp3"),
+                new File("Vargskelethor - Super Ghostbusters - 02 Ghost Buster.mp3"),
+        };
+
+        assertEquals("Vargskelethor - Super Ghostbusters - ", SongFileMatcher.commonFolderPrefix(files));
+    }
+
+    @Test
+    void testAssignFilesToSongsMatchesArtistAlbumTrackPrefix() throws IOException {
+        File albumFolder = tempDir.toFile();
+        File first = new File(albumFolder, "Vargskelethor - Super Ghostbusters - 01 Ghostbusters.mp3");
+        File second = new File(albumFolder, "Vargskelethor - Super Ghostbusters - 02 Ghost Buster.mp3");
+        assertTrue(first.createNewFile());
+        assertTrue(second.createNewFile());
+
+        Song song1 = new Song("Ghostbusters", "normal");
+        Song song2 = new Song("Ghost Buster", "normal");
+        Album album = new Album("Super Ghostbusters", "normal");
+        album.getSongs().add(song1);
+        album.getSongs().add(song2);
+        album.setFolderPath(albumFolder.getAbsolutePath());
+
+        SongFileMatcher.assignFilesToSongs(List.of(album));
+
+        assertEquals(first.getAbsolutePath(), song1.getFilePath());
+        assertEquals(second.getAbsolutePath(), song2.getFilePath());
+    }
 }
