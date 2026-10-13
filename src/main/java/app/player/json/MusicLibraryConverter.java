@@ -52,6 +52,10 @@ public class MusicLibraryConverter {
         Map<String, MusicLibraryJSON.AlbumJSON> albums = new LinkedHashMap<>();
 
         for (SongJSON raw : rawSongs) {
+            if (raw == null) {
+                LOGGER.warn("Skipping null entry in locations data");
+                continue;
+            }
             if ("Bonus Locations".equalsIgnoreCase(raw.region)) {
                 bonus.add(raw.name);
                 continue;

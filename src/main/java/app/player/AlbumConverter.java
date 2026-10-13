@@ -6,6 +6,9 @@ package app.player;
 import app.player.json.AlbumMetadata;
 import app.player.json.SongJSON;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
@@ -13,6 +16,8 @@ import java.util.HashMap;
 
 @SuppressWarnings("ClassCanBeRecord")
 public class AlbumConverter {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AlbumConverter.class);
 
     private final Map<String, AlbumMetadata> albumMetadata;
     private final List<String> bonusLocations = new ArrayList<>();
@@ -25,6 +30,10 @@ public class AlbumConverter {
         Map<String, Album> albums = new HashMap<>();
 
         for (SongJSON raw : rawSongs) {
+            if (raw == null) {
+                LOGGER.warn("Skipping null entry in locations data");
+                continue;
+            }
             // Collect bonus locations as separate sendable checks
             if ("Bonus Locations".equalsIgnoreCase(raw.region)) {
                 bonusLocations.add(raw.name);

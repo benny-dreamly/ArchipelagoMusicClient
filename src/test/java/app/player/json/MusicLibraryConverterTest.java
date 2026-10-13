@@ -276,4 +276,25 @@ class MusicLibraryConverterTest {
         assertEquals("5 Years of mau5", albums.get(0).getName());
         assertEquals(Set.of("Disc 1"), albums.get(0).getSongs().get(0).getRequiredItems());
     }
+
+    @Test
+    void convert_skipsNullEntriesInData(@TempDir Path tempDir) throws Exception {
+        Path locations = tempDir.resolve("locations.json");
+        Files.writeString(locations, """
+                {
+                  "data": [
+                    { "name": "Some Chords", "region": "Album A" },
+                    null,
+                    { "name": "Strobe", "region": "Album A" }
+                  ]
+                }
+                """.trim(), StandardCharsets.UTF_8);
+
+        MusicLibraryConverter converter = new MusicLibraryConverter();
+        MusicLibraryJSON library = converter.convert(locations.toFile(), tempDir.toFile());
+
+        assertEquals(1, library.albums.size());
+        assertEquals(List.of("Some Chords", "Strobe"),
+                library.albums.get(0).songs.stream().map(s -> s.title).toList());
+    }
 }
