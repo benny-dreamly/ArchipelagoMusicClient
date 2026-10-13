@@ -63,15 +63,30 @@ public class ConnectionListener {
                 client.setSlotData(slotData);
                 client.markConnected();
                 statusLabel.setText("Connected!");
+                // A fresh handshake resets server-side readiness, so drop any
+                // ready state left over from a previous session or reconnect.
+                app.resetTextClientReadyState();
 
                 app.applySlotData();
                 app.startEnergyLinkSync();
+                // Debounced so the restore applies only after the starting-inventory
+                // items have updated unlock state, not before.
+                app.scheduleSessionRestoreApply();
 
                 // Load played songs from server data storage
                 pendingRequest = new PendingRequest(client.getSlot(), app.getLoadGeneration());
                 String key = PLAYED_SONGS_KEY + pendingRequest.slot();
                 LOGGER.info("Requesting played songs from data storage: key={}", key);
                 client.dataStorageGet(List.of(key));
+
+                // Load item/location name groups for the text client commands
+                String game = client.getGame();
+                if (game != null && !game.isEmpty()) {
+                    client.dataStorageGet(List.of(
+                            "_read_item_name_groups_" + game,
+                            "_read_location_name_groups_" + game
+                    ));
+                }
             } else {
                 // A reconnect attempt that reaches the server and gets rejected fires
                 // a failure result; keep retrying rather than showing a dialog.

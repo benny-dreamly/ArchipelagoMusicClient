@@ -14,13 +14,26 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AlbumTest {
 
     @Test
-    void getQueueableSongs_returnsAllSongs_whenFullAlbumUnlock() {
+    void getQueueableSongs_returnsNothing_whenFullAlbumUnlockButSongsLocked() {
         Album album = new Album("Test Album", "standard", true);
         album.addSong(new Song("Song A", "standard"));
         album.addSong(new Song("Song B", "standard"));
 
         List<Song> result = album.getQueueableSongs(
                 Set.of("standard"), Set.of(), Set.of("Test Album")
+        );
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void getQueueableSongs_returnsAllSongs_whenFullAlbumUnlockAndSongsUnlocked() {
+        Album album = new Album("Test Album", "standard", true);
+        album.addSong(new Song("Song A", "standard"));
+        album.addSong(new Song("Song B", "standard"));
+
+        List<Song> result = album.getQueueableSongs(
+                Set.of("standard"), Set.of("Song A", "Song B"), Set.of("Test Album")
         );
 
         assertEquals(2, result.size());
@@ -95,7 +108,7 @@ class AlbumTest {
         album.addSong(new Song("Song C", "short"));
 
         List<Song> result = album.getQueueableSongs(
-                Set.of("standard", "short"), Set.of(), Set.of("Test Album")
+                Set.of("standard", "short"), Set.of("Song A", "Song C"), Set.of("Test Album")
         );
 
         assertEquals(2, result.size());

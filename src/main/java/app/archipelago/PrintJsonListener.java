@@ -3,27 +3,25 @@
  */
 package app.archipelago;
 
-import app.MusicAppDemo;
 import io.github.archipelagomw.events.ArchipelagoEventListener;
 import io.github.archipelagomw.events.PrintJSONEvent;
 import io.github.archipelagomw.Print.APPrint;
 import io.github.archipelagomw.Print.APPrintJsonType;
+import io.github.archipelagomw.Print.APPrintPart;
 import javafx.application.Platform;
-import javafx.scene.control.TextArea;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
 
 @SuppressWarnings("ClassCanBeRecord")
 public class PrintJsonListener {
-    @SuppressWarnings({"unused", "FieldCanBeLocal"})
     private final APClient client;
-    @SuppressWarnings({"unused", "FieldCanBeLocal"})
-    private final MusicAppDemo app;
-    private final TextArea outputArea; // <-- add this
+    private final Consumer<List<ChatRun>> output;
 
-
-    public PrintJsonListener(APClient client, MusicAppDemo app, TextArea outputArea) {
+    public PrintJsonListener(APClient client, Consumer<List<ChatRun>> output) {
         this.client = client;
-        this.app = app;
-        this.outputArea = outputArea;
+        this.output = output;
     }
 
     @SuppressWarnings("unused")
@@ -41,9 +39,18 @@ public class PrintJsonListener {
             return;
         }
 
-        String text = print.getPlainText(); // instance method
+        List<ChatRun> runs = new ArrayList<>();
+        if (print.parts != null) {
+            for (APPrintPart part : print.parts) {
+                String text = part.text;
+                if (text == null || text.isEmpty()) {
+                    continue;
+                }
+                runs.add(new ChatRun(text, ChatColors.forPart(part, client.getSlot()),
+                        ChatColors.isBold(part), ChatColors.isUnderline(part)));
+            }
+        }
 
-        Platform.runLater(() -> outputArea.appendText(text + "\n"));
-
+        Platform.runLater(() -> output.accept(runs));
     }
 }

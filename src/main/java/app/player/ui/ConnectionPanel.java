@@ -37,12 +37,11 @@ public class ConnectionPanel extends VBox {
     private final Label statusLabel;
     private final Button showTextClientBtn;
     private final CheckBox offlineCheck;
-    private final CheckBox darkModeCheck;
-    private final CheckBox deathLinkCheck;
     private final Button browseFolderBtn;
     private final HBox connectButtonsBox;
     private final VBox settingsBox;
     private final Button settingsToggleButton;
+    private final Button openSettingsButton;
     private TextClientWindow textClientWindow;
     private boolean settingsExpanded = false;
 
@@ -97,12 +96,6 @@ public class ConnectionPanel extends VBox {
         offlineCheck = new CheckBox("Offline Mode");
         offlineCheck.setSelected(false);
 
-        darkModeCheck = new CheckBox("Dark Mode");
-        darkModeCheck.setSelected(false);
-
-        deathLinkCheck = new CheckBox("Deathlink");
-        deathLinkCheck.setSelected(false);
-
         browseFolderBtn = new Button("Browse Folder...");
         browseFolderBtn.setMaxWidth(Double.MAX_VALUE);
 
@@ -111,11 +104,14 @@ public class ConnectionPanel extends VBox {
         connectButtonsBox.setAlignment(Pos.CENTER_LEFT);
         connectButtonsBox.getChildren().addAll(connectButton, showTextClientBtn);
 
-        // Settings toggle button
-        settingsToggleButton = new Button("\u2699 Settings");
+        // Toggle for the connection fields
+        settingsToggleButton = new Button("\u25BE Connection");
         settingsToggleButton.setOnAction(_ -> toggleSettings());
 
-        // Settings box containing only editable connection fields
+        // Opens the dedicated settings window (dark mode, deathlink, session restore)
+        openSettingsButton = new Button("\u2699 Settings");
+
+        // Box containing only editable connection fields
         settingsBox = new VBox(5);
         settingsBox.getChildren().addAll(
                 new Label("Game:"), gameField,
@@ -125,19 +121,16 @@ public class ConnectionPanel extends VBox {
                 new Label("Password:"), passwordField,
                 connectButtonsBox,
                 offlineCheck,
-                deathLinkCheck,
                 browseFolderBtn,
-                new Label("Appearance:"), darkModeCheck,
                 statusLabel
         );
         settingsBox.setVisible(false);
         settingsBox.setManaged(false);
 
         // Add always-visible elements alongside the toggleable settings box
-        getChildren().addAll(
-                settingsToggleButton,
-                settingsBox
-        );
+        HBox toggleRow = new HBox(10);
+        toggleRow.getChildren().addAll(settingsToggleButton, openSettingsButton);
+        getChildren().addAll(toggleRow, settingsBox);
         setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(this, Priority.ALWAYS);
     }
@@ -146,7 +139,7 @@ public class ConnectionPanel extends VBox {
         settingsExpanded = !settingsExpanded;
         settingsBox.setVisible(settingsExpanded);
         settingsBox.setManaged(settingsExpanded);
-        settingsToggleButton.setText(settingsExpanded ? "\u2699 Hide Settings" : "\u2699 Settings");
+        settingsToggleButton.setText(settingsExpanded ? "\u25B4 Hide Connection" : "\u25BE Connection");
     }
 
     public Button getConnectButton() {
@@ -201,12 +194,8 @@ public class ConnectionPanel extends VBox {
         return offlineCheck;
     }
 
-    public CheckBox getDeathLinkCheck() {
-        return deathLinkCheck;
-    }
-
-    public CheckBox getDarkModeCheck() {
-        return darkModeCheck;
+    public Button getOpenSettingsButton() {
+        return openSettingsButton;
     }
 
     public Button getBrowseFolderBtn() {

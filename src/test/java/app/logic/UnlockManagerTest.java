@@ -27,6 +27,7 @@ class UnlockManagerTest {
             {
               "slot_data_keys": {
                 "1989": {"type": "album", "display_name": "1989"},
+                "1989_tv": {"type": "album", "display_name": "1989 (Taylor's Version)"},
                 "folklore": {"type": "album", "display_name": "folklore"},
                 "re_recordings": {"type": "album", "display_name": "Re-recordings"},
                 "include_short_songs": {"type": "song_category", "display_name": "Short Songs"},
@@ -63,11 +64,20 @@ class UnlockManagerTest {
     }
 
     @Test
-    void canPlay_fullAlbumUnlockAlbumUnlocked_returnsTrue() {
+    void canPlay_fullAlbumUnlockAlbumUnlocked_songUnlocked_returnsTrue() {
+        Song song = new Song("Shake It Off", "standard");
+        Album album = new Album("1989", "standard", true);
+        unlockManager.unlockSong(song.getTitle());
+        unlockManager.getUnlockedAlbums().add(album.getName());
+        assertTrue(unlockManager.canPlay(song, album));
+    }
+
+    @Test
+    void canPlay_fullAlbumUnlockAlbumUnlocked_songLocked_returnsFalse() {
         Song song = new Song("Shake It Off", "standard");
         Album album = new Album("1989", "standard", true);
         unlockManager.getUnlockedAlbums().add(album.getName());
-        assertTrue(unlockManager.canPlay(song, album));
+        assertFalse(unlockManager.canPlay(song, album));
     }
 
     @Test
@@ -132,6 +142,7 @@ class UnlockManagerTest {
     void canQueue_fullAlbumUnlockTypeEnabledAlbumUnlocked_returnsTrue() {
         Song song = new Song("Shake It Off", "standard");
         Album album = new Album("1989", "standard", true);
+        unlockManager.unlockSong(song.getTitle());
         unlockManager.getEnabledSets().add("standard");
         unlockManager.getUnlockedAlbums().add(album.getName());
         assertTrue(unlockManager.canQueue(song, album));
@@ -189,7 +200,9 @@ class UnlockManagerTest {
         assertFalse(unlockManager.canPlay(song, album));
         assertFalse(unlockManager.canQueue(song, album));
 
-        // Album item received → whole album playable, no per-song items needed (ItemListener case 1)
+        // Album item received → album unlocks and each song whose requirements are
+        // met is added to unlockedSongs (ItemListener case 1), then it is playable
+        unlockManager.unlockSong(song.getTitle());
         unlockManager.getUnlockedAlbums().add(album.getName());
         unlockManager.getEnabledSets().add(album.getType());
         assertTrue(unlockManager.canPlay(song, album));
@@ -235,6 +248,18 @@ class UnlockManagerTest {
     }
 
     @Test
+    void enableAlbumForDisplay_marksAlbumVisible() {
+        unlockManager.enableAlbumForDisplay("Taylor Swift");
+        assertTrue(unlockManager.getEnabledAlbums().contains("Taylor Swift"));
+    }
+
+    @Test
+    void enableAlbumForDisplay_doesNotFireOnChange() {
+        unlockManager.enableAlbumForDisplay("Taylor Swift");
+        assertEquals(0, onChangeCount);
+    }
+
+    @Test
     void applySlotData_enablesAlbumsFromSlotData() {
         Album tswift = new Album("1989", "standard");
         Album folklore = new Album("folklore", "standard");
@@ -255,6 +280,28 @@ class UnlockManagerTest {
         List<Album> albums = List.of(rerecording, folklore);
 
         unlockManager.applySlotData(Map.of("re_recordings", 1), albums);
+
+        assertTrue(unlockManager.getEnabledAlbums().contains("1989 (Taylor's Version)"));
+        assertFalse(unlockManager.getEnabledAlbums().contains("folklore"));
+    }
+
+    @Test
+    void applySlotData_rerecordingsSlot_doesNotOverrideDisabledPerAlbumKey() {
+        Album rerecording = new Album("1989 (Taylor's Version)", "rerecording");
+        List<Album> albums = List.of(rerecording);
+
+        unlockManager.applySlotData(Map.of("re_recordings", 1, "1989_tv", 0), albums);
+
+        assertFalse(unlockManager.getEnabledAlbums().contains("1989 (Taylor's Version)"));
+    }
+
+    @Test
+    void applySlotData_rerecordingsSlot_stillEnablesPerAlbumKeyWins() {
+        Album rerecording = new Album("1989 (Taylor's Version)", "rerecording");
+        Album folklore = new Album("folklore", "standard");
+        List<Album> albums = List.of(rerecording, folklore);
+
+        unlockManager.applySlotData(Map.of("re_recordings", 1, "1989_tv", 1), albums);
 
         assertTrue(unlockManager.getEnabledAlbums().contains("1989 (Taylor's Version)"));
         assertFalse(unlockManager.getEnabledAlbums().contains("folklore"));

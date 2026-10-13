@@ -18,8 +18,14 @@ jobs:
           distribution: temurin
           java-version: 25
 
+      - name: Strip leading v from version
+        id: version
+        run: |
+          ver="${{ github.event.inputs.version || github.ref_name }}"
+          echo "version_no_v=${ver#v}" >> $GITHUB_OUTPUT
+
       - name: Build Jar
-        run: ./gradlew clean build
+        run: ./gradlew clean build -PappVersion=${{ steps.version.outputs.version_no_v }}
       
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4

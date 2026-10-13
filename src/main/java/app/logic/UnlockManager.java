@@ -61,9 +61,10 @@ public class UnlockManager {
             // Song not in an album: just check if the song is unlocked
             return isSongUnlocked(song.getTitle());
         }
-        // For songs in an album: the album itself must be unlocked, then either
-        // full-album unlocked OR the song itself unlocked
-        return isAlbumUnlocked(album.getName()) && (album.isFullAlbumUnlock() || isSongUnlocked(song.getTitle()));
+        // For songs in an album: the album itself must be unlocked and the song itself
+        // must be unlocked (the full_album_unlock flag only affects how items unlock
+        // the songs, not the play/queue gate)
+        return isAlbumUnlocked(album.getName()) && isSongUnlocked(song.getTitle());
     }
 
     public boolean canQueue(Song song, Album album) {
@@ -72,7 +73,7 @@ public class UnlockManager {
         }
         return enabledSets.contains(song.getType())
                 && isAlbumUnlocked(album.getName())
-                && (album.isFullAlbumUnlock() || isSongUnlocked(song.getTitle()));
+                && isSongUnlocked(song.getTitle());
     }
 
     public void unlockSong(String songTitle) {
@@ -95,6 +96,10 @@ public class UnlockManager {
                 break;
             }
         }
+    }
+
+    public void enableAlbumForDisplay(String albumName) {
+        enabledAlbums.add(albumName);
     }
 
     public void applySlotData(Map<String, Object> slotMap, List<Album> albums) {
@@ -134,10 +139,13 @@ public class UnlockManager {
             }
         }
 
-        // 2. Unlock albums by type if the corresponding slot is enabled
+        // 2. Unlock albums by type if the corresponding slot is enabled, but only for
+        //    albums without a dedicated per-album key (per-album keys take precedence
+        //    so a disabled Taylor's Version album stays disabled)
+        Set<String> gatedAlbumNames = SlotDataHelper.getAlbumDisplayNamesPresentInSlotData(slotMap);
         if (enabledAlbumsFromSlotData.contains("Re-recordings")) {
             for (Album album : albums) {
-                if ("rerecording".equalsIgnoreCase(album.getType())) {
+                if (isRerecordingType(album.getType()) && !gatedAlbumNames.contains(album.getName())) {
                     enabledAlbums.add(album.getName());
                     enabledSets.add(album.getType());
                 }
@@ -145,9 +153,14 @@ public class UnlockManager {
         }
     }
 
+    static boolean isRerecordingType(String type) {
+        return type != null && type.replace("-", "").equalsIgnoreCase("rerecording");
+    }
+
     private void filterSongCategories(Map<String, Object> slotMap, List<Album> albums) {
         boolean shortSongsEnabled = parseBooleanSlot(slotMap, "include_short_songs");
-        boolean vaultSongsEnabled = parseBooleanSlot(slotMap, "include_vault_songs");
+        boolean vaultSongsEnabled = parseBooleanSlot(slotMap, "include_vault_songs")
+                || parseBooleanSlot(slotMap, "include_vault_tracks");
         boolean deluxeSongsEnabled = parseBooleanSlot(slotMap, "include_deluxe");
         boolean extraSongsEnabled = parseBooleanSlot(slotMap, "include_extra");
 
