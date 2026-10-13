@@ -120,6 +120,39 @@ class UnlockManagerTest {
     }
 
     @Test
+    void canPlay_optionalAlbumItem_songItemAloneIsPlayable() {
+        Song song = new Song("Ghostbusters", "standard");
+        Album album = new Album("Super Ghostbusters", "standard", false, false);
+
+        // Song item received, but this album has no album item at all
+        unlockManager.unlockSong(song.getTitle());
+        unlockManager.getEnabledSets().add(album.getType());
+
+        assertTrue(unlockManager.canPlay(song, album));
+        assertTrue(unlockManager.canQueue(song, album));
+    }
+
+    @Test
+    void canPlay_optionalAlbumItem_lockedSongStillUnplayable() {
+        Song song = new Song("Ghostbusters", "standard");
+        Album album = new Album("Super Ghostbusters", "standard", false, false);
+        assertFalse(unlockManager.canPlay(song, album));
+    }
+
+    @Test
+    void canQueue_optionalAlbumItem_typeDisabled_returnsFalse() {
+        Song song = new Song("Ghostbusters", "standard");
+        Album album = new Album("Super Ghostbusters", "standard", false, false);
+        unlockManager.unlockSong(song.getTitle());
+        assertFalse(unlockManager.canQueue(song, album));
+    }
+
+    @Test
+    void canPlay_requiresAlbumItem_defaultsToTrue() {
+        assertTrue(new Album("1989", "standard").requiresAlbumItem());
+    }
+
+    @Test
     void canQueue_typeEnabledAndUnlocked_returnsTrue() {
         Song song = new Song("Shake It Off", "standard");
         Album album = new Album("1989", "standard");

@@ -15,6 +15,7 @@ public class MusicLibraryJSON {
         public String name;
         public String type;
         public boolean full_album_unlock;
+        public Boolean requires_album_item;
         public String path;
         public List<SongJSON> songs;
     }
