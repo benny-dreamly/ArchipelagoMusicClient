@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "org.example"
-version = (project.findProperty("appVersion") as String?) ?: "5.5.0"
+version = (project.findProperty("appVersion") as String?) ?: "5.6.0"
 
 repositories {
     mavenCentral()
