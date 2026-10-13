@@ -6,6 +6,7 @@ package app.archipelago;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonSyntaxException;
 import io.github.archipelagomw.Client;
 import io.github.archipelagomw.flags.ItemsHandling;
 import javafx.application.Platform;
@@ -276,6 +277,8 @@ public class APClient extends Client {
                 return new Gson().fromJson(reader, String.class);
             } catch (IOException e) {
                 LOGGER.error("Failed to load saved game name from {}", configFile.getAbsolutePath(), e);
+            } catch (JsonSyntaxException e) {
+                LOGGER.error("Malformed saved game name in {}", configFile.getAbsolutePath(), e);
             }
         }
         // fallback default
@@ -331,6 +334,8 @@ public class APClient extends Client {
                 return new Gson().fromJson(reader, String.class);
             } catch (IOException e) {
                 LOGGER.error("Failed to load saved game name from {}", configFile.getAbsolutePath(), e);
+            } catch (JsonSyntaxException e) {
+                LOGGER.error("Malformed saved game name in {}", configFile.getAbsolutePath(), e);
             }
         }
         return "Manual_TaylorSwiftDiscography_bennydreamly";
