@@ -254,6 +254,37 @@ class MusicLibraryConverterTest {
     }
 
     @Test
+    void convert_metadataRequiresAlbumItemFalse_propagates() {
+        MusicLibraryConverter converter = new MusicLibraryConverter();
+        AlbumMetadata meta = new AlbumMetadata(false);
+        meta.setRequiresAlbumItem(false);
+        Map<String, AlbumMetadata> metadata = Map.of("Super Ghostbusters", meta);
+        List<SongJSON> songs = List.of(
+                song("Ghostbusters", "Super Ghostbusters", List.of("Super Ghostbusters"), List.of()));
+
+        MusicLibraryJSON library = converter.convert(songs, metadata, Map.of());
+
+        assertFalse(library.albums.get(0).requires_album_item);
+    }
+
+    @Test
+    void convert_readsSnakeCaseRequiresAlbumItemFromMetadata(@TempDir Path tempDir) throws Exception {
+        Path locations = tempDir.resolve("locations.json");
+        Files.writeString(locations, """
+                [ { "name": "Ghostbusters", "region": "Super Ghostbusters", "requires": [] } ]
+                """.trim(), StandardCharsets.UTF_8);
+        Files.writeString(tempDir.resolve("album_metadata.json"), """
+                { "Super Ghostbusters": { "type": "standard", "full_album_unlock": false,
+                  "requires_album_item": false } }
+                """.trim(), StandardCharsets.UTF_8);
+
+        MusicLibraryConverter converter = new MusicLibraryConverter();
+        MusicLibraryJSON library = converter.convert(locations.toFile(), tempDir.toFile());
+
+        assertFalse(library.albums.get(0).requires_album_item);
+    }
+
+    @Test
     void roundtrip_manualLocationsObject_withData(@TempDir Path tempDir) throws Exception {
         Path locations = tempDir.resolve("locations.json");
         Files.writeString(locations, """

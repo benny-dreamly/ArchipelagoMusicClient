@@ -22,6 +22,11 @@ public class Album {
 
     private boolean fullAlbumUnlock = false; // <-- non Taylor Swift style flag
 
+    // Whether the album has its own item that must be received before its songs
+    // can be played. Games that only distribute individual song items (no album
+    // item) set this to false, so a received song is playable on its own.
+    private boolean requiresAlbumItem = true;
+
     public Album(String name, String type) {
         this.name = name;
         this.type = type;
@@ -31,6 +36,11 @@ public class Album {
     public Album(String name, String type, boolean fullUnlock) {
         this(name, type);
         this.fullAlbumUnlock = fullUnlock;
+    }
+
+    public Album(String name, String type, boolean fullUnlock, boolean requiresAlbumItem) {
+        this(name, type, fullUnlock);
+        this.requiresAlbumItem = requiresAlbumItem;
     }
 
     public void addSong(Song song) {
@@ -69,13 +79,15 @@ public class Album {
 
     // Flag for whether getting the album unlocks all songs
     public boolean isFullAlbumUnlock() { return fullAlbumUnlock; }
+
+    public boolean requiresAlbumItem() { return requiresAlbumItem; }
     @SuppressWarnings("unused")
     public void setFullAlbumUnlock(boolean fullAlbumUnlock) { this.fullAlbumUnlock = fullAlbumUnlock; }
 
     public List<Song> getQueueableSongs(Set<String> enabledSets, Set<String> unlockedSongs,
                                     Set<String> unlockedAlbums) {
         List<Song> queueable = new ArrayList<>();
-        boolean albumUnlocked = unlockedAlbums.contains(name);
+        boolean albumUnlocked = !requiresAlbumItem || unlockedAlbums.contains(name);
 
         for (Song song : songs) {
             if (!enabledSets.contains(song.getType())) continue;

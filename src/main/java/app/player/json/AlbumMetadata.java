@@ -3,14 +3,20 @@
  */
 package app.player.json;
 
+import com.google.gson.annotations.SerializedName;
+
 public class AlbumMetadata {
     private boolean fullAlbumUnlock;
     private String type;
+
+    @SerializedName(value = "requires_album_item", alternate = "requiresAlbumItem")
+    private boolean requiresAlbumItem = true;
 
     @SuppressWarnings("unused")
     public AlbumMetadata() {
         this.fullAlbumUnlock = false; // default
         this.type = "album"; // default
+        this.requiresAlbumItem = true; // default
     }
 
     @SuppressWarnings("unused")
@@ -25,6 +31,15 @@ public class AlbumMetadata {
 
     public boolean isFullAlbumUnlock() {
         return fullAlbumUnlock;
+    }
+
+    public boolean requiresAlbumItem() {
+        return requiresAlbumItem;
+    }
+
+    @SuppressWarnings("unused")
+    public void setRequiresAlbumItem(boolean requiresAlbumItem) {
+        this.requiresAlbumItem = requiresAlbumItem;
     }
 
     @SuppressWarnings("unused")

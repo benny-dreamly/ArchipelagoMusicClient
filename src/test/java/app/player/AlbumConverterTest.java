@@ -121,4 +121,18 @@ class AlbumConverterTest {
         assertTrue(unlocked.isFullAlbumUnlock());
         assertFalse(locked.isFullAlbumUnlock());
     }
+
+    @Test
+    void convert_appliesMetadataRequiresAlbumItem() {
+        AlbumMetadata noAlbumItem = new AlbumMetadata(false);
+        noAlbumItem.setRequiresAlbumItem(false);
+        Map<String, AlbumMetadata> metadata = Map.of("Super Ghostbusters", noAlbumItem);
+        AlbumConverter converter = new AlbumConverter(metadata);
+
+        SongJSON song = createSong("Ghostbusters", "Super Ghostbusters", List.of("Super Ghostbusters"));
+
+        List<Album> albums = converter.convert(List.of(song));
+
+        assertFalse(albums.get(0).requiresAlbumItem());
+    }
 }

@@ -88,8 +88,9 @@ public class MusicLibraryLoader {
 
             String albumType = albumJSON.type != null ? albumJSON.type : "standard";
             boolean fullUnlock = albumJSON.full_album_unlock;
+            boolean requiresAlbumItem = albumJSON.requires_album_item == null || albumJSON.requires_album_item;
 
-            Album album = new Album(albumJSON.name, albumType, fullUnlock);
+            Album album = new Album(albumJSON.name, albumType, fullUnlock, requiresAlbumItem);
 
             if (albumJSON.path != null) {
                 album.setFolderPath(albumJSON.path);
