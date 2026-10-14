@@ -26,6 +26,10 @@ public class GoalManager {
     private final Set<String> playedSongs = new HashSet<>();
     private final Set<String> playedAlbums = new HashSet<>();
 
+    // Plays completed while connected but before the server snapshot loaded.
+    // Kept aside so applying the snapshot doesn't discard them.
+    private final Set<String> pendingServerPlays = new HashSet<>();
+
     private final UnlockManager unlockManager;
     private final List<Album> albums;
     private final Runnable onChange;
@@ -50,6 +54,9 @@ public class GoalManager {
             if (serverDataLoaded) {
                 persistToServer(client);
             } else {
+                // Hold the play until the server snapshot is applied, then merge
+                // it in, so a play completed during connect isn't discarded.
+                pendingServerPlays.add(key);
                 LOGGER.debug("Deferring persist until server data is loaded");
             }
         } else {
@@ -134,11 +141,14 @@ public class GoalManager {
     }
 
     public void loadFromServer(Set<String> savedPlayedSongs, Client client) {
-        // Strict separation from local tracking: the server is authoritative
-        // while connected, so locally-tracked plays are replaced, never merged.
+        // The server is authoritative while connected, so the locally-seeded
+        // history is replaced. Plays completed since connecting but before this
+        // snapshot arrived are merged back in rather than lost.
         playedSongs.clear();
         playedAlbums.clear();
         playedSongs.addAll(savedPlayedSongs);
+        playedSongs.addAll(pendingServerPlays);
+        pendingServerPlays.clear();
 
         for (Album album : albums) {
             if (isAlbumFullyPlayed(album)) {
@@ -172,6 +182,7 @@ public class GoalManager {
     public void reset() {
         playedSongs.clear();
         playedAlbums.clear();
+        pendingServerPlays.clear();
         goalSent = false;
         serverDataLoaded = false;
     }
