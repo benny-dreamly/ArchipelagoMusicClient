@@ -30,7 +30,8 @@ public class ConfigPaths {
     public static File getPlayHistoryFile() {
         File configDir = getConfigDir();
         return new File(configDir.getParentFile(), "play_history.json");
-  
+    }
+
     /** Global (non-per-game) application settings, sibling of connection.json. */
     public static File getSettingsFile() {
         File configDir = getConfigDir();
