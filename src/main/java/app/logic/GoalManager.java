@@ -62,9 +62,14 @@ public class GoalManager {
                 LOGGER.debug("Deferring persist until server data is loaded");
             }
         } else {
-            // Offline / Browse Folder / disconnected: local tracking only.
+            // Offline / Browse Folder / disconnected: local tracking only. This
+            // play has no server counterpart, so the cached snapshot is no longer
+            // authoritative; invalidate it and require a refreshed snapshot before
+            // persistToServer or checkGoal may use playedSongs again, keeping
+            // local-only plays out of the server-backed set.
             localHistory.add(key);
             PlayHistoryStore.save(localHistory);
+            serverDataLoaded = false;
         }
         checkAlbumProgress(albumName);
         checkGoal(client);
