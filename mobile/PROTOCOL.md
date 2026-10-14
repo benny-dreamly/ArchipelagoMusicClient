@@ -22,7 +22,7 @@ is a dumb endpoint: it streams what it is told and reports player truth back.
 ### Events (JSON over WS, `{ "type": "event" }`)
 
 ```json
-{ "type": "event", "event": "started", "streamPath": "Library/music.mp3", "title": "…", "positionMs": 0, "durationMs": 245789 }
+{ "type": "event", "event": "started", "streamPath": "/stream/Library/music.mp3", "title": "…", "positionMs": 0, "durationMs": 245789 }
 { "type": "event", "event": "paused",  "positionMs": 40123 }
 { "type": "event", "event": "resumed", "positionMs": 40123 }
 { "type": "event", "event": "position", "positionMs": 45222 }
@@ -39,7 +39,7 @@ phone is playing so the desktop can reconcile.
 ### Commands (unicast to the active phone)
 
 ```json
-{ "type": "command", "cmd": "play",   "streamPath": "Library/music.mp3", "title": "…" }
+{ "type": "command", "cmd": "play",   "streamPath": "/stream/Library/music.mp3", "title": "…" }
 { "type": "command", "cmd": "pause" }
 { "type": "command", "cmd": "resume" }
 { "type": "command", "cmd": "stop" }
@@ -54,7 +54,7 @@ phone is playing so the desktop can reconcile.
 {
   "songTitle": "…",
   "album": "…",
-  "streamPath": "Library/music.mp3",
+  "streamPath": "/stream/Library/music.mp3",
   "durationMs": 245789,
   "positionMs": 45222,
   "playing": true,

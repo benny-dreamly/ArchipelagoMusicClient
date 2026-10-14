@@ -8,7 +8,7 @@ public struct CompanionState: Codable, Equatable, Sendable {
     /// Album the song belongs to.
     public var album: String?
     /// Stream path relative to the companion server (localhost in UI shows
-    /// the "0:" Music folder, e.g. "Library/song.mp3").
+    /// the "0:" Music folder, e.g. "/stream/Library/song.mp3").
     public var streamPath: String?
     public var durationMs: Int64
     public var positionMs: Int64

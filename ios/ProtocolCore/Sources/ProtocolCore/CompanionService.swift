@@ -61,7 +61,7 @@ public final class CompanionService {
     }
 
     /// URL for Range-capable streaming of a stream path, e.g.
-    /// `http://host:8311/Library/song.mp3`.
+    /// `http://host:8311/stream/Library/song.mp3`.
     public func streamURL(_ streamPath: String) -> URL? {
         guard let host else { return nil }
         return URL(string: "http://\(host):\(httpPort)\(streamPath)")
