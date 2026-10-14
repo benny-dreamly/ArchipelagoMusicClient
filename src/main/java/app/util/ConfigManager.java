@@ -36,7 +36,7 @@ public class ConfigManager {
 
     /** Keys that live in settings.json rather than connection.json. */
     private static final List<String> APP_SETTING_KEYS =
-            List.of("dark_mode", "deathlink", "session_restore");
+            List.of("dark_mode", "deathlink", "session_restore", "companion_server");
 
     private ConfigManager() {} // utility class
 
@@ -122,6 +122,19 @@ public class ConfigManager {
             return;
         }
         data.put("session_restore", sessionRestore);
+        writeSettings(data);
+    }
+
+    public static boolean loadCompanionServer() {
+        return loadSettings().get("companion_server") instanceof Boolean bool && bool;
+    }
+
+    public static void saveCompanionServer(boolean enabled) {
+        Map<String, Object> data = loadSettings();
+        if (enabled == (data.get("companion_server") instanceof Boolean bool && bool)) {
+            return;
+        }
+        data.put("companion_server", enabled);
         writeSettings(data);
     }
 
