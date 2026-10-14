@@ -30,6 +30,10 @@ public class GoalManager {
     // Kept aside so applying the snapshot doesn't discard them.
     private final Set<String> pendingServerPlays = new HashSet<>();
 
+    // Locally-tracked history written to play_history.json. Kept separate from
+    // playedSongs so applying the server snapshot can't clobber offline history.
+    private final Set<String> localHistory = new HashSet<>();
+
     private final UnlockManager unlockManager;
     private final List<Album> albums;
     private final Runnable onChange;
@@ -61,7 +65,8 @@ public class GoalManager {
             }
         } else {
             // Offline / Browse Folder / disconnected: local tracking only.
-            PlayHistoryStore.save(playedSongs);
+            localHistory.add(key);
+            PlayHistoryStore.save(localHistory);
         }
         checkAlbumProgress(albumName);
         checkGoal(client);
@@ -165,6 +170,9 @@ public class GoalManager {
     }
 
     public void loadFromLocal(Set<String> localPlayedSongs) {
+        localHistory.clear();
+        localHistory.addAll(localPlayedSongs);
+
         playedSongs.clear();
         playedAlbums.clear();
         playedSongs.addAll(localPlayedSongs);
