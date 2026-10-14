@@ -4,6 +4,7 @@
 package app.archipelago;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,16 +29,23 @@ public class SlotDataHelper {
         File file = new File(configDir, "slot_data.json");
         if (!file.exists()) {
             LOGGER.warn("No slot_data.json found in {}", configDir.getAbsolutePath());
+            slotOptions = Collections.emptyMap();
             return;
         }
 
         try (FileReader reader = new FileReader(file, StandardCharsets.UTF_8)) {
             Type type = new TypeToken<Map<String, Map<String, SlotOption>>>() {}.getType();
             Map<String, Map<String, SlotOption>> raw = new Gson().fromJson(reader, type);
+            if (raw == null) {
+                LOGGER.warn("slot_data.json is empty in {}", file.getAbsolutePath());
+                slotOptions = Collections.emptyMap();
+                return;
+            }
             slotOptions = raw.getOrDefault("slot_data_keys", Collections.emptyMap());
             LOGGER.info("Loaded slot_data.json with {} keys.", slotOptions.size());
-        } catch (IOException e) {
-            LOGGER.error("Failed to load slot_data.json", e);
+        } catch (IOException | JsonParseException e) {
+            // A malformed file must never abort connecting; fall back to no gating.
+            LOGGER.error("Failed to parse slot_data.json in {} (ignoring it)", file.getAbsolutePath(), e);
             slotOptions = Collections.emptyMap();
         }
     }

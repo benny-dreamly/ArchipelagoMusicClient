@@ -156,11 +156,12 @@ public class ItemListener {
                         app.getUnlockedSongs().add(song.getTitle());
                     }
 
-                    // Also mark the parent album as "unlocked" for play checks
+                    // Show the parent album in the tree (display only — the album's
+                    // play gate stays closed for per-song gating)
                     Album parentAlbum = app.getLibrary().getAlbumForSong(song.getTitle());
                     if (parentAlbum != null) {
-                        // app.getUnlockedAlbums().add(parentAlbum.getName());
                         app.getEnabledSets().add(parentAlbum.getType());
+                        app.enableAlbumForDisplay(parentAlbum.getName());
                     }
                 } else if (album != null) {
                     // Catch-all for album items that aren't full-album or song items
@@ -193,6 +194,7 @@ public class ItemListener {
                 if (!app.getUnlockedSongs().contains(song.getTitle()) && song.requiresMet(receivedItems)) {
                     app.getUnlockedSongs().add(song.getTitle());
                     app.getEnabledSets().add(song.getType());
+                    app.enableAlbumForDisplay(album.getName());
                 }
             }
         }

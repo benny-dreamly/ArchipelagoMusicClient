@@ -5,6 +5,7 @@ package app.util;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +48,8 @@ public class AlbumOrderManager {
                     LOGGER.info("Loaded album order from {}", orderFile.getAbsolutePath());                }
             } catch (IOException e) {
                 LOGGER.error("Failed to load album order from {}", orderFile.getAbsolutePath(), e);
+            } catch (JsonSyntaxException e) {
+                LOGGER.error("Malformed album order in {}; regenerating defaults", orderFile.getAbsolutePath(), e);
             }
         }
 

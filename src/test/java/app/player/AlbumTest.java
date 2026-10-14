@@ -128,6 +128,18 @@ class AlbumTest {
     }
 
     @Test
+    void getQueueableSongs_optionalAlbumItem_songAloneIsQueueable() {
+        Album album = new Album("Test Album", "standard", false, false);
+        album.addSong(new Song("Song A", "standard"));
+
+        List<Song> result = album.getQueueableSongs(
+                Set.of("standard"), Set.of("Song A"), Set.of()
+        );
+
+        assertEquals(1, result.size());
+    }
+
+    @Test
     void getQueueableSongs_filtersByAlbumUnlockName() {
         Album album = new Album("Specific Album", "standard", false);
         album.addSong(new Song("Song A", "standard"));

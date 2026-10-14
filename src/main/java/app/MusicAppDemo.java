@@ -74,6 +74,7 @@ import javafx.stage.DirectoryChooser;
 import javafx.concurrent.Task;
 import javafx.util.Duration;
 
+import java.awt.Desktop;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -341,6 +342,9 @@ public class MusicAppDemo extends Application {
 
         // Library converter: rebuild music_library.json from locations.json
         settingsWindow.getConvertLibraryButton().setOnAction(_ -> convertLocationsToLibrary());
+
+        // Open this game's config folder in the OS file manager
+        settingsWindow.getOpenConfigFolderButton().setOnAction(_ -> openConfigFolder());
 
         // Periodically snapshot the queue and playback position while the
         // library exists, so a later same-slot connect can restore it.
@@ -611,6 +615,22 @@ public class MusicAppDemo extends Application {
             }
         });
         new Thread(task).start();
+    }
+
+    private void openConfigFolder() {
+        File gameFolder = getConfigDir();
+        if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
+            showError("Open Folder Unsupported", "Opening the file manager isn't supported here",
+                    gameFolder.getAbsolutePath());
+            return;
+        }
+        try {
+            Desktop.getDesktop().open(gameFolder);
+        } catch (IOException e) {
+            LOGGER.error("Could not open the config folder {}", gameFolder.getAbsolutePath(), e);
+            showError("Open Folder Failed", "Could not open the config folder",
+                    gameFolder.getAbsolutePath());
+        }
     }
 
     private void reloadGameLibrary(File gameFolder) {

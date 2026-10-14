@@ -254,6 +254,37 @@ class MusicLibraryConverterTest {
     }
 
     @Test
+    void convert_metadataRequiresAlbumItemFalse_propagates() {
+        MusicLibraryConverter converter = new MusicLibraryConverter();
+        AlbumMetadata meta = new AlbumMetadata(false);
+        meta.setRequiresAlbumItem(false);
+        Map<String, AlbumMetadata> metadata = Map.of("Super Ghostbusters", meta);
+        List<SongJSON> songs = List.of(
+                song("Ghostbusters", "Super Ghostbusters", List.of("Super Ghostbusters"), List.of()));
+
+        MusicLibraryJSON library = converter.convert(songs, metadata, Map.of());
+
+        assertFalse(library.albums.get(0).requires_album_item);
+    }
+
+    @Test
+    void convert_readsSnakeCaseRequiresAlbumItemFromMetadata(@TempDir Path tempDir) throws Exception {
+        Path locations = tempDir.resolve("locations.json");
+        Files.writeString(locations, """
+                [ { "name": "Ghostbusters", "region": "Super Ghostbusters", "requires": [] } ]
+                """.trim(), StandardCharsets.UTF_8);
+        Files.writeString(tempDir.resolve("album_metadata.json"), """
+                { "Super Ghostbusters": { "type": "standard", "full_album_unlock": false,
+                  "requires_album_item": false } }
+                """.trim(), StandardCharsets.UTF_8);
+
+        MusicLibraryConverter converter = new MusicLibraryConverter();
+        MusicLibraryJSON library = converter.convert(locations.toFile(), tempDir.toFile());
+
+        assertFalse(library.albums.get(0).requires_album_item);
+    }
+
+    @Test
     void roundtrip_manualLocationsObject_withData(@TempDir Path tempDir) throws Exception {
         Path locations = tempDir.resolve("locations.json");
         Files.writeString(locations, """
@@ -275,5 +306,26 @@ class MusicLibraryConverterTest {
         assertEquals(1, albums.size());
         assertEquals("5 Years of mau5", albums.get(0).getName());
         assertEquals(Set.of("Disc 1"), albums.get(0).getSongs().get(0).getRequiredItems());
+    }
+
+    @Test
+    void convert_skipsNullEntriesInData(@TempDir Path tempDir) throws Exception {
+        Path locations = tempDir.resolve("locations.json");
+        Files.writeString(locations, """
+                {
+                  "data": [
+                    { "name": "Some Chords", "region": "Album A" },
+                    null,
+                    { "name": "Strobe", "region": "Album A" }
+                  ]
+                }
+                """.trim(), StandardCharsets.UTF_8);
+
+        MusicLibraryConverter converter = new MusicLibraryConverter();
+        MusicLibraryJSON library = converter.convert(locations.toFile(), tempDir.toFile());
+
+        assertEquals(1, library.albums.size());
+        assertEquals(List.of("Some Chords", "Strobe"),
+                library.albums.get(0).songs.stream().map(s -> s.title).toList());
     }
 }

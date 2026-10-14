@@ -52,6 +52,10 @@ public class MusicLibraryConverter {
         Map<String, MusicLibraryJSON.AlbumJSON> albums = new LinkedHashMap<>();
 
         for (SongJSON raw : rawSongs) {
+            if (raw == null) {
+                LOGGER.warn("Skipping null entry in locations data");
+                continue;
+            }
             if ("Bonus Locations".equalsIgnoreCase(raw.region)) {
                 bonus.add(raw.name);
                 continue;
@@ -60,9 +64,11 @@ public class MusicLibraryConverter {
             String albumName = (raw.region == null || raw.region.isBlank()) ? "Songs" : raw.region;
             MusicLibraryJSON.AlbumJSON album = albums.computeIfAbsent(albumName, name -> {
                 MusicLibraryJSON.AlbumJSON a = new MusicLibraryJSON.AlbumJSON();
+                AlbumMetadata albumMeta = meta.getOrDefault(name, new AlbumMetadata(false));
                 a.name = name;
                 a.type = detectAlbumType(raw.category);
-                a.full_album_unlock = meta.getOrDefault(name, new AlbumMetadata(false)).isFullAlbumUnlock();
+                a.full_album_unlock = albumMeta.isFullAlbumUnlock();
+                a.requires_album_item = albumMeta.requiresAlbumItem();
                 a.path = folders.getOrDefault(name, "");
                 a.songs = new ArrayList<>();
                 return a;
