@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static app.util.ConfigManager.getSlotForGame;
@@ -47,7 +48,8 @@ public class ConnectionPanel extends VBox {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionPanel.class);
 
-    public ConnectionPanel(AtomicReference<File> gameFolder, Supplier<APClient> clientSupplier) {
+    public ConnectionPanel(AtomicReference<File> gameFolder, Supplier<APClient> clientSupplier,
+                           Function<String, String> speedHandler) {
         super(5);
 
         gameField = new TextField();
@@ -90,7 +92,7 @@ public class ConnectionPanel extends VBox {
         SlotDataHelper.loadSlotOptions(gameFolder.get());
 
         showTextClientBtn = new Button("Show Text Client");
-        textClientWindow = new TextClientWindow(clientSupplier);
+        textClientWindow = new TextClientWindow(clientSupplier, speedHandler);
         showTextClientBtn.setOnAction(_ -> textClientWindow.show());
 
         offlineCheck = new CheckBox("Offline Mode");

@@ -36,6 +36,22 @@ public class AlbumLibrary {
         return null;
     }
 
+    /**
+     * Resolves the album that actually contains the given song instance. Unlike
+     * {@link #getAlbumForSong(String)} this disambiguates songs that share a
+     * title across albums, so a queued song stays with the album it came from.
+     * Falls back to the title lookup for songs that aren't part of the library.
+     */
+    public Album getAlbumForSong(Song song) {
+        if (song == null) return null;
+        for (Album album : albums) {
+            for (Song candidate : album.getSongs()) {
+                if (candidate == song) return album;
+            }
+        }
+        return getAlbumForSong(song.getTitle());
+    }
+
     public Song getSongByTitle(String songTitle) {
         for (Album album : albums) {
             for (Song song : album.getSongs()) {

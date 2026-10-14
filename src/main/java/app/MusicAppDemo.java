@@ -37,6 +37,7 @@ import app.remote.CompanionServer;
 import app.remote.CompanionState;
 import app.util.AlbumLibrary;
 import app.util.AlbumOrderManager;
+import app.util.PlayHistoryStore;
 import app.util.SentBonusStore;
 import app.util.SessionStore;
 import app.util.StateManager;
@@ -196,6 +197,7 @@ public class MusicAppDemo extends Application {
     private static final Duration CLICK_WINDOW = Duration.millis(300);
     private boolean boostActive = false;
     private double boostRate = 1.0;
+    private double playbackSpeed = 1.0;
     private javafx.animation.PauseTransition boostTimer;
     private javafx.animation.PauseTransition boostClickTimer;
 
@@ -259,7 +261,7 @@ public class MusicAppDemo extends Application {
 
         createBottomBar();
 
-        connectionPanel = new ConnectionPanel(gameFolder, () -> client);
+        connectionPanel = new ConnectionPanel(gameFolder, () -> client, this::setPlaybackSpeedCommand);
 
         playerPanel = new PlayerPanel();
         setupPlayerPanel(playerPanel);
@@ -483,6 +485,9 @@ public class MusicAppDemo extends Application {
             library = new AlbumLibrary(albums);
             queueManager = new QueueManager(library, unlockManager);
             goalManager = new GoalManager(unlockManager, albums, this::onGoalProgressChanged);
+            // Seed locally-tracked plays; a later server response replaces them (strict
+            // separation so offline listening never inflates a slot's server state).
+            goalManager.loadFromLocal(PlayHistoryStore.load());
 
             // Re-apply slot data against the populated album list in case the
             // connection callback fired before the library finished loading.
@@ -623,7 +628,7 @@ public class MusicAppDemo extends Application {
                 connectionPanel.getTextClientWindow().appendOutput("Converted locations.json -> music_library.json ("
                         + library.albums.size() + " albums, " + songs + " songs)");
                 if (savedBrowseFolder() == null) {
-                    reloadGameLibrary(gameFolder);
+                    reloadGameLibrary();
                 }
             } finally {
                 settingsWindow.getConvertLibraryButton().setDisable(false);
@@ -660,7 +665,7 @@ public class MusicAppDemo extends Application {
         }
     }
 
-    private void reloadGameLibrary(File gameFolder) {
+    private void reloadGameLibrary() {
         // Buffer item events before invalidating generation
         if (itemListener != null) {
             itemListener.setLibraryLoading(true);
@@ -796,6 +801,7 @@ public class MusicAppDemo extends Application {
             library = new AlbumLibrary(albums);
             queueManager = new QueueManager(library, unlockManager);
             goalManager = new GoalManager(unlockManager, albums, this::onGoalProgressChanged);
+            goalManager.loadFromLocal(PlayHistoryStore.load());
 
             installTreeCellFactory();
             applyOfflineUnlocks();
@@ -1006,7 +1012,7 @@ public class MusicAppDemo extends Application {
                 MenuItem queueAll = new MenuItem("Queue All Songs");
                 queueAll.setOnAction(_ -> queueAlbum(item.getValue()));
                 contextMenu.getItems().add(queueAll);
-                if (client != null && client.isConnected() && goalManager != null) {
+                if (goalManager != null) {
                     MenuItem queueUnplayed = new MenuItem("Queue Unplayed");
                     queueUnplayed.setOnAction(_ -> queueUnplayedAlbum(item.getValue()));
                     contextMenu.getItems().add(queueUnplayed);
@@ -1115,7 +1121,7 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         Duration restoreSeek = pendingSeek;
         pendingSeek = null;
 
-        Album album = library.getAlbumForSong(song.getTitle());
+        Album album = library.getAlbumForSong(song);
         boolean canPlay = unlockManager.canPlay(song, album);
 
         if (!canPlay) {
@@ -1180,7 +1186,7 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
             });
         });
 
-        configureEngine(playbackEngine, song, restoreSeek);
+        configureEngine(playbackEngine, song, album, restoreSeek);
 
         playbackEngine.loadAndPlay(song);
         playerPanel.setCurrentSongLabel("Currently Playing: " + song.getTitle());
@@ -1189,9 +1195,9 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         publishRemoteState();
     }
 
-    private void configureEngine(PlaybackEngine engine, Song song, Duration restoreSeek) {
+    private void configureEngine(PlaybackEngine engine, Song song, Album album, Duration restoreSeek) {
         engine.setVolume(playerPanel.getVolumeSlider().getValue() / 100.0);
-        engine.setRate(boostActive ? boostRate : 1.0);
+        engine.setRate(boostActive ? boostRate : playbackSpeed);
 
         engine.setOnCurrentTime(newTime -> {
             if (!playerPanel.getProgressSlider().isValueChanging()) {
@@ -1205,6 +1211,7 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
 
         // Set duration label once media is ready
         engine.setOnReady(() -> {
+            applyPlaybackRate(engine);
             Duration total = playbackEngine.getTotalDuration();
             if (total != null) {
                 playerPanel.getDurationLabel().setText(formatTime(total));
@@ -1220,11 +1227,16 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         engine.setOnEnded(() -> {
             if (client != null && client.isConnected()) {
                 client.sendCheck(song.getLocation());
-                Album songAlbum = library.getAlbumForSong(song.getTitle());
-                if (goalManager != null && songAlbum != null) {
-                    goalManager.markPlayed(song.getTitle(), songAlbum.getName(), client);
-                }
                 creditSongEnergy();
+            }
+            // Use the album carried through this playback rather than looking the
+            // song up by title again, so duplicate titles stay with the album that
+            // was actually played.
+            if (goalManager != null && album != null) {
+                // Connected or not, record the play; GoalManager routes it to
+                // the server or the local play_history.json accordingly.
+                goalManager.markPlayed(song.getTitle(), album.getName(),
+                        client != null && client.isConnected() ? client : null);
             }
             if (queueManager.getRepeatMode() == QueueManager.RepeatMode.SONG) {
                 playSong(song);
@@ -1380,7 +1392,7 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
                     s -> server.streamPath(new File(s.getFilePath())));
             playbackEngine = phone;
             if (song != null && song.getFilePath() != null && wasLoaded) {
-                configureEngine(phone, song, null);
+                configureEngine(phone, song, library.getAlbumForSong(song), null);
                 phone.loadAndPlay(song);
                 if (resumeAt != null && resumeAt.greaterThan(Duration.ZERO)) {
                     phone.seek(resumeAt);
@@ -1393,7 +1405,7 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
             LocalPlayback local = new LocalPlayback();
             playbackEngine = local;
             if (song != null && song.getFilePath() != null && wasLoaded) {
-                configureEngine(local, song, null);
+                configureEngine(local, song, library.getAlbumForSong(song), null);
                 local.loadAndPlay(song);
                 if (resumeAt != null && resumeAt.greaterThan(Duration.ZERO)) {
                     local.seek(resumeAt);
@@ -1501,6 +1513,42 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         LOGGER.info("Playback boost engaged at {}x for {}s", rate, (int) BOOST_DURATION.toSeconds());
     }
 
+    private String setPlaybackSpeedCommand(String arg) {
+        String trimmed = arg == null ? "" : arg.trim();
+        double rate;
+        if (trimmed.isEmpty()) {
+            rate = playbackSpeed == 1.0 ? 3.0 : 1.0;
+        } else {
+            try {
+                rate = Double.parseDouble(trimmed);
+            } catch (NumberFormatException e) {
+                return "Usage: /speed [rate]";
+            }
+        }
+        if (rate < 0.1 || rate > 4.0) {
+            return "Speed must be between 0.1 and 4.0.";
+        }
+        playbackSpeed = rate;
+        if (!boostActive) {
+            applyPlaybackRate(playbackEngine);
+        }
+        return playbackSpeed == 1.0
+                ? "Playback speed reset."
+                : String.format(Locale.ROOT, "Playback speed set to %.2fx", playbackSpeed);
+    }
+
+    private void applyPlaybackRate(PlaybackEngine engine) {
+        if (engine == null) {
+            return;
+        }
+        double rate = boostActive ? boostRate : playbackSpeed;
+        // macOS resets the native rate to 1.0 when playback (re)starts (JDK-8236146),
+        // so force the property to change to make the target rate stick.
+        engine.setRate(1.0);
+        engine.setRate(rate);
+        LOGGER.info("Applied playback rate {}", rate);
+    }
+
     private void endBoost() {
         boostActive = false;
         boostRate = 1.0;
@@ -1508,9 +1556,7 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
             boostTimer.stop();
             boostTimer = null;
         }
-        if (playbackEngine != null) {
-            playbackEngine.setRate(1.0);
-        }
+        applyPlaybackRate(playbackEngine);
         LOGGER.info("Playback boost ended");
     }
 
@@ -1830,7 +1876,7 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         SlotDataHelper.loadSlotOptions(gameFolder.get());
 
         ensureGameDefaults(gameFolder.get());
-        reloadGameLibrary(gameFolder.get());
+        reloadGameLibrary();
         // After the reload bumped the load generation, so the pending restore
         // tracks the library load this connect kicked off.
         armSessionRestore(gameName, slot);

@@ -63,16 +63,16 @@ public class SettingsWindow {
 
         convertLibraryButton = new Button("Generate music_library.json from locations.json");
         convertLibraryButton.setMaxWidth(Double.MAX_VALUE);
-        convertLibraryButton.setTooltip(new Tooltip(
-                "Rebuilds the game folder's music_library.json from its locations.json,\n"
-                        + "merging album_metadata.json and albumFolders.json when present.\n"
-                        + "An existing music_library.json is backed up to .bak before overwriting."));
+        convertLibraryButton.setTooltip(new Tooltip("""
+                Rebuilds the game folder's music_library.json from its locations.json,
+                merging album_metadata.json and albumFolders.json when present.
+                An existing music_library.json is backed up to .bak before overwriting."""));
 
         openConfigFolderButton = new Button("Open Config Folder");
         openConfigFolderButton.setMaxWidth(Double.MAX_VALUE);
-        openConfigFolderButton.setTooltip(new Tooltip(
-                "Opens this game's config folder in your file manager, where files such as\n"
-                        + "music_library.json, locations.json, albumOrder.json and queue.json live."));
+        openConfigFolderButton.setTooltip(new Tooltip("""
+                Opens this game's config folder in your file manager, where files such as
+                music_library.json, locations.json, albumOrder.json and queue.json live."""));
 
         VBox root = new VBox(8);
         root.setPadding(new Insets(12));

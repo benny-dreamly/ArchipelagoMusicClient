@@ -5,6 +5,7 @@ package app.logic;
 
 import app.player.Album;
 import app.player.Song;
+import app.util.PlayHistoryStore;
 import io.github.archipelagomw.Client;
 import io.github.archipelagomw.ClientStatus;
 import io.github.archipelagomw.network.client.SetPacket;
@@ -25,6 +26,14 @@ public class GoalManager {
     private final Set<String> playedSongs = new HashSet<>();
     private final Set<String> playedAlbums = new HashSet<>();
 
+    // Plays completed while connected but before the server snapshot loaded.
+    // Kept aside so applying the snapshot doesn't discard them.
+    private final Set<String> pendingServerPlays = new HashSet<>();
+
+    // Locally-tracked history written to play_history.json. Kept separate from
+    // playedSongs so applying the server snapshot can't clobber offline history.
+    private final Set<String> localHistory = new HashSet<>();
+
     private final UnlockManager unlockManager;
     private final List<Album> albums;
     private final Runnable onChange;
@@ -39,16 +48,28 @@ public class GoalManager {
     }
 
     public void markPlayed(String songTitle, String albumName, Client client) {
-        if (goalSent) return;
-
         String key = albumName + "::" + songTitle;
         boolean isNew = playedSongs.add(key);
         LOGGER.info("Marked song as played: {} (album: {}) [new={}]", songTitle, albumName, isNew);
 
-        if (serverDataLoaded) {
-            persistToServer(client);
+        if (client != null && client.isConnected()) {
+            if (serverDataLoaded) {
+                persistToServer(client);
+            } else {
+                // Hold the play until the server snapshot is applied, then merge
+                // it in, so a play completed during connect isn't discarded.
+                pendingServerPlays.add(key);
+                LOGGER.debug("Deferring persist until server data is loaded");
+            }
         } else {
-            LOGGER.debug("Deferring persist until server data is loaded");
+            // Offline / Browse Folder / disconnected: local tracking only. This
+            // play has no server counterpart, so the cached snapshot is no longer
+            // authoritative; invalidate it and require a refreshed snapshot before
+            // persistToServer or checkGoal may use playedSongs again, keeping
+            // local-only plays out of the server-backed set.
+            localHistory.add(key);
+            PlayHistoryStore.save(localHistory);
+            serverDataLoaded = false;
         }
         checkAlbumProgress(albumName);
         checkGoal(client);
@@ -100,6 +121,10 @@ public class GoalManager {
 
     private void checkGoal(Client client) {
         if (goalSent) return;
+        // Never evaluate the goal before the authoritative server snapshot has
+        // been applied; an incomplete local view could send CLIENT_GOAL early.
+        if (client == null || !client.isConnected()) return;
+        if (!serverDataLoaded) return;
 
         boolean allPlayed = true;
         int enabledAlbumCount = 0;
@@ -124,8 +149,14 @@ public class GoalManager {
     }
 
     public void loadFromServer(Set<String> savedPlayedSongs, Client client) {
-        playedSongs.addAll(savedPlayedSongs);
+        // The server is authoritative while connected, so the locally-seeded
+        // history is replaced. Plays completed since connecting but before this
+        // snapshot arrived are merged back in rather than lost.
+        playedSongs.clear();
         playedAlbums.clear();
+        playedSongs.addAll(savedPlayedSongs);
+        playedSongs.addAll(pendingServerPlays);
+        pendingServerPlays.clear();
 
         for (Album album : albums) {
             if (isAlbumFullyPlayed(album)) {
@@ -134,16 +165,35 @@ public class GoalManager {
         }
 
         serverDataLoaded = true;
-        LOGGER.info("Loaded {} played songs from server (merged, total={})", savedPlayedSongs.size(),
+        LOGGER.info("Loaded {} played songs from server (total={})", savedPlayedSongs.size(),
                 playedSongs.size());
         persistToServer(client);
         checkGoal(client);
         if (onChange != null) onChange.run();
     }
 
+    public void loadFromLocal(Set<String> localPlayedSongs) {
+        localHistory.clear();
+        localHistory.addAll(localPlayedSongs);
+
+        playedSongs.clear();
+        playedAlbums.clear();
+        playedSongs.addAll(localPlayedSongs);
+
+        for (Album album : albums) {
+            if (isAlbumFullyPlayed(album)) {
+                playedAlbums.add(album.getName());
+            }
+        }
+
+        LOGGER.info("Loaded {} locally-tracked played songs", playedSongs.size());
+        if (onChange != null) onChange.run();
+    }
+
     public void reset() {
         playedSongs.clear();
         playedAlbums.clear();
+        pendingServerPlays.clear();
         goalSent = false;
         serverDataLoaded = false;
     }
