@@ -106,8 +106,10 @@ public class GoalManager {
 
     private void checkGoal(Client client) {
         if (goalSent) return;
-        // Local/offline tracking never sends goals — only a live connection can.
+        // Never evaluate the goal before the authoritative server snapshot has
+        // been applied; an incomplete local view could send CLIENT_GOAL early.
         if (client == null || !client.isConnected()) return;
+        if (!serverDataLoaded) return;
 
         boolean allPlayed = true;
         int enabledAlbumCount = 0;
