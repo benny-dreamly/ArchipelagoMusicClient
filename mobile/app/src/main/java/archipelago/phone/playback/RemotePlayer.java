@@ -57,6 +57,7 @@ public final class RemotePlayer {
     private boolean wasPlaying;
     private String currentStreamPath;
     private String currentTitle;
+    private int volumePercent = 100;
 
     public RemotePlayer(Context context, Listener listener) {
         this.context = context.getApplicationContext();
@@ -125,6 +126,7 @@ public final class RemotePlayer {
     }
 
     public void setVolume(int volumePercent) {
+        this.volumePercent = volumePercent;
         if (player != null) {
             player.setVolume(volumePercent / 100f);
         }
@@ -141,6 +143,7 @@ public final class RemotePlayer {
     private ExoPlayer buildPlayer() {
         ExoPlayer player = new ExoPlayer.Builder(context).build();
         player.setWakeMode(C.WAKE_MODE_LOCAL);
+        player.setVolume(volumePercent / 100f);
         player.addListener(new Player.Listener() {
             @Override
             public void onPlaybackStateChanged(int state) {

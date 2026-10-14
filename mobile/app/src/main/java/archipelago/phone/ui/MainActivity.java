@@ -229,8 +229,10 @@ public class MainActivity extends AppCompatActivity implements PhoneSession.List
             }
             case "volume" -> {
                 if (command.has("value")) {
+                    int value = command.get("value").getAsInt();
+                    remotePlayer.setVolume(value);
                     adjustingVolume = true;
-                    volumeBar.setProgress(command.get("value").getAsInt());
+                    volumeBar.setProgress(value);
                     adjustingVolume = false;
                 }
             }
