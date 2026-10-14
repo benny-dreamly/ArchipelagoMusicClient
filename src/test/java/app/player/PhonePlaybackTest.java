@@ -97,6 +97,7 @@ class PhonePlaybackTest {
         playback.loadAndPlay(song("t", "f"));
 
         playback.handlePhoneEvent(event("started", 200_000, 300_000));
+        playback.handlePhoneEvent(event("resumed", 200_000, 300_000));
 
         assertTrue(ready.get());
         assertTrue(playback.isPlaying());

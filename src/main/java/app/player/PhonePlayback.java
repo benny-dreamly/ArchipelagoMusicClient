@@ -172,7 +172,6 @@ public final class PhonePlayback implements PlaybackEngine {
             switch (name) {
                 case "started" -> {
                     loaded = true;
-                    playing = true;
                     if (event.has("durationMs")) {
                         durationMs = event.get("durationMs").getAsLong();
                     }
