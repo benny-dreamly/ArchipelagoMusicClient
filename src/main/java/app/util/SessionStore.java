@@ -85,7 +85,7 @@ public final class SessionStore {
         try (Writer writer = new FileWriter(file, StandardCharsets.UTF_8)) {
             new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create()
                     .toJson(snapshot, writer);
-            LOGGER.info("Session snapshot saved to {}", file.getAbsolutePath());
+            LOGGER.debug("Session snapshot saved to {}", file.getAbsolutePath());
             return true;
         } catch (IOException e) {
             LOGGER.error("Failed to save session snapshot to {}", file.getAbsolutePath(), e);
