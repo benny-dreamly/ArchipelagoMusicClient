@@ -208,22 +208,26 @@ public final class PhoneSession {
         return new WebSocketListener() {
             @Override
             public void onOpen(@NotNull WebSocket webSocket, @NotNull Response response) {
+                if (!isActive(webSocket)) return;
                 post(() -> listener.onOpen());
             }
 
             @Override
             public void onMessage(@NotNull WebSocket webSocket, @NotNull String text) {
+                if (!isActive(webSocket)) return;
                 post(() -> handleMessage(text));
             }
 
             @Override
             public void onClosed(@NotNull WebSocket webSocket, int code, @NotNull String reason) {
+                if (!isActive(webSocket)) return;
                 post(() -> listener.onClose(reason.isEmpty() ? "closed" : reason));
             }
 
             @Override
             public void onFailure(@NotNull WebSocket webSocket, @NotNull Throwable t,
                                   @Nullable Response response) {
+                if (!isActive(webSocket)) return;
                 post(() -> listener.onClose(t.getMessage() == null ? "connection failed" : t.getMessage()));
             }
         };
@@ -244,5 +248,9 @@ public final class PhoneSession {
 
     private void post(Runnable action) {
         mainHandler.post(action);
+    }
+
+    private boolean isActive(WebSocket socket) {
+        return socket == this.webSocket;
     }
 }
