@@ -18,6 +18,7 @@ import java.io.Reader;
 import java.io.Writer;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
@@ -80,9 +81,16 @@ public final class PlayHistoryStore {
         }
         // Deterministic order keeps consecutive writes stable and diffs readable.
         List<String> sorted = new ArrayList<>(new TreeSet<>(playedKeys));
-        // Write to a sibling temp file first so a failed write never truncates the
-        // existing history; swap it in only after the write has closed cleanly.
-        File temp = new File(parent, file.getName() + ".tmp");
+        // Write to a unique sibling temp file so a failed or concurrent save never
+        // truncates the existing history and two saves can't share one temp path.
+        File temp;
+        try {
+            temp = File.createTempFile(file.getName(), ".tmp", parent);
+        } catch (IOException e) {
+            LOGGER.error("Failed to create a temp file for play history next to {}",
+                    file.getAbsolutePath(), e);
+            return false;
+        }
         try (Writer writer = new FileWriter(temp, StandardCharsets.UTF_8)) {
             new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create()
                     .toJson(sorted, writer);
@@ -93,14 +101,25 @@ public final class PlayHistoryStore {
             return false;
         }
         try {
-            Files.move(temp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            Files.move(temp.toPath(), file.toPath(),
+                    StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException e) {
+            // Some filesystems can't move atomically; fall back to a plain replace.
+            try {
+                Files.move(temp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException fallback) {
+                LOGGER.error("Failed to move play history into place at {}",
+                        file.getAbsolutePath(), fallback);
+                //noinspection ResultOfMethodCallIgnored
+                temp.delete();
+                return false;
+            }
         } catch (IOException e) {
-            LOGGER.error("Failed to replace play history at {}", file.getAbsolutePath(), e);
+            LOGGER.error("Failed to move play history into place at {}", file.getAbsolutePath(), e);
             //noinspection ResultOfMethodCallIgnored
             temp.delete();
             return false;
         }
-        LOGGER.info("Saved {} played songs to {}", sorted.size(), file.getAbsolutePath());
         return true;
     }
 }
