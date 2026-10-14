@@ -11,6 +11,7 @@ import java.io.StringReader;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MusicLibraryLoaderTest {
@@ -57,5 +58,37 @@ class MusicLibraryLoaderTest {
                 """;
         List<Album> albums = loader.loadFromReader(new StringReader(json));
         assertTrue(albums.get(0).getSongs().get(0).getAliases().isEmpty());
+    }
+
+    @Test
+    void testRequiresAlbumItemDefaultsToTrue() {
+        String json = """
+                {
+                  "artist": "Test Artist",
+                  "albums": [
+                    {"name": "Test Album", "songs": [{"title": "Plain Title"}]}
+                  ]
+                }
+                """;
+        List<Album> albums = loader.loadFromReader(new StringReader(json));
+        assertTrue(albums.get(0).requiresAlbumItem());
+    }
+
+    @Test
+    void testRequiresAlbumItemParsesFalse() {
+        String json = """
+                {
+                  "artist": "Test Artist",
+                  "albums": [
+                    {
+                      "name": "Test Album",
+                      "requires_album_item": false,
+                      "songs": [{"title": "Plain Title"}]
+                    }
+                  ]
+                }
+                """;
+        List<Album> albums = loader.loadFromReader(new StringReader(json));
+        assertFalse(albums.get(0).requiresAlbumItem());
     }
 }
