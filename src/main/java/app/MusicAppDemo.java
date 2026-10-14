@@ -1090,7 +1090,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         Duration restoreSeek = pendingSeek;
         pendingSeek = null;
 
-        Album album = library.getAlbumForSong(song.getTitle());
+        Album album = library.getAlbumForSong(song);
         boolean canPlay = unlockManager.canPlay(song, album);
 
         if (!canPlay) {
