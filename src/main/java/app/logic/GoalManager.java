@@ -48,8 +48,6 @@ public class GoalManager {
     }
 
     public void markPlayed(String songTitle, String albumName, Client client) {
-        if (goalSent) return;
-
         String key = albumName + "::" + songTitle;
         boolean isNew = playedSongs.add(key);
         LOGGER.info("Marked song as played: {} (album: {}) [new={}]", songTitle, albumName, isNew);
