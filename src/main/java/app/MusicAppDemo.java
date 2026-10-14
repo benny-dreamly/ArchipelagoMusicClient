@@ -1415,11 +1415,8 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
             LocalPlayback local = new LocalPlayback();
             playbackEngine = local;
             if (song != null && song.getFilePath() != null && wasLoaded) {
-                configureEngine(local, song, library.getAlbumForSong(song), null);
+                configureEngine(local, song, library.getAlbumForSong(song), resumeAt);
                 local.loadAndPlay(song);
-                if (resumeAt != null && resumeAt.greaterThan(Duration.ZERO)) {
-                    local.seek(resumeAt);
-                }
                 if (!wasPlaying) {
                     local.pause();
                 }
