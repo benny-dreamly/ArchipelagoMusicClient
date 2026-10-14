@@ -62,6 +62,7 @@ class CompanionServerTest {
         AtomicReference<String> receivedState = new AtomicReference<>();
         WebSocketClient client = client(wsPort, receivedState, broadcastLatch);
         client.connectBlocking();
+        awaitActivePhone();
 
         assertTrue(server.hasClients());
 
