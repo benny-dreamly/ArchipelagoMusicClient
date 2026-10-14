@@ -18,6 +18,8 @@ import java.io.Reader;
 import java.io.Writer;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -78,14 +80,27 @@ public final class PlayHistoryStore {
         }
         // Deterministic order keeps consecutive writes stable and diffs readable.
         List<String> sorted = new ArrayList<>(new TreeSet<>(playedKeys));
-        try (Writer writer = new FileWriter(file, StandardCharsets.UTF_8)) {
+        // Write to a sibling temp file first so a failed write never truncates the
+        // existing history; swap it in only after the write has closed cleanly.
+        File temp = new File(parent, file.getName() + ".tmp");
+        try (Writer writer = new FileWriter(temp, StandardCharsets.UTF_8)) {
             new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create()
                     .toJson(sorted, writer);
-            LOGGER.info("Saved {} played songs to {}", sorted.size(), file.getAbsolutePath());
-            return true;
         } catch (IOException e) {
-            LOGGER.error("Failed to save play history to {}", file.getAbsolutePath(), e);
+            LOGGER.error("Failed to write play history to {}", temp.getAbsolutePath(), e);
+            //noinspection ResultOfMethodCallIgnored
+            temp.delete();
             return false;
         }
+        try {
+            Files.move(temp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            LOGGER.error("Failed to replace play history at {}", file.getAbsolutePath(), e);
+            //noinspection ResultOfMethodCallIgnored
+            temp.delete();
+            return false;
+        }
+        LOGGER.info("Saved {} played songs to {}", sorted.size(), file.getAbsolutePath());
+        return true;
     }
 }
