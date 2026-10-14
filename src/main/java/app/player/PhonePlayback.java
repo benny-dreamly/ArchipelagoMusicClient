@@ -47,8 +47,16 @@ public final class PhonePlayback implements PlaybackEngine {
         if (song == null || song.getFilePath() == null) {
             return;
         }
+        String streamPath = streamPathResolver.apply(song);
+        if (streamPath == null) {
+            loaded = false;
+            if (onError != null) {
+                onError.accept("Song is outside the shared folders: " + song.getTitle());
+            }
+            return;
+        }
         JsonObject cmd = command("play");
-        cmd.addProperty("streamPath", streamPathResolver.apply(song));
+        cmd.addProperty("streamPath", streamPath);
         cmd.addProperty("title", song.getTitle());
         send(cmd);
     }

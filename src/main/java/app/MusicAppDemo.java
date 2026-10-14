@@ -185,7 +185,7 @@ public class MusicAppDemo extends Application {
     private java.util.concurrent.ScheduledFuture<?> companionTickerTask;
     // Folder the companion server serves; remembered so toggling the setting
     // can start it without reloading the library.
-    private File companionMusicRoot;
+    private List<File> companionMusicRoot;
 
     // energy link / playback boost
     private static final double BOOST_RATE_150 = 1.5;
@@ -564,7 +564,7 @@ public class MusicAppDemo extends Application {
                 applyOfflineUnlocks();
             }
 
-            startCompanionServer(getConfigDir());
+            startCompanionServer(albumMusicRoots());
 
             restoreLibraryControls();
 
@@ -807,7 +807,7 @@ public class MusicAppDemo extends Application {
             applyOfflineUnlocks();
             refreshTree();
 
-            startCompanionServer(folder);
+            startCompanionServer(List.of(folder));
             restoreLibraryControls();
             connectionPanel.setStatus("Browsing " + folder.getName()
                     + " (" + albums.size() + " albums, "
@@ -1273,16 +1273,26 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         }
     }
 
-    private void startCompanionServer(File musicRoot) {
+    private List<File> albumMusicRoots() {
+        return albums.stream()
+                .map(Album::getFolderPath)
+                .filter(path -> path != null && !path.isBlank())
+                .map(File::new)
+                .filter(File::isDirectory)
+                .distinct()
+                .toList();
+    }
+
+    private void startCompanionServer(List<File> musicRoots) {
         stopCompanionServer();
-        if (musicRoot == null || !musicRoot.isDirectory()) return;
-        // Remember the root so the settings toggle can (re)start the server.
-        companionMusicRoot = musicRoot;
+        if (musicRoots == null || musicRoots.isEmpty()) return;
+        // Remember the roots so the settings toggle can (re)start the server.
+        companionMusicRoot = musicRoots;
         if (!loadCompanionServer()) {
             LOGGER.info("Companion server disabled in settings; not starting");
             return;
         }
-        companionServer = new CompanionServer(musicRoot, COMPANION_HTTP_PORT, COMPANION_WS_PORT);
+        companionServer = new CompanionServer(musicRoots, COMPANION_HTTP_PORT, COMPANION_WS_PORT);
         companionServer.setCommandHandler(this::handleRemoteCommand);
         companionServer.setEventHandler(json -> Platform.runLater(() -> {
             if (playbackEngine instanceof PhonePlayback phone) {

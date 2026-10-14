@@ -50,7 +50,11 @@ public final class CompanionServer {
     private volatile WebSocket activePhone;
 
     public CompanionServer(File musicRoot, int httpPort, int wsPort) {
-        this.resolver = new RootedPathResolver(musicRoot);
+        this(List.of(musicRoot), httpPort, wsPort);
+    }
+
+    public CompanionServer(List<File> musicRoots, int httpPort, int wsPort) {
+        this.resolver = new RootedPathResolver(musicRoots);
         this.httpPort = httpPort;
         this.wsPort = wsPort;
     }
