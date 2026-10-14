@@ -178,6 +178,7 @@ public class MusicAppDemo extends Application {
     private static final Duration CLICK_WINDOW = Duration.millis(300);
     private boolean boostActive = false;
     private double boostRate = 1.0;
+    private double playbackSpeed = 1.0;
     private javafx.animation.PauseTransition boostTimer;
     private javafx.animation.PauseTransition boostClickTimer;
 
@@ -241,7 +242,7 @@ public class MusicAppDemo extends Application {
 
         createBottomBar();
 
-        connectionPanel = new ConnectionPanel(gameFolder, () -> client);
+        connectionPanel = new ConnectionPanel(gameFolder, () -> client, this::setPlaybackSpeedCommand);
 
         playerPanel = new PlayerPanel();
         setupPlayerPanel(playerPanel);
@@ -1157,9 +1158,12 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         MediaPlayer player = new MediaPlayer(media);
         currentPlayer = player;
         player.setVolume(playerPanel.getVolumeSlider().getValue() / 100.0);
-        if (boostActive) {
-            player.setRate(boostRate);
-        }
+        applyPlaybackRate(player);
+        player.statusProperty().addListener((_, _, status) -> {
+            if (status == MediaPlayer.Status.PLAYING) {
+                Platform.runLater(() -> applyPlaybackRate(player));
+            }
+        });
 
         player.currentTimeProperty().addListener((_, _, newTime) -> {
             if (!playerPanel.getProgressSlider().isValueChanging()) {
@@ -1173,6 +1177,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
 
         // Set duration label once media is ready
         player.setOnReady(() -> {
+            applyPlaybackRate(player);
             Duration total = player.getTotalDuration();
             if (total != null) {
                 playerPanel.getDurationLabel().setText(formatTime(total));
@@ -1292,6 +1297,42 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         LOGGER.info("Playback boost engaged at {}x for {}s", rate, (int) BOOST_DURATION.toSeconds());
     }
 
+    private String setPlaybackSpeedCommand(String arg) {
+        String trimmed = arg == null ? "" : arg.trim();
+        double rate;
+        if (trimmed.isEmpty()) {
+            rate = playbackSpeed == 1.0 ? 3.0 : 1.0;
+        } else {
+            try {
+                rate = Double.parseDouble(trimmed);
+            } catch (NumberFormatException e) {
+                return "Usage: /speed [rate]";
+            }
+        }
+        if (rate < 0.1 || rate > 4.0) {
+            return "Speed must be between 0.1 and 4.0.";
+        }
+        playbackSpeed = rate;
+        if (!boostActive) {
+            applyPlaybackRate(currentPlayer);
+        }
+        return playbackSpeed == 1.0
+                ? "Playback speed reset."
+                : String.format(Locale.ROOT, "Playback speed set to %.2fx", playbackSpeed);
+    }
+
+    private void applyPlaybackRate(MediaPlayer player) {
+        if (player == null) {
+            return;
+        }
+        double rate = boostActive ? boostRate : playbackSpeed;
+        // macOS resets the native rate to 1.0 when playback (re)starts (JDK-8236146),
+        // so force the property to change to make the target rate stick.
+        player.setRate(1.0);
+        player.setRate(rate);
+        LOGGER.info("Applied playback rate {}", rate);
+    }
+
     private void endBoost() {
         boostActive = false;
         boostRate = 1.0;
@@ -1299,9 +1340,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
             boostTimer.stop();
             boostTimer = null;
         }
-        if (currentPlayer != null) {
-            currentPlayer.setRate(1.0);
-        }
+        applyPlaybackRate(currentPlayer);
         LOGGER.info("Playback boost ended");
     }
 

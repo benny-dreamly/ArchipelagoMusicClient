@@ -28,11 +28,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class TextClientWindow {
 
     private final Supplier<APClient> clientSupplier;
+    private final Function<String, String> speedHandler;
 
     private final InlineCssTextArea outputArea = new InlineCssTextArea();
     private final TextField inputField = new TextField();
@@ -45,8 +47,9 @@ public class TextClientWindow {
     private Map<String, List<String>> itemGroups = Collections.emptyMap();
     private Map<String, List<String>> locationGroups = Collections.emptyMap();
 
-    public TextClientWindow(Supplier<APClient> clientSupplier) {
+    public TextClientWindow(Supplier<APClient> clientSupplier, Function<String, String> speedHandler) {
         this.clientSupplier = clientSupplier;
+        this.speedHandler = speedHandler;
     }
 
     public void show() {
@@ -141,6 +144,7 @@ public class TextClientWindow {
             case "locations" -> handleLocationsCommand();
             case "item_groups" -> handleItemGroupsCommand(arg);
             case "location_groups" -> handleLocationGroupsCommand(arg);
+            case "speed" -> appendLine(speedHandler.apply(arg));
             default -> {
                 if ("goal".equals(cmd) && isDebugMode()) {
                     handleGoalCommand(arg);
