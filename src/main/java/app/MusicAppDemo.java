@@ -593,7 +593,7 @@ public class MusicAppDemo extends Application {
                 connectionPanel.getTextClientWindow().appendOutput("Converted locations.json -> music_library.json ("
                         + library.albums.size() + " albums, " + songs + " songs)");
                 if (savedBrowseFolder() == null) {
-                    reloadGameLibrary(gameFolder);
+                    reloadGameLibrary();
                 }
             } finally {
                 settingsWindow.getConvertLibraryButton().setDisable(false);
@@ -630,7 +630,7 @@ public class MusicAppDemo extends Application {
         }
     }
 
-    private void reloadGameLibrary(File gameFolder) {
+    private void reloadGameLibrary() {
         // Buffer item events before invalidating generation
         if (itemListener != null) {
             itemListener.setLibraryLoading(true);
@@ -1660,7 +1660,7 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
         SlotDataHelper.loadSlotOptions(gameFolder.get());
 
         ensureGameDefaults(gameFolder.get());
-        reloadGameLibrary(gameFolder.get());
+        reloadGameLibrary();
         // After the reload bumped the load generation, so the pending restore
         // tracks the library load this connect kicked off.
         armSessionRestore(gameName, slot);
