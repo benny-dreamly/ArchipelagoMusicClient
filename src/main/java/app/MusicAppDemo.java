@@ -1194,11 +1194,13 @@ if ((currentPlayer == null || currentPlayer.getStatus() != MediaPlayer.Status.PL
                 client.sendCheck(song.getLocation());
                 creditSongEnergy();
             }
-            Album songAlbum = library.getAlbumForSong(song.getTitle());
-            if (goalManager != null && songAlbum != null) {
+            // Use the album carried through this playback rather than looking the
+            // song up by title again, so duplicate titles stay with the album that
+            // was actually played.
+            if (goalManager != null && album != null) {
                 // Connected or not, record the play; GoalManager routes it to
                 // the server or the local play_history.json accordingly.
-                goalManager.markPlayed(song.getTitle(), songAlbum.getName(),
+                goalManager.markPlayed(song.getTitle(), album.getName(),
                         client != null && client.isConnected() ? client : null);
             }
             if (queueManager.getRepeatMode() == QueueManager.RepeatMode.SONG) {
