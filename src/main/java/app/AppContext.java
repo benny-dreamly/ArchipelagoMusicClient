@@ -4,9 +4,12 @@
 package app;
 
 import app.archipelago.EnergyLinkListener;
+import app.logic.GoalManager;
 import app.logic.QueueManager;
+import app.logic.UnlockManager;
 import app.player.Album;
 import app.player.Song;
+import app.util.AlbumLibrary;
 
 import java.util.List;
 
@@ -20,6 +23,18 @@ public interface AppContext {
     Album albumForSong(Song song);
 
     List<Album> albums();
+
+    AlbumLibrary library();
+
+    UnlockManager unlockManager();
+
+    GoalManager goalManager();
+
+    List<String> bonusLocations();
+
+    List<String> albumOrder();
+
+    void sendBonusCheck(String location);
 
     boolean libraryReady();
 

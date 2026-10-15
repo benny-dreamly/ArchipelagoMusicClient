@@ -34,6 +34,7 @@ import app.player.ui.PlayerControlsController;
 import app.player.ui.PlayerPanel;
 import app.player.ui.SettingsWindow;
 import app.remote.CompanionController;
+import app.ui.TreeController;
 import app.util.AlbumLibrary;
 import app.util.AlbumOrderManager;
 import app.util.PlayHistoryStore;
@@ -50,14 +51,11 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.ContextMenu;
-import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TreeView;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.image.Image;
-import javafx.scene.input.MouseButton;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
@@ -77,13 +75,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 import java.util.Collections;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -145,8 +141,8 @@ public class MusicAppDemo extends Application implements AppContext {
     // companion phone server
     private CompanionController companion;
 
-    private boolean isUpdatingSelection = false;
-    private boolean suppressSelection = false;
+    // album tree
+    private TreeController treeController;
 
     // various fields and stuff for the UI (the others are above or locally defined)
     private ConnectionPanel connectionPanel;
@@ -172,30 +168,8 @@ public class MusicAppDemo extends Application implements AppContext {
 
         initUIComponents();
 
-        // When a tree item (song) is selected, add to queue
-        treeView.getSelectionModel().selectedItemProperty().addListener((_, _, newSel) -> {
-            if (suppressSelection) {
-                suppressSelection = false;
-                return;
-            }
-            handleTreeSelection(newSel);
-        });
-
-        searchField.textProperty().addListener((_, _, _) -> refreshTree());
-
-        setupAlbumContextMenu();
-
-        // Suppress selection handling on right-click so context menu doesn't double-queue
-        treeView.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
-            if (event.getButton() == MouseButton.SECONDARY) {
-                suppressSelection = true;
-            }
-        });
-
         albumOrderManager = new AlbumOrderManager();
         stateManager = new StateManager(this, albumOrderManager);
-
-        refreshTree();
 
         createBottomBar();
 
@@ -204,6 +178,10 @@ public class MusicAppDemo extends Application implements AppContext {
         playback = new PlaybackController(this, playerPanel, albumArtPanel);
         companion = new CompanionController(this, playback);
         sessionRestore = new SessionRestoreController(this, playback);
+
+        treeController = new TreeController(this, playback, treeView, searchField, contextMenu);
+        treeController.bind();
+        treeController.refreshTree();
 
         connectionPanel = new ConnectionPanel(gameFolder, () -> client,
                 playback::setPlaybackSpeedCommand);
@@ -876,166 +854,8 @@ public class MusicAppDemo extends Application implements AppContext {
     }
 
     public void refreshTree() {
-        // Custom album order
-        List<String> albumOrder = albumOrderManager.getAlbumOrder();
-
-        // Sort albums according to albumOrder
-        albums.sort(Comparator.comparingInt(a -> {
-            int idx = albumOrder.indexOf(a.getName());
-            return idx >= 0 ? idx : Integer.MAX_VALUE; // albums not in the list go last
-        }));
-
-        TreeItem<String> rootItem = new TreeItem<>("Albums");
-        rootItem.setExpanded(true);
-
-        String query = searchField.getText().trim().toLowerCase(Locale.ROOT);
-
-        for (Album album : albums) {
-            // Skip albums not unlocked in slot data
-            if (!unlockManager.getEnabledAlbums().contains(album.getName())) continue;
-
-            boolean albumMatches = album.getName().toLowerCase(Locale.ROOT).contains(query);
-            TreeItem<String> albumItem = new TreeItem<>(album.getName());
-            boolean hasSongs = false;
-
-            for (Song song : album.getSongs()) {
-                if (unlockManager.getEnabledSets().contains(song.getType())) {
-                    if (!albumMatches && !song.getTitle().toLowerCase(Locale.ROOT).contains(query)) continue;
-                    TreeItem<String> songItem = new TreeItem<>(song.getTitle());
-                    albumItem.getChildren().add(songItem);
-                    hasSongs = true;
-                }
-            }
-
-            if (hasSongs) rootItem.getChildren().add(albumItem);
-        }
-
-        if (!bonusLocations.isEmpty()) {
-            boolean bonusMatches = "bonus".contains(query);
-            Set<String> sentForSlot = Set.copyOf(SentBonusStore.load(connectionPanel.getSlot()));
-            TreeItem<String> bonusItem = new TreeItem<>("Bonus");
-            for (String location : bonusLocations) {
-                if (sentForSlot.contains(location)) continue;
-                if (bonusMatches || location.toLowerCase(Locale.ROOT).contains(query)) {
-                    bonusItem.getChildren().add(new TreeItem<>(location));
-                }
-            }
-            if (!bonusItem.getChildren().isEmpty()) {
-                rootItem.getChildren().add(bonusItem);
-            }
-        }
-
-        treeView.setRoot(rootItem);
-    }
-
-    private void setupAlbumContextMenu() {
-        treeView.setOnContextMenuRequested(event -> {
-            suppressSelection = false;
-            TreeItem<String> item = treeView.getSelectionModel().getSelectedItem();
-            if (item == null || item.getParent() == null) return;
-
-            contextMenu.getItems().clear(); // reset the context menu
-
-            if (item.isLeaf() && item.getParent().getParent() != null && !"Bonus".equals(item.getParent().getValue())) {
-                MenuItem queueNext = new MenuItem("Play Next");
-                queueNext.setOnAction(_ -> {
-                    Album album = library.getAlbumByName(item.getParent().getValue());
-                    queueSongNext(item.getValue(), album);
-                });
-                contextMenu.getItems().add(queueNext);
-                contextMenu.show(treeView, event.getScreenX(), event.getScreenY());
-                event.consume();
-            }
-
-            // Only show for album nodes (non-leaf, child of root, not Bonus)
-            if (!item.isLeaf() && item.getParent().getParent() == null && !"Bonus".equals(item.getValue())) {
-                MenuItem queueAll = new MenuItem("Queue All Songs");
-                queueAll.setOnAction(_ -> queueAlbum(item.getValue()));
-                contextMenu.getItems().add(queueAll);
-                if (goalManager != null) {
-                    MenuItem queueUnplayed = new MenuItem("Queue Unplayed");
-                    queueUnplayed.setOnAction(_ -> queueUnplayedAlbum(item.getValue()));
-                    contextMenu.getItems().add(queueUnplayed);
-                }
-                contextMenu.show(treeView, event.getScreenX(), event.getScreenY());
-                event.consume();
-            }
-        });
-    }
-
-    private void queueAlbum(String albumName) {
-        Album album = library.getAlbumByName(albumName);
-        if (album == null) return;
-
-        List<Song> queueable = album.getQueueableSongs(unlockManager.getEnabledSets(),
-                unlockManager.getUnlockedSongs(), unlockManager.getUnlockedAlbums());
-        if (queueable.isEmpty()) {
-            LOGGER.info("No queueable songs in album '{}'", albumName);
-            return;
-        }
-
-        queueManager.addAll(queueable);
-        LOGGER.info("Queued {} songs from album '{}'", queueable.size(), albumName);
-        updateQueueDisplay();
-
-        // If nothing is playing, start the first queued song
-        if (!playback.isPlaying() && !queueManager.isEmpty()) {
-            Song next = queueManager.poll();
-            updateQueueDisplay();
-            if (next != null) {
-                playback.playSong(next);
-            }
-        }
-    }
-
-    private void queueUnplayedAlbum(String albumName) {
-        Album album = library.getAlbumByName(albumName);
-        if (album == null || goalManager == null) return;
-
-        List<Song> queueable = album.getQueueableSongs(unlockManager.getEnabledSets(),
-                unlockManager.getUnlockedSongs(), unlockManager.getUnlockedAlbums());
-        List<Song> unplayed = queueable.stream()
-                .filter(song -> !goalManager.isSongPlayed(song.getTitle(), albumName))
-                .toList();
-        if (unplayed.isEmpty()) {
-            LOGGER.info("No unplayed songs in album '{}'", albumName);
-            return;
-        }
-
-        queueManager.addAll(unplayed);
-        LOGGER.info("Queued {} unplayed songs from album '{}'", unplayed.size(), albumName);
-        updateQueueDisplay();
-
-        // If nothing is playing, start the first queued song
-        if (!playback.isPlaying() && !queueManager.isEmpty()) {
-            Song next = queueManager.poll();
-            updateQueueDisplay();
-            if (next != null) {
-                playback.playSong(next);
-            }
-        }
-    }
-
-    private void queueSongNext(String songTitle, Album album) {
-        Song song = album != null ? album.getSong(songTitle) : null;
-        if (song == null) {
-            song = library.getSongByTitle(songTitle);
-        }
-        if (song == null) return;
-
-        if (!unlockManager.canPlay(song, album)) return;
-
-        // insert at front
-        queueManager.addFirst(song);
-        updateQueueDisplay();
-
-        // If nothing is playing, start the first queued song
-        if (playback.getEngine() == null && !queueManager.isEmpty()) {
-            Song next = queueManager.poll();
-            updateQueueDisplay();
-            if (next != null) {
-                playback.playSong(next);
-            }
+        if (treeController != null) {
+            treeController.refreshTree();
         }
     }
 
@@ -1068,31 +888,7 @@ public class MusicAppDemo extends Application implements AppContext {
 
     @Override
     public void highlightCurrentSong(Album album, String songTitle) {
-        if (isUpdatingSelection) return;
-
-        TreeItem<String> root = treeView.getRoot();
-        if (root == null) return;
-
-        isUpdatingSelection = true;
-
-        for (TreeItem<String> albumItem : root.getChildren()) {
-            if (!albumItem.getValue().equals(album.getName())) {
-                continue; // different album — skip (duplicate titles across albums stay distinct)
-            }
-            for (TreeItem<String> songItem : albumItem.getChildren()) {
-                if (songItem.getValue().equals(songTitle)) {
-                    treeView.getSelectionModel().select(songItem);
-                    int row = treeView.getRow(songItem);
-                    if (row >= 0) {
-                        treeView.scrollTo(row);
-                    }
-                    isUpdatingSelection = false;
-                    return;
-                }
-            }
-        }
-
-        isUpdatingSelection = false;
+        treeController.highlightCurrentSong(album, songTitle);
     }
 
     // Queue helpers -----------------------------------------------------
@@ -1413,6 +1209,31 @@ public class MusicAppDemo extends Application implements AppContext {
     }
 
     @Override
+    public AlbumLibrary library() {
+        return library;
+    }
+
+    @Override
+    public UnlockManager unlockManager() {
+        return unlockManager;
+    }
+
+    @Override
+    public GoalManager goalManager() {
+        return goalManager;
+    }
+
+    @Override
+    public List<String> bonusLocations() {
+        return bonusLocations;
+    }
+
+    @Override
+    public List<String> albumOrder() {
+        return albumOrderManager.getAlbumOrder();
+    }
+
+    @Override
     public boolean connected() {
         return client != null && client.isConnected();
     }
@@ -1476,7 +1297,8 @@ public class MusicAppDemo extends Application implements AppContext {
         connectionPanel.getTextClientWindow().appendOutput(message);
     }
 
-    private void sendBonusCheck(String location) {
+    @Override
+    public void sendBonusCheck(String location) {
         if (client != null && client.isConnected()) {
             if (client.sendCheck(location)) {
                 bonusLocations.remove(location);
@@ -1488,56 +1310,6 @@ public class MusicAppDemo extends Application implements AppContext {
                 showError("Bonus Check Failed", "Cannot send bonus check",
                         "The server does not recognize the location \"" + location + "\". "
                         + "This bonus location is not defined for your game on this server.");
-            }
-        }
-    }
-
-    private void handleTreeSelection(TreeItem<String> newSel) {
-        if (newSel == null) return;
-        if (isUpdatingSelection) return;
-
-        // Only leaf nodes are actionable; ignore album and root nodes
-        if (!newSel.isLeaf()) return;
-
-        String value = newSel.getValue();
-
-        // Bonus locations: send check if selected leaf is under the "Bonus" branch
-        TreeItem<String> parent = newSel.getParent();
-        if (parent != null && "Bonus".equals(parent.getValue())) {
-            sendBonusCheck(value);
-            return;
-        }
-        if (parent == null) return;
-
-        // Resolve the song via its album first so duplicate titles across albums
-        // stay distinguishable; fall back to the title-wide lookup as a safety net.
-        Album album = library.getAlbumByName(parent.getValue());
-        if (album == null) return;
-        Song song = album.getSong(value);
-        if (song == null) {
-            song = library.getSongByTitle(value);
-        }
-
-        if (song == null) return;
-
-        // Don't re-queue the currently playing song (e.g. from highlightCurrentSong)
-        if (song == playback.getCurrentSong()) return;
-
-        if (!unlockManager.canPlay(song, album)) {
-            showError("Locked Song", "Cannot play song", lockedSongMessage(song, album));
-            return;
-        }
-
-        // Add to queue, song has passed checks
-        queueManager.add(song);
-        updateQueueDisplay();
-
-        // If nothing is playing, start immediately
-        if (!playback.isPlaying()) {
-            Song next = queueManager.poll();
-            updateQueueDisplay();
-            if (next != null) {
-                playback.playSong(next);
             }
         }
     }
