@@ -3,6 +3,7 @@
  */
 package app.remote;
 
+import app.AppContext;
 import app.logic.QueueManager;
 import app.player.Album;
 import app.player.LocalPlayback;
@@ -31,7 +32,7 @@ import static app.util.ConfigManager.loadCompanionServer;
  * publishes desktop playback state, swaps the audio sink between the desktop
  * and the phone, and applies remote commands. Extracted from
  * {@code MusicAppDemo}; the application-specific bits are reached through the
- * {@link Host} callbacks, and playback flow goes through {@link PlaybackController}.
+ * {@link AppContext}, and playback flow goes through {@link PlaybackController}.
  */
 public class CompanionController {
 
@@ -40,20 +41,7 @@ public class CompanionController {
     private static final int COMPANION_HTTP_PORT = 8311;
     private static final int COMPANION_WS_PORT = 8312;
 
-    /** Callbacks the controller needs from the owning application. */
-    public interface Host {
-        QueueManager queueManager();
-
-        Album albumForSong(Song song);
-
-        double volume();
-
-        void setVolume(double percent);
-
-        void togglePlayPause();
-    }
-
-    private final Host host;
+    private final AppContext host;
     private final PlaybackController playback;
 
     private CompanionServer server;
@@ -63,7 +51,7 @@ public class CompanionController {
     // can start it without reloading the library.
     private List<File> musicRoot;
 
-    public CompanionController(Host host, PlaybackController playback) {
+    public CompanionController(AppContext host, PlaybackController playback) {
         this.host = host;
         this.playback = playback;
     }

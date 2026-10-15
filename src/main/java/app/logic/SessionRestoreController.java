@@ -3,6 +3,7 @@
  */
 package app.logic;
 
+import app.AppContext;
 import app.player.Album;
 import app.player.PlaybackController;
 import app.player.PlaybackEngine;
@@ -25,7 +26,7 @@ import static app.util.ConfigManager.loadSessionRestore;
  * A snapshot is saved periodically and on shutdown; on a later connect to the
  * same game/slot it is applied once the starting-inventory item burst has
  * settled. Extracted from {@code MusicAppDemo}; the application-specific bits
- * are reached through the {@link Host} callbacks and playback flow goes through
+ * are reached through the {@link AppContext} and playback flow goes through
  * {@link PlaybackController}.
  */
 public class SessionRestoreController {
@@ -34,41 +35,14 @@ public class SessionRestoreController {
 
     private static final Duration DEBOUNCE = Duration.millis(150);
 
-    /** Callbacks the controller needs from the owning application. */
-    public interface Host {
-        boolean sessionRestoreEnabled();
-
-        boolean connected();
-
-        boolean libraryReady();
-
-        QueueManager queueManager();
-
-        List<Album> albums();
-
-        Album albumForSong(Song song);
-
-        boolean canQueue(Song song, Album album);
-
-        boolean canPlay(Song song, Album album);
-
-        String gameName();
-
-        String slot();
-
-        int loadGeneration();
-
-        void updateQueueDisplay();
-    }
-
-    private final Host host;
+    private final AppContext host;
     private final PlaybackController playback;
     private final Timeline debounce = new Timeline();
 
     private SessionStore.Snapshot pending;
     private int pendingGeneration;
 
-    public SessionRestoreController(Host host, PlaybackController playback) {
+    public SessionRestoreController(AppContext host, PlaybackController playback) {
         this.host = host;
         this.playback = playback;
     }

@@ -119,8 +119,7 @@ import static app.util.ConfigPaths.checkIfGameFolderExists;
 import static app.util.Dialogs.showError;
 import static app.util.SlotDataUtils.parseSlotData;
 
-public class MusicAppDemo extends Application
-        implements PlaybackController.Host, CompanionController.Host, SessionRestoreController.Host {
+public class MusicAppDemo extends Application implements AppContext {
 
     public static final Logger LOGGER = LoggerFactory.getLogger(MusicAppDemo.class);
 
@@ -1842,11 +1841,6 @@ public class MusicAppDemo extends Application
     @Override
     public EnergyLinkListener energyLink() {
         return energyLinkListener;
-    }
-
-    @Override
-    public boolean clientConnected() {
-        return client != null && client.isConnected();
     }
 
     @Override

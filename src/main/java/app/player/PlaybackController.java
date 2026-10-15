@@ -3,6 +3,7 @@
  */
 package app.player;
 
+import app.AppContext;
 import app.archipelago.EnergyLinkListener;
 import app.logic.QueueManager;
 import app.player.ui.AlbumArtPanel;
@@ -35,7 +36,7 @@ import static app.util.TimeUtils.formatTime;
  * Owns the current playback engine, the track that is playing, the play history
  * and the rate/boost state. Extracted from {@code MusicAppDemo}; the
  * application-specific effects (queue display, remote state, play recording)
- * are reached through the {@link Host} callbacks.
+ * are reached through the {@link AppContext}.
  */
 public class PlaybackController {
 
@@ -50,32 +51,7 @@ public class PlaybackController {
     private static final Duration CLICK_WINDOW = Duration.millis(300);
     private static final int HISTORY_LIMIT = 100;
 
-    /** Callbacks the controller needs from the owning application. */
-    public interface Host {
-        Album albumForSong(Song song);
-
-        boolean canPlay(Song song, Album album);
-
-        String lockedSongMessage(Song song, Album album);
-
-        QueueManager queueManager();
-
-        void publishRemoteState();
-
-        void updateQueueDisplay();
-
-        void highlightCurrentSong(Album album, String songTitle);
-
-        void onSongFinished(Song song, Album album);
-
-        EnergyLinkListener energyLink();
-
-        boolean clientConnected();
-
-        void appendOutput(String message);
-    }
-
-    private final Host host;
+    private final AppContext host;
     private final PlayerPanel playerPanel;
     private final AlbumArtPanel albumArtPanel;
     private final ExecutorService artworkExecutor = new ThreadPoolExecutor(
@@ -96,7 +72,7 @@ public class PlaybackController {
     private PauseTransition boostTimer;
     private PauseTransition boostClickTimer;
 
-    public PlaybackController(Host host, PlayerPanel playerPanel, AlbumArtPanel albumArtPanel) {
+    public PlaybackController(AppContext host, PlayerPanel playerPanel, AlbumArtPanel albumArtPanel) {
         this.host = host;
         this.playerPanel = playerPanel;
         this.albumArtPanel = albumArtPanel;
@@ -345,7 +321,7 @@ public class PlaybackController {
 
     private void startBoost(double rate, double cost) {
         EnergyLinkListener link = host.energyLink();
-        if (link != null && host.clientConnected()) {
+        if (link != null && host.connected()) {
             Double balance = link.getBalance();
             if (balance == null) {
                 LOGGER.info("Boost rejected: EnergyLink is not ready yet");
@@ -424,7 +400,7 @@ public class PlaybackController {
     /** Credit the stored energy for a finished song. */
     public void creditSongEnergy() {
         EnergyLinkListener link = host.energyLink();
-        if (link != null && host.clientConnected()) {
+        if (link != null && host.connected()) {
             link.deposit(SONG_ENERGY_CREDIT);
         }
     }
