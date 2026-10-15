@@ -53,8 +53,6 @@ import javafx.scene.Scene;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TreeView;
-import javafx.scene.control.TreeCell;
-import javafx.scene.control.TreeItem;
 import javafx.scene.image.Image;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -439,7 +437,7 @@ public class MusicAppDemo extends Application implements AppContext {
                 pendingPlayedGeneration = -1;
             }
 
-            installTreeCellFactory();
+            treeController.installTreeCellFactory();
 
             // Fallback: load albumFolders.json for albums without a path from music_library.json
             {
@@ -721,7 +719,7 @@ public class MusicAppDemo extends Application implements AppContext {
             goalManager = new GoalManager(unlockManager, albums, this::onGoalProgressChanged);
             goalManager.loadFromLocal(PlayHistoryStore.load());
 
-            installTreeCellFactory();
+            treeController.installTreeCellFactory();
             applyOfflineUnlocks();
             refreshTree();
 
@@ -752,66 +750,6 @@ public class MusicAppDemo extends Application implements AppContext {
         });
 
         new Thread(scanTask).start();
-    }
-
-    private void installTreeCellFactory() {
-        treeView.setCellFactory(tv -> new TreeCell<>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-
-                if (empty || item == null) {
-                    setText(null);
-                    setStyle("");
-                    getStyleClass().removeAll("song-unlocked", "album-unlocked");
-                } else {
-                    TreeItem<String> treeItem = getTreeItem();
-
-                    if (treeItem != null && treeItem.isLeaf()) {
-                        // Song nodes
-                        getStyleClass().remove("album-unlocked");
-                        setText(item);
-                        Song song = library.getSongByTitle(item);
-                        if (song != null && unlockManager.isSongUnlocked(song.getTitle())) {
-                            getStyleClass().add("song-unlocked");
-                        } else {
-                            getStyleClass().remove("song-unlocked");
-                        }
-                    } else {
-                        // Album nodes
-                        getStyleClass().remove("song-unlocked");
-                        if (item.equals("Albums")) {
-                            // Root "Albums" node — show overall world completion
-                            UnlockManager.AlbumProgress world = unlockManager.getWorldProgress(library.getAlbums());
-                            int worldPlayed = goalManager != null
-                                    ? goalManager.getWorldPlayedCount(library.getAlbums())
-                                    : world.unlocked();
-                            setText(item + " (" + worldPlayed + "/" + world.total() + ")");
-                            getStyleClass().remove("album-unlocked");
-                        } else {
-                            // Regular album node
-                            Album album = library.getAlbumByName(item);
-                            if (album != null) {
-                                UnlockManager.AlbumProgress progress = unlockManager.getAlbumProgress(album);
-                                int albumPlayed = goalManager != null
-                                        ? goalManager.getPlayedCount(album)
-                                        : progress.unlocked();
-                                setText(item + " (" + albumPlayed + "/" + progress.total() + ")");
-                            } else {
-                                setText(item);
-                            }
-                            if (album != null && unlockManager.isAlbumUnlocked(album.getName())) {
-                                // unlocked → bold
-                                getStyleClass().add("album-unlocked");
-                            } else {
-                                // locked → normal
-                                getStyleClass().remove("album-unlocked");
-                            }
-                        }
-                    }
-                }
-            }
-        });
     }
 
     private void restoreLibraryControls() {

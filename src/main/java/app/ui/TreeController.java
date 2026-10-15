@@ -12,6 +12,7 @@ import app.util.SentBonusStore;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.input.MouseButton;
@@ -132,6 +133,68 @@ public class TreeController {
         }
 
         treeView.setRoot(rootItem);
+    }
+
+    public void installTreeCellFactory() {
+        treeView.setCellFactory(tv -> new TreeCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                    getStyleClass().removeAll("song-unlocked", "album-unlocked");
+                } else {
+                    TreeItem<String> treeItem = getTreeItem();
+
+                    if (treeItem != null && treeItem.isLeaf()) {
+                        // Song nodes
+                        getStyleClass().remove("album-unlocked");
+                        setText(item);
+                        Song song = context.library().getSongByTitle(item);
+                        if (song != null && context.unlockManager().isSongUnlocked(song.getTitle())) {
+                            getStyleClass().add("song-unlocked");
+                        } else {
+                            getStyleClass().remove("song-unlocked");
+                        }
+                    } else {
+                        // Album nodes
+                        getStyleClass().remove("song-unlocked");
+                        if (item.equals("Albums")) {
+                            // Root "Albums" node — show overall world completion
+                            UnlockManager.AlbumProgress world =
+                                    context.unlockManager().getWorldProgress(context.library().getAlbums());
+                            int worldPlayed = context.goalManager() != null
+                                    ? context.goalManager().getWorldPlayedCount(context.library().getAlbums())
+                                    : world.unlocked();
+                            setText(item + " (" + worldPlayed + "/" + world.total() + ")");
+                            getStyleClass().remove("album-unlocked");
+                        } else {
+                            // Regular album node
+                            Album album = context.library().getAlbumByName(item);
+                            if (album != null) {
+                                UnlockManager.AlbumProgress progress =
+                                        context.unlockManager().getAlbumProgress(album);
+                                int albumPlayed = context.goalManager() != null
+                                        ? context.goalManager().getPlayedCount(album)
+                                        : progress.unlocked();
+                                setText(item + " (" + albumPlayed + "/" + progress.total() + ")");
+                            } else {
+                                setText(item);
+                            }
+                            if (album != null && context.unlockManager().isAlbumUnlocked(album.getName())) {
+                                // unlocked → bold
+                                getStyleClass().add("album-unlocked");
+                            } else {
+                                // locked → normal
+                                getStyleClass().remove("album-unlocked");
+                            }
+                        }
+                    }
+                }
+            }
+        });
     }
 
     private void setupAlbumContextMenu() {
