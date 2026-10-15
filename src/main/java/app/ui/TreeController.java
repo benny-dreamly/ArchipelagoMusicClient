@@ -151,13 +151,13 @@ public class TreeController {
                     if (treeItem != null && treeItem.isLeaf()) {
                         // Song nodes
                         getStyleClass().remove("album-unlocked");
-                        setText(item);
                         Song song = context.library().getSongByTitle(item);
                         if (song != null && context.unlockManager().isSongUnlocked(song.getTitle())) {
                             getStyleClass().add("song-unlocked");
                         } else {
                             getStyleClass().remove("song-unlocked");
                         }
+                        setText(isPlayed(treeItem, song) ? "\u2713 " + item : item);
                     } else {
                         // Album nodes
                         getStyleClass().remove("song-unlocked");
@@ -195,6 +195,18 @@ public class TreeController {
                 }
             }
         });
+    }
+
+    /**
+     * Whether {@code songItem} has already been listened to in its own album.
+     * Uses the tree parent for the album so duplicate titles across albums stay
+     * distinct; bonus locations (whose parent is the "Bonus" branch) never count.
+     */
+    private boolean isPlayed(TreeItem<String> songItem, Song song) {
+        if (song == null || context.goalManager() == null) return false;
+        TreeItem<String> parent = songItem.getParent();
+        if (parent == null || "Bonus".equals(parent.getValue())) return false;
+        return context.goalManager().isSongPlayed(song.getTitle(), parent.getValue());
     }
 
     private void setupAlbumContextMenu() {
