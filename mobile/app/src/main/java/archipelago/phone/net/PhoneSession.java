@@ -53,6 +53,7 @@ public final class PhoneSession {
     private OkHttpClient client;
     private WebSocket webSocket;
     private String host;
+    private volatile int generation;
 
     public PhoneSession(Listener listener) {
         this.listener = listener;
@@ -61,6 +62,7 @@ public final class PhoneSession {
     public void connect(String host) {
         disconnect();
         this.host = host;
+        int generation = ++this.generation;
         OkHttpClient client = new OkHttpClient.Builder()
                 .connectTimeout(5, TimeUnit.SECONDS)
                 .pingInterval(20, TimeUnit.SECONDS)
@@ -69,7 +71,7 @@ public final class PhoneSession {
         Request request = new Request.Builder()
                 .url("ws://" + host + ":" + DEFAULT_PORT)
                 .build();
-        this.webSocket = client.newWebSocket(request, listener(host));
+        this.webSocket = client.newWebSocket(request, listener(generation));
     }
 
     public String getHost() {
@@ -119,6 +121,7 @@ public final class PhoneSession {
     }
 
     public void disconnect() {
+        generation++;
         if (webSocket != null) {
             webSocket.close(1000, "bye");
             webSocket = null;
@@ -204,30 +207,30 @@ public final class PhoneSession {
         }
     }
 
-    private WebSocketListener listener(String host) {
+    private WebSocketListener listener(int generation) {
         return new WebSocketListener() {
             @Override
             public void onOpen(@NotNull WebSocket webSocket, @NotNull Response response) {
-                if (!isActive(webSocket)) return;
+                if (generation != PhoneSession.this.generation) return;
                 post(() -> listener.onOpen());
             }
 
             @Override
             public void onMessage(@NotNull WebSocket webSocket, @NotNull String text) {
-                if (!isActive(webSocket)) return;
+                if (generation != PhoneSession.this.generation) return;
                 post(() -> handleMessage(text));
             }
 
             @Override
             public void onClosed(@NotNull WebSocket webSocket, int code, @NotNull String reason) {
-                if (!isActive(webSocket)) return;
+                if (generation != PhoneSession.this.generation) return;
                 post(() -> listener.onClose(reason.isEmpty() ? "closed" : reason));
             }
 
             @Override
             public void onFailure(@NotNull WebSocket webSocket, @NotNull Throwable t,
                                   @Nullable Response response) {
-                if (!isActive(webSocket)) return;
+                if (generation != PhoneSession.this.generation) return;
                 post(() -> listener.onClose(t.getMessage() == null ? "connection failed" : t.getMessage()));
             }
         };
@@ -248,9 +251,5 @@ public final class PhoneSession {
 
     private void post(Runnable action) {
         mainHandler.post(action);
-    }
-
-    private boolean isActive(WebSocket socket) {
-        return socket == this.webSocket;
     }
 }
