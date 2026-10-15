@@ -88,7 +88,6 @@ import java.io.Reader;
 import java.io.Writer;
 import java.io.InputStream;
 import java.io.FileOutputStream;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
@@ -104,19 +103,12 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.jaudiotagger.audio.AudioFileIO;
-import org.jaudiotagger.audio.AudioFile;
-import org.jaudiotagger.tag.Tag;
-import org.jaudiotagger.tag.images.Artwork;
 
 import static app.util.AlbumUtils.generateDefaultAlbumFolders;
 import static app.util.ConfigManager.saveConnectionSettings;
@@ -135,9 +127,8 @@ import static app.util.ConfigPaths.getAlbumConfigFile;
 import static app.util.ConfigPaths.checkIfGameFolderExists;
 import static app.util.Dialogs.showError;
 import static app.util.SlotDataUtils.parseSlotData;
-import static app.util.TimeUtils.formatTime;
 
-public class MusicAppDemo extends Application {
+public class MusicAppDemo extends Application implements PlaybackController.Host {
 
     public static final Logger LOGGER = LoggerFactory.getLogger(MusicAppDemo.class);
 
@@ -155,10 +146,8 @@ public class MusicAppDemo extends Application {
     private record PendingSessionRestore(SessionStore.Snapshot snapshot, int generation) {}
     private PendingSessionRestore pendingSessionRestore;
     private final Timeline sessionRestoreDebounce = new Timeline();
-    private Duration pendingSeek;
     private boolean volumeAdjustMode = false;
     private final StringBuilder volumeInput = new StringBuilder();
-    private final java.util.LinkedList<Song> songHistory = new java.util.LinkedList<>();
     private AlbumLibrary library;
 
     private AlbumOrderManager albumOrderManager;
@@ -171,12 +160,9 @@ public class MusicAppDemo extends Application {
     private ItemListener itemListener;
     private EnergyLinkListener energyLinkListener;
 
-    private Song currentSong;
-
     private QueueManager queueManager;
 
     // playback
-    private PlaybackEngine playbackEngine;
     private PlaybackController playback;
 
     // companion phone server
@@ -191,11 +177,6 @@ public class MusicAppDemo extends Application {
 
     private boolean isUpdatingSelection = false;
     private boolean suppressSelection = false;
-    private long artworkRequestId = 0;
-    private final ExecutorService artworkExecutor = new ThreadPoolExecutor(
-            1, 1, 0L, TimeUnit.MILLISECONDS,
-            new ArrayBlockingQueue<>(1),
-            new ThreadPoolExecutor.DiscardOldestPolicy());
 
     // various fields and stuff for the UI (the others are above or locally defined)
     private ConnectionPanel connectionPanel;
@@ -248,12 +229,8 @@ public class MusicAppDemo extends Application {
 
         createBottomBar();
 
-        playback = new PlaybackController(
-                () -> playbackEngine,
-                () -> client != null && client.isConnected(),
-                () -> energyLinkListener,
-                message -> connectionPanel.getTextClientWindow().appendOutput(message));
-        connectionPanel = new ConnectionPanel(gameFolder, () -> client, playback::setPlaybackSpeedCommand);
+        connectionPanel = new ConnectionPanel(gameFolder, () -> client,
+                arg -> playback.setPlaybackSpeedCommand(arg));
 
         playerPanel = new PlayerPanel();
         setupPlayerPanel(playerPanel);
@@ -262,6 +239,7 @@ public class MusicAppDemo extends Application {
         bottomBar.getChildren().addAll(connectionPanel, playerPanel);
 
         albumArtPanel = new AlbumArtPanel();
+        playback = new PlaybackController(this, playerPanel, albumArtPanel);
         albumPanel = new HBox(10);
         VBox treeBox = new VBox(10);
         treeBox.setPrefWidth(400);
@@ -381,7 +359,9 @@ public class MusicAppDemo extends Application {
     public void stop() throws Exception {
         super.stop();
         maybeSaveSessionSnapshot(); // persist queue + position for session restore
-        artworkExecutor.shutdownNow();
+        if (playback != null) {
+            playback.shutdown();
+        }
         if (client != null) {
             client.close();
         }
@@ -665,13 +645,9 @@ public class MusicAppDemo extends Application {
         loadGeneration.incrementAndGet(); // invalidate any in-flight load task
         stopCompanionServer();
         // Stop and dispose current playback
-        if (playbackEngine != null) {
-            playbackEngine.stopAndRelease();
-        }
-        currentSong = null;
+        playback.resetTrack();
 
         // Clear old state before reloading
-        songHistory.clear();
         albums.clear();
         unlockManager.getUnlockedAlbums().clear();
         unlockManager.getUnlockedSongs().clear();
@@ -723,13 +699,9 @@ public class MusicAppDemo extends Application {
         stopCompanionServer();
 
         // Stop and dispose current playback
-        if (playbackEngine != null) {
-            playbackEngine.stopAndRelease();
-        }
-        currentSong = null;
+        playback.resetTrack();
 
         // Clear old state before loading the scanned library
-        songHistory.clear();
         albums.clear();
         bonusLocations.clear();
         unlockManager.getUnlockedAlbums().clear();
@@ -1031,12 +1003,11 @@ public class MusicAppDemo extends Application {
         updateQueueDisplay();
 
         // If nothing is playing, start the first queued song
-if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.PLAYING)
-                && !queueManager.isEmpty()) {
+        if (!playback.isPlaying() && !queueManager.isEmpty()) {
             Song next = queueManager.poll();
             updateQueueDisplay();
             if (next != null) {
-                playSong(next);
+                playback.playSong(next);
             }
         }
     }
@@ -1060,12 +1031,11 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         updateQueueDisplay();
 
         // If nothing is playing, start the first queued song
-        if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.PLAYING)
-                && !queueManager.isEmpty()) {
+        if (!playback.isPlaying() && !queueManager.isEmpty()) {
             Song next = queueManager.poll();
             updateQueueDisplay();
             if (next != null) {
-                playSong(next);
+                playback.playSong(next);
             }
         }
     }
@@ -1084,11 +1054,11 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         updateQueueDisplay();
 
         // If nothing is playing, start the first queued song
-        if (playbackEngine == null && !queueManager.isEmpty()) {
+        if (playback.getEngine() == null && !queueManager.isEmpty()) {
             Song next = queueManager.poll();
             updateQueueDisplay();
             if (next != null) {
-                playSong(next);
+                playback.playSong(next);
             }
         }
     }
@@ -1103,166 +1073,6 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
 
     public void enableAlbumForDisplay(String albumName) {
         unlockManager.enableAlbumForDisplay(albumName);
-    }
-
-    private void playSong(Song song) {
-        if (song == null) return;
-
-        // One-shot seek requested by a session restore; consume it so a
-        // failed start can't leak it into a later song.
-        Duration restoreSeek = pendingSeek;
-        pendingSeek = null;
-
-        Album album = library.getAlbumForSong(song);
-        boolean canPlay = unlockManager.canPlay(song, album);
-
-        if (!canPlay) {
-            String msg = lockedSongMessage(song, album);
-            LOGGER.info("Cannot play song. {}", msg);
-            showError("Locked Song", "Cannot play song", msg);
-            return;
-        }
-
-        this.currentSong = song;
-
-        queueManager.recordSnapshot(song);
-
-        songHistory.remove(song);
-        songHistory.addLast(song);
-        while (songHistory.size() > 100) {
-            songHistory.removeFirst();
-        }
-
-        if (song.getFilePath() == null || !new File(song.getFilePath()).exists()) {
-            LOGGER.info("Song trying to be played ({})'s file path ({}) does not exist or is null.",
-                song.getTitle(), song.getFilePath());
-            showError("File Not Found", "Cannot play song", "File not found for: " + song.getTitle());
-            playNextInQueue();
-            return;
-        }
-
-        if (playbackEngine == null) {
-            playbackEngine = new LocalPlayback();
-        }
-        playerPanel.resetProgress();
-
-        // Extract album art in background
-        long requestId = ++artworkRequestId;
-        albumArtPanel.clearArtwork();
-        String filePath = song.getFilePath();
-        String trackInfo = song.getTitle();
-        artworkExecutor.execute(() -> {
-            try {
-                AudioFile audioFile = AudioFileIO.read(new File(filePath));
-                Tag tag = audioFile.getTag();
-                if (tag != null) {
-                    Artwork artwork = tag.getFirstArtwork();
-                    if (artwork != null) {
-                        byte[] data = artwork.getBinaryData();
-                        Image image = new Image(new ByteArrayInputStream(data), 180, 180, true, true);
-                        Platform.runLater(() -> {
-                            if (requestId == artworkRequestId) {
-                                albumArtPanel.setArtwork(image, trackInfo);
-                            }
-                        });
-                        return;
-                    }
-                }
-            } catch (Exception e) {
-                LOGGER.debug("Could not extract album art for {}: {}", trackInfo, e.getMessage());
-            }
-            Platform.runLater(() -> {
-                if (requestId == artworkRequestId) {
-                    albumArtPanel.clearArtwork();
-                }
-            });
-        });
-
-        configureEngine(playbackEngine, song, album, restoreSeek);
-
-        playbackEngine.loadAndPlay(song);
-        playerPanel.setCurrentSongLabel("Currently Playing: " + song.getTitle());
-        updateQueueDisplay();
-        highlightCurrentSong(album, song.getTitle());
-        publishRemoteState();
-    }
-
-    private void configureEngine(PlaybackEngine engine, Song song, Album album, Duration restoreSeek) {
-        engine.setVolume(playerPanel.getVolumeSlider().getValue() / 100.0);
-        engine.setRate(playback.currentRate());
-
-        engine.setOnCurrentTime(newTime -> {
-            if (!playerPanel.getProgressSlider().isValueChanging()) {
-                Duration total = playbackEngine.getTotalDuration();
-                if (total != null && total.greaterThan(Duration.ZERO)) {
-                    playerPanel.getProgressSlider().setValue(newTime.toMillis() / total.toMillis());
-                    playerPanel.getElapsedLabel().setText(formatTime(newTime));
-                }
-            }
-        });
-
-        // Set duration label once media is ready
-        engine.setOnReady(() -> {
-            playback.applyPlaybackRate(engine);
-            Duration total = playbackEngine.getTotalDuration();
-            if (total != null) {
-                playerPanel.getDurationLabel().setText(formatTime(total));
-                if (restoreSeek != null
-                        && restoreSeek.greaterThan(Duration.ZERO)
-                        && restoreSeek.lessThan(total)) {
-                    engine.seek(restoreSeek);
-                }
-            }
-            publishRemoteState();
-        });
-
-        engine.setOnEnded(() -> {
-            if (client != null && client.isConnected()) {
-                client.sendCheck(song.getLocation());
-                playback.creditSongEnergy();
-            }
-            // Use the album carried through this playback rather than looking the
-            // song up by title again, so duplicate titles stay with the album that
-            // was actually played.
-            if (goalManager != null && album != null) {
-                // Connected or not, record the play; GoalManager routes it to
-                // the server or the local play_history.json accordingly.
-                goalManager.markPlayed(song.getTitle(), album.getName(),
-                        client != null && client.isConnected() ? client : null);
-            }
-            if (queueManager.getRepeatMode() == QueueManager.RepeatMode.SONG) {
-                playSong(song);
-            } else {
-                playNextInQueue();
-            }
-        });
-
-        engine.setOnError(errorMessage -> {
-            LOGGER.error("Error playing '{}': {}", song.getTitle(), errorMessage);
-            showError("Playback Error", "Cannot play song", "Error playing " + song.getTitle() + ": " + errorMessage);
-            playNextInQueue();
-        });
-    }
-
-    private void playNextInQueue() {
-        if (queueManager == null) return;
-        Song next = queueManager.nextSong(currentSong);
-        updateQueueDisplay();
-        if (next != null) {
-            playSong(next);
-        } else {
-            playerPanel.setCurrentSongLabel("Currently Playing: None");
-            if (playbackEngine != null) {
-                playbackEngine.stopAndRelease();
-            }
-            long id = ++artworkRequestId;
-            Platform.runLater(() -> {
-                if (id == artworkRequestId) {
-                    albumArtPanel.clearArtwork();
-                }
-            });
-            playerPanel.resetProgress();
-        }
     }
 
     private List<File> albumMusicRoots() {
@@ -1287,7 +1097,7 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         companionServer = new CompanionServer(musicRoots, COMPANION_HTTP_PORT, COMPANION_WS_PORT);
         companionServer.setCommandHandler(this::handleRemoteCommand);
         companionServer.setEventHandler(json -> Platform.runLater(() -> {
-            if (playbackEngine instanceof PhonePlayback phone) {
+            if (playback.getEngine() instanceof PhonePlayback phone) {
                 phone.handlePhoneEvent(json);
             }
         }));
@@ -1325,13 +1135,14 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
 
     private void tickCompanion() {
         boolean phonePresent = companionServer != null && companionServer.hasActivePhone();
-        if (phonePresent != (playbackEngine instanceof PhonePlayback)) {
+        if (phonePresent != (playback.getEngine() instanceof PhonePlayback)) {
             switchPlaybackMode(phonePresent);
         }
         publishRemoteState();
     }
 
-    private void publishRemoteState() {
+    @Override
+    public void publishRemoteState() {
         CompanionServer server = companionServer;
         if (server == null || !server.hasClients()) return;
 
@@ -1341,6 +1152,7 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         long durationMs = 0;
         long positionMs = 0;
         boolean playing = false;
+        Song currentSong = playback.getCurrentSong();
         if (currentSong != null) {
             title = currentSong.getTitle();
             if (library != null) {
@@ -1351,17 +1163,18 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
                 stream = server.streamPath(new File(currentSong.getFilePath()));
             }
         }
-        if (playbackEngine != null) {
-            playing = playbackEngine.isPlaying();
-            positionMs = (long) playbackEngine.getCurrentTime().toMillis();
-            Duration total = playbackEngine.getTotalDuration();
+        PlaybackEngine engine = playback.getEngine();
+        if (engine != null) {
+            playing = engine.isPlaying();
+            positionMs = (long) engine.getCurrentTime().toMillis();
+            Duration total = engine.getTotalDuration();
             if (total != null) durationMs = (long) total.toMillis();
         }
         List<String> queue = queueManager != null
                 ? queueManager.asList().stream().map(Song::getTitle).toList()
                 : Collections.emptyList();
         int volume = (int) playerPanel.getVolumeSlider().getValue();
-        String activeSource = playbackEngine instanceof PhonePlayback
+        String activeSource = engine instanceof PhonePlayback
                 ? CompanionState.SOURCE_PHONE : CompanionState.SOURCE_DESKTOP;
 
         server.broadcast(new CompanionState(title, album, stream, durationMs, positionMs,
@@ -1377,24 +1190,24 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
     private void switchPlaybackMode(boolean phoneMode) {
         CompanionServer server = companionServer;
         if (server == null) return;
-        if (phoneMode == (playbackEngine instanceof PhonePlayback)) return;
+        if (phoneMode == (playback.getEngine() instanceof PhonePlayback)) return;
 
-        PlaybackEngine oldEngine = playbackEngine;
-        Song song = currentSong;
+        PlaybackEngine oldEngine = playback.getEngine();
+        Song song = playback.getCurrentSong();
         Duration resumeAt = oldEngine != null ? oldEngine.getCurrentTime() : Duration.ZERO;
         boolean wasLoaded = oldEngine != null && oldEngine.isLoaded();
         boolean wasPlaying = oldEngine != null && oldEngine.isPlaying();
 
-        if (playbackEngine != null) {
-            playbackEngine.stopAndRelease();
+        if (oldEngine != null) {
+            oldEngine.stopAndRelease();
         }
 
         if (phoneMode) {
             PhonePlayback phone = new PhonePlayback(server::send,
                     s -> server.streamPath(new File(s.getFilePath())));
-            playbackEngine = phone;
+            playback.setEngine(phone);
             if (song != null && song.getFilePath() != null && wasLoaded) {
-                configureEngine(phone, song, library.getAlbumForSong(song), null);
+                playback.configureEngine(phone, song, library.getAlbumForSong(song), null);
                 phone.loadAndPlay(song);
                 if (resumeAt != null && resumeAt.greaterThan(Duration.ZERO)) {
                     phone.seek(resumeAt);
@@ -1405,9 +1218,9 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
             }
         } else {
             LocalPlayback local = new LocalPlayback();
-            playbackEngine = local;
+            playback.setEngine(local);
             if (song != null && song.getFilePath() != null && wasLoaded) {
-                configureEngine(local, song, library.getAlbumForSong(song), resumeAt);
+                playback.configureEngine(local, song, library.getAlbumForSong(song), resumeAt);
                 local.loadAndPlay(song);
                 if (!wasPlaying) {
                     local.pause();
@@ -1423,19 +1236,21 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
             switch (cmd) {
                 case "toggle" -> togglePlayPause();
                 case "pause" -> {
-                    if (playbackEngine != null && playbackEngine.isPlaying()) {
+                    PlaybackEngine engine = playback.getEngine();
+                    if (engine != null && engine.isPlaying()) {
                         togglePlayPause();
                     }
                 }
                 case "play" -> {
-                    if (playbackEngine != null && playbackEngine.isPaused()) {
+                    PlaybackEngine engine = playback.getEngine();
+                    if (engine != null && engine.isPaused()) {
                         togglePlayPause();
-                    } else if ((playbackEngine == null || !playbackEngine.isLoaded())
+                    } else if ((engine == null || !engine.isLoaded())
                         && queueManager != null && !queueManager.isEmpty()) {
                         togglePlayPause();
                     }
                 }
-                case "next" -> playNextInQueue();
+                case "next" -> playback.playNextInQueue();
                 case "volume" -> {
                     if (message.has("value")) {
                         double value = message.get("value").getAsDouble();
@@ -1443,8 +1258,9 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
                     }
                 }
                 case "seek" -> {
-                    if (playbackEngine != null && playbackEngine.isLoaded() && message.has("positionMs")) {
-                        playbackEngine.seek(Duration.millis(message.get("positionMs").getAsDouble()));
+                    PlaybackEngine engine = playback.getEngine();
+                    if (engine != null && engine.isLoaded() && message.has("positionMs")) {
+                        engine.seek(Duration.millis(message.get("positionMs").getAsDouble()));
                     }
                 }
                 default -> LOGGER.info("Companion: unknown command '{}'", cmd);
@@ -1453,27 +1269,8 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         });
     }
 
-    private void playPreviousTrack() {
-        if (queueManager == null) return;
-
-        // If more than a few seconds in, restart the current track instead
-        if (playbackEngine != null && currentSong != null) {
-            Duration current = playbackEngine.getCurrentTime();
-            if (current != null && current.greaterThan(Duration.seconds(3))) {
-                playbackEngine.seek(Duration.ZERO);
-                return;
-            }
-        }
-
-        if (songHistory.size() > 1) {
-            songHistory.removeLast();
-            Song prev = songHistory.removeLast();
-            queueManager.addFirst(currentSong);
-            playSong(prev);
-        }
-    }
-
-    private void highlightCurrentSong(Album album, String songTitle) {
+    @Override
+    public void highlightCurrentSong(Album album, String songTitle) {
         if (isUpdatingSelection) return;
 
         TreeItem<String> root = treeView.getRoot();
@@ -1503,7 +1300,8 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
 
     // Queue helpers -----------------------------------------------------
 
-    private void updateQueueDisplay() {
+    @Override
+    public void updateQueueDisplay() {
         playerPanel.clearQueueDisplay();
         for (Song s : queueManager.asList()) {
             playerPanel.addToQueueDisplay(s);
@@ -1631,19 +1429,6 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         unlockManager.applyOfflineUnlocks(albums);
     }
 
-    public void stopCurrentSong() {
-        if (playbackEngine != null) {
-            playbackEngine.stopAndRelease();
-        }
-        long id = ++artworkRequestId;
-        Platform.runLater(() -> {
-            if (id == artworkRequestId) {
-                albumArtPanel.clearArtwork();
-            }
-        });
-        playerPanel.resetProgress();
-    }
-
     private void applyDeathLinkEnabled(boolean enabled) {
         if (client != null) {
             client.setDeathLinkEnabled(enabled);
@@ -1655,7 +1440,7 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         LOGGER.info("Deathlink activated by {}: {}", source, cause);
 
         // Stop current playback on death
-        stopCurrentSong();
+        playback.stopCurrentSong();
         playerPanel.setCurrentSongLabel("Currently Playing: None");
         connectionPanel.setStatus("Deathlink from " + source);
         connectionPanel.getTextClientWindow().appendOutput(
@@ -1663,10 +1448,11 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
     }
 
     private final ChangeListener<Boolean> seekListener = (_, _, isChanging) -> {
-        if (!isChanging && playbackEngine != null && playbackEngine.isLoaded()) {
-            Duration total = playbackEngine.getTotalDuration();
+        PlaybackEngine engine = playback.getEngine();
+        if (!isChanging && engine != null && engine.isLoaded()) {
+            Duration total = engine.getTotalDuration();
             if (total != null) {
-                playbackEngine.seek(total.multiply(playerPanel.getProgressSlider().getValue()));
+                engine.seek(total.multiply(playerPanel.getProgressSlider().getValue()));
             }
         }
     };
@@ -1705,7 +1491,7 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         connectionPanel.setGameFieldTooltip(null);
 
         // stop playback
-        stopCurrentSong();
+        playback.stopCurrentSong();
         playerPanel.clearPlaybackState();
 
         // stop any active playback boost and clear energy state
@@ -1911,8 +1697,8 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         queueManager.replaceAll(resolved);
         updateQueueDisplay();
         if (currentPlayable) {
-            pendingSeek = Duration.millis((double) Math.max(0, snapshot.positionMs()));
-            playSong(current);
+            playback.setPendingSeek(Duration.millis((double) Math.max(0, snapshot.positionMs())));
+            playback.playSong(current);
         }
         LOGGER.info("Session restored: {} queued songs{}", resolved.size(),
                 currentPlayable ? ", resuming \"" + current.getTitle() + "\"" : "");
@@ -1944,13 +1730,15 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
             return;
         }
         boolean connected = client != null && client.isConnected();
+        Song currentSong = playback.getCurrentSong();
         boolean hasState = !queueManager.isEmpty() || currentSong != null;
         if (!connected && !hasState) {
             return;
         }
+        PlaybackEngine engine = playback.getEngine();
         long positionMs = 0;
-        if (playbackEngine != null && playbackEngine.getCurrentTime() != null) {
-            positionMs = (long) playbackEngine.getCurrentTime().toMillis();
+        if (engine != null && engine.getCurrentTime() != null) {
+            positionMs = (long) engine.getCurrentTime().toMillis();
         }
         SessionStore.save(new SessionStore.Snapshot(
                 connectionPanel.getGameName(),
@@ -1972,9 +1760,11 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
 
         // Play button behaviour
         panel.getPlayButton().setOnAction(_ -> {
+            PlaybackEngine engine = playback.getEngine();
+            Song currentSong = playback.getCurrentSong();
             // If paused, resume. If nothing playing but queue has items, start next.
-            if (playbackEngine != null && playbackEngine.isPaused()) {
-                playbackEngine.resume();
+            if (engine != null && engine.isPaused()) {
+                engine.resume();
                 if (currentSong != null) {
                     playerPanel.setCurrentSongLabel("Currently Playing: " + currentSong.getTitle());
                 }
@@ -1982,30 +1772,32 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
             }
 
             if (currentSong != null
-                && (playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.PLAYING)) {
+                && (engine == null || engine.getStatus() != MediaPlayer.Status.PLAYING)) {
                 LOGGER.info("Current song ({})'s file path: {}", currentSong.getTitle(), currentSong.getFilePath());
                 // start current (if file exists)
                 if (currentSong.getFilePath() != null) {
-                    playSong(currentSong);
+                    playback.playSong(currentSong);
                 } else {
                     showError("File Not Found", "Cannot play song", "File not found for: " + currentSong.getTitle());
                 }
-            } else if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.PLAYING)
+            } else if ((engine == null || engine.getStatus() != MediaPlayer.Status.PLAYING)
                 && !queueManager.isEmpty()) {
                 Song next = queueManager.poll();
                 updateQueueDisplay();
-                if (next != null) playSong(next);
+                if (next != null) playback.playSong(next);
             }
         });
 
         panel.getPauseButton().setOnAction(_ -> {
-            if (playbackEngine != null) {
-                MediaPlayer.Status status = playbackEngine.getStatus();
+            PlaybackEngine engine = playback.getEngine();
+            Song currentSong = playback.getCurrentSong();
+            if (engine != null) {
+                MediaPlayer.Status status = engine.getStatus();
                 if (status == MediaPlayer.Status.PLAYING) {
-                    playbackEngine.pause();
+                    engine.pause();
                     if (currentSong != null) playerPanel.setCurrentSongLabel("Paused: " + currentSong.getTitle());
                 } else if (status == MediaPlayer.Status.PAUSED) {
-                    playbackEngine.resume();
+                    engine.resume();
                     if (currentSong != null) {
                         playerPanel.setCurrentSongLabel("Currently Playing: " + currentSong.getTitle());
                     }
@@ -2021,10 +1813,10 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         });
 
         // Previous track button
-        panel.getPreviousButton().setOnAction(_ -> playPreviousTrack());
+        panel.getPreviousButton().setOnAction(_ -> playback.playPreviousTrack());
 
         // Next track button
-        panel.getNextButton().setOnAction(_ -> playNextInQueue());
+        panel.getNextButton().setOnAction(_ -> playback.playNextInQueue());
 
         // EnergyLink speed boost: spend energy for a timed playback speed-up
         // single click = 1.5x, double click = 2x
@@ -2098,8 +1890,9 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
 
         // Volume slider updates live during playback
         panel.getVolumeSlider().valueProperty().addListener((_, _, newVal) -> {
-            if (playbackEngine != null) {
-                playbackEngine.setVolume(newVal.doubleValue() / 100.0);
+            PlaybackEngine engine = playback.getEngine();
+            if (engine != null) {
+                engine.setVolume(newVal.doubleValue() / 100.0);
             }
             publishRemoteState();
         });
@@ -2194,7 +1987,7 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
                 event.consume();
             }
             case N -> {
-                playNextInQueue();
+                playback.playNextInQueue();
                 event.consume();
             }
             case V -> {
@@ -2206,13 +1999,15 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
     }
 
     private void togglePlayPause() {
-        if (playbackEngine != null) {
-            MediaPlayer.Status status = playbackEngine.getStatus();
+        PlaybackEngine engine = playback.getEngine();
+        Song currentSong = playback.getCurrentSong();
+        if (engine != null) {
+            MediaPlayer.Status status = engine.getStatus();
             if (status == MediaPlayer.Status.PLAYING) {
-                playbackEngine.pause();
+                engine.pause();
                 if (currentSong != null) playerPanel.setCurrentSongLabel("Paused: " + currentSong.getTitle());
             } else if (status == MediaPlayer.Status.PAUSED) {
-                playbackEngine.resume();
+                engine.resume();
                 if (currentSong != null) {
                     playerPanel.setCurrentSongLabel("Currently Playing: " + currentSong.getTitle());
                 }
@@ -2220,20 +2015,21 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         } else if (queueManager != null && !queueManager.isEmpty()) {
             Song next = queueManager.poll();
             updateQueueDisplay();
-            if (next != null) playSong(next);
+            if (next != null) playback.playSong(next);
         }
         publishRemoteState();
     }
 
     private void seekRelative(int seconds) {
-        if (playbackEngine == null || playbackEngine.getStatus() == MediaPlayer.Status.STOPPED) return;
-        Duration current = playbackEngine.getCurrentTime();
-        Duration total = playbackEngine.getTotalDuration();
+        PlaybackEngine engine = playback.getEngine();
+        if (engine == null || engine.getStatus() == MediaPlayer.Status.STOPPED) return;
+        Duration current = engine.getCurrentTime();
+        Duration total = engine.getTotalDuration();
         if (total == null) return;
         Duration newTime = current.add(Duration.seconds(seconds));
         if (newTime.greaterThan(total)) newTime = total;
         if (newTime.lessThan(Duration.ZERO)) newTime = Duration.ZERO;
-        playbackEngine.seek(newTime);
+        engine.seek(newTime);
     }
 
     private void enterVolumeAdjustMode() {
@@ -2296,11 +2092,56 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         }
     }
 
-    private String lockedSongMessage(Song song, Album album) {
+    @Override
+    public String lockedSongMessage(Song song, Album album) {
         if (album != null && !unlockManager.isAlbumUnlocked(album.getName())) {
             return song.getTitle() + " requires album " + album.getName() + " to be unlocked!";
         }
         return song.getTitle() + " is not unlocked yet!";
+    }
+
+    @Override
+    public Album albumForSong(Song song) {
+        return library == null ? null : library.getAlbumForSong(song);
+    }
+
+    @Override
+    public boolean canPlay(Song song, Album album) {
+        return unlockManager.canPlay(song, album);
+    }
+
+    @Override
+    public QueueManager queueManager() {
+        return queueManager;
+    }
+
+    @Override
+    public void onSongFinished(Song song, Album album) {
+        if (client != null && client.isConnected()) {
+            client.sendCheck(song.getLocation());
+            playback.creditSongEnergy();
+        }
+        // Connected or not, record the play; GoalManager routes it to
+        // the server or the local play_history.json accordingly.
+        if (goalManager != null && album != null) {
+            goalManager.markPlayed(song.getTitle(), album.getName(),
+                    client != null && client.isConnected() ? client : null);
+        }
+    }
+
+    @Override
+    public EnergyLinkListener energyLink() {
+        return energyLinkListener;
+    }
+
+    @Override
+    public boolean clientConnected() {
+        return client != null && client.isConnected();
+    }
+
+    @Override
+    public void appendOutput(String message) {
+        connectionPanel.getTextClientWindow().appendOutput(message);
     }
 
     private void sendBonusCheck(String location) {
@@ -2348,7 +2189,7 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         if (song == null) return;
 
         // Don't re-queue the currently playing song (e.g. from highlightCurrentSong)
-        if (song == currentSong) return;
+        if (song == playback.getCurrentSong()) return;
 
         if (!unlockManager.canPlay(song, album)) {
             showError("Locked Song", "Cannot play song", lockedSongMessage(song, album));
@@ -2360,11 +2201,11 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         updateQueueDisplay();
 
         // If nothing is playing, start immediately
-        if (playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.PLAYING) {
+        if (!playback.isPlaying()) {
             Song next = queueManager.poll();
             updateQueueDisplay();
             if (next != null) {
-                playSong(next);
+                playback.playSong(next);
             }
         }
     }
