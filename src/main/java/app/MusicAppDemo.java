@@ -20,6 +20,7 @@ import app.player.Album;
 import app.player.AlbumConverter;
 import app.player.LocalPlayback;
 import app.player.PhonePlayback;
+import app.player.PlaybackController;
 import app.player.PlaybackEngine;
 import app.player.Song;
 import app.player.json.AlbumMetadata;
@@ -176,6 +177,7 @@ public class MusicAppDemo extends Application {
 
     // playback
     private PlaybackEngine playbackEngine;
+    private PlaybackController playback;
 
     // companion phone server
     private static final int COMPANION_HTTP_PORT = 8311;
@@ -186,21 +188,6 @@ public class MusicAppDemo extends Application {
     // Folder the companion server serves; remembered so toggling the setting
     // can start it without reloading the library.
     private List<File> companionMusicRoot;
-
-    // energy link / playback boost
-    private static final double BOOST_RATE_150 = 1.5;
-    private static final double BOOST_RATE_200 = 2.0;
-    private static final double BOOST_COST_150 = 1_500;
-    private static final double BOOST_COST_200 = 2_250;
-    private static final Duration BOOST_DURATION = Duration.seconds(30);
-    private static final double SONG_ENERGY_CREDIT = 500;
-    private static final Duration CLICK_WINDOW = Duration.millis(300);
-    private boolean boostActive = false;
-    private double boostRate = 1.0;
-    private double playbackSpeed = 1.0;
-    private javafx.animation.PauseTransition boostTimer;
-    private javafx.animation.PauseTransition boostClickTimer;
-
 
     private boolean isUpdatingSelection = false;
     private boolean suppressSelection = false;
@@ -261,7 +248,12 @@ public class MusicAppDemo extends Application {
 
         createBottomBar();
 
-        connectionPanel = new ConnectionPanel(gameFolder, () -> client, this::setPlaybackSpeedCommand);
+        playback = new PlaybackController(
+                () -> playbackEngine,
+                () -> client != null && client.isConnected(),
+                () -> energyLinkListener,
+                message -> connectionPanel.getTextClientWindow().appendOutput(message));
+        connectionPanel = new ConnectionPanel(gameFolder, () -> client, playback::setPlaybackSpeedCommand);
 
         playerPanel = new PlayerPanel();
         setupPlayerPanel(playerPanel);
@@ -1197,7 +1189,7 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
 
     private void configureEngine(PlaybackEngine engine, Song song, Album album, Duration restoreSeek) {
         engine.setVolume(playerPanel.getVolumeSlider().getValue() / 100.0);
-        engine.setRate(boostActive ? boostRate : playbackSpeed);
+        engine.setRate(playback.currentRate());
 
         engine.setOnCurrentTime(newTime -> {
             if (!playerPanel.getProgressSlider().isValueChanging()) {
@@ -1211,7 +1203,7 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
 
         // Set duration label once media is ready
         engine.setOnReady(() -> {
-            applyPlaybackRate(engine);
+            playback.applyPlaybackRate(engine);
             Duration total = playbackEngine.getTotalDuration();
             if (total != null) {
                 playerPanel.getDurationLabel().setText(formatTime(total));
@@ -1227,7 +1219,7 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         engine.setOnEnded(() -> {
             if (client != null && client.isConnected()) {
                 client.sendCheck(song.getLocation());
-                creditSongEnergy();
+                playback.creditSongEnergy();
             }
             // Use the album carried through this playback rather than looking the
             // song up by title again, so duplicate titles stay with the album that
@@ -1459,129 +1451,6 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
             }
             publishRemoteState();
         });
-    }
-
-    private void onBoostClick() {
-        if (boostClickTimer != null) {
-            // Second click within the window → double-click = 2x boost
-            boostClickTimer.stop();
-            boostClickTimer = null;
-            startBoost(BOOST_RATE_200, BOOST_COST_200);
-            return;
-        }
-        boostClickTimer = new javafx.animation.PauseTransition(CLICK_WINDOW);
-        boostClickTimer.setOnFinished(_ -> {
-            boostClickTimer = null;
-            // No second click followed within the window → single click = 1.5x boost
-            startBoost(BOOST_RATE_150, BOOST_COST_150);
-        });
-        boostClickTimer.play();
-    }
-
-    private void startBoost(double rate, double cost) {
-        EnergyLinkListener link = energyLinkListener;
-        if (link != null && client != null && client.isConnected()) {
-            Double balance = link.getBalance();
-            if (balance == null) {
-                LOGGER.info("Boost rejected: EnergyLink is not ready yet");
-                connectionPanel.getTextClientWindow().appendOutput("EnergyLink is not ready for boost yet");
-                return;
-            }
-            if (balance < cost) {
-                LOGGER.info("Boost rejected: need {} but only {} available",
-                        formatEnergy(cost), formatEnergy(balance));
-                connectionPanel.getTextClientWindow().appendOutput(
-                        String.format("Not enough energy (%s needed, %s available)",
-                                formatEnergy(cost), formatEnergy(balance)));
-                return;
-            }
-            if (!link.withdraw(cost)) {
-                connectionPanel.getTextClientWindow().appendOutput(
-                        String.format("Not enough energy to boost (%s available)",
-                                formatEnergy(balance)));
-                return;
-            }
-        }
-        applyBoost(rate);
-    }
-
-    private void applyBoost(double rate) {
-        boostRate = rate;
-        boostActive = true;
-        if (playbackEngine != null) {
-            playbackEngine.setRate(rate);
-        }
-        if (boostTimer != null) {
-            boostTimer.stop();
-        }
-        boostTimer = new javafx.animation.PauseTransition(BOOST_DURATION);
-        boostTimer.setOnFinished(_ -> endBoost());
-        boostTimer.play();
-        LOGGER.info("Playback boost engaged at {}x for {}s", rate, (int) BOOST_DURATION.toSeconds());
-    }
-
-    private String setPlaybackSpeedCommand(String arg) {
-        String trimmed = arg == null ? "" : arg.trim();
-        double rate;
-        if (trimmed.isEmpty()) {
-            rate = playbackSpeed == 1.0 ? 3.0 : 1.0;
-        } else {
-            try {
-                rate = Double.parseDouble(trimmed);
-            } catch (NumberFormatException e) {
-                return "Usage: /speed [rate]";
-            }
-        }
-        if (rate < 0.1 || rate > 4.0) {
-            return "Speed must be between 0.1 and 4.0.";
-        }
-        playbackSpeed = rate;
-        if (!boostActive) {
-            applyPlaybackRate(playbackEngine);
-        }
-        return playbackSpeed == 1.0
-                ? "Playback speed reset."
-                : String.format(Locale.ROOT, "Playback speed set to %.2fx", playbackSpeed);
-    }
-
-    private void applyPlaybackRate(PlaybackEngine engine) {
-        if (engine == null) {
-            return;
-        }
-        double rate = boostActive ? boostRate : playbackSpeed;
-        // macOS resets the native rate to 1.0 when playback (re)starts (JDK-8236146),
-        // so force the property to change to make the target rate stick.
-        engine.setRate(1.0);
-        engine.setRate(rate);
-        LOGGER.info("Applied playback rate {}", rate);
-    }
-
-    private void endBoost() {
-        boostActive = false;
-        boostRate = 1.0;
-        if (boostTimer != null) {
-            boostTimer.stop();
-            boostTimer = null;
-        }
-        applyPlaybackRate(playbackEngine);
-        LOGGER.info("Playback boost ended");
-    }
-
-    private void creditSongEnergy() {
-        EnergyLinkListener link = energyLinkListener;
-        if (link != null && client != null && client.isConnected()) {
-            link.deposit(SONG_ENERGY_CREDIT);
-        }
-    }
-
-    static String formatEnergy(double joules) {
-        if (joules >= 1_000_000) {
-            return String.format("%.2f MJ", joules / 1_000_000);
-        }
-        if (joules >= 1_000) {
-            return String.format("%.1f kJ", joules / 1_000);
-        }
-        return String.format("%.1f J", joules);
     }
 
     private void playPreviousTrack() {
@@ -1840,11 +1709,7 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         playerPanel.clearPlaybackState();
 
         // stop any active playback boost and clear energy state
-        endBoost();
-        if (boostClickTimer != null) {
-            boostClickTimer.stop();
-            boostClickTimer = null;
-        }
+        playback.reset();
         energyLinkListener = null;
         playerPanel.setEnergyLabel("Energy: --");
 
@@ -1922,7 +1787,7 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
                             connectionPanel.getTextClientWindow()
                                     .onNameGroupsRetrieved(source, result))));
             energyLinkListener = new EnergyLinkListener(client, value -> Platform.runLater(() ->
-                    playerPanel.setEnergyLabel("Energy: " + formatEnergy(value))));
+                    playerPanel.setEnergyLabel("Energy: " + EnergyLinkListener.formatEnergy(value))));
             client.getEventManager().registerListener(energyLinkListener);
             client.getEventManager().registerListener(new DeathLinkListener(this));
             applyDeathLinkEnabled(loadDeathLink());
@@ -2163,7 +2028,7 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
 
         // EnergyLink speed boost: spend energy for a timed playback speed-up
         // single click = 1.5x, double click = 2x
-        panel.getBoostButton().setOnAction(_ -> onBoostClick());
+        panel.getBoostButton().setOnAction(_ -> playback.onBoostClick());
 
         // Remove selected from the queue (both ListView and underlying queue)
         panel.getRemoveSelectedBtn().setOnAction(_ -> {

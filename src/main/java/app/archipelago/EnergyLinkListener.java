@@ -188,7 +188,7 @@ public class EnergyLinkListener {
         }
     }
 
-    private static String formatEnergy(double joules) {
+    public static String formatEnergy(double joules) {
         if (joules >= 1_000_000) {
             return String.format("%.2f MJ", joules / 1_000_000);
         }
