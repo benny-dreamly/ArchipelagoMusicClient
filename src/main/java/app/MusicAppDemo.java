@@ -14,6 +14,7 @@ import app.archipelago.SlotDataHelper;
 import app.logic.FolderScanner;
 import app.logic.GoalManager;
 import app.logic.QueueManager;
+import app.logic.SessionRestoreController;
 import app.logic.SongFileMatcher;
 import app.logic.UnlockManager;
 import app.player.Album;
@@ -37,7 +38,6 @@ import app.util.AlbumLibrary;
 import app.util.AlbumOrderManager;
 import app.util.PlayHistoryStore;
 import app.util.SentBonusStore;
-import app.util.SessionStore;
 import app.util.StateManager;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -111,7 +111,6 @@ import static app.util.ConfigManager.loadDeathLink;
 import static app.util.ConfigManager.saveDeathLink;
 import static app.util.ConfigManager.loadBrowseFolder;
 import static app.util.ConfigManager.saveBrowseFolder;
-import static app.util.ConfigManager.loadSessionRestore;
 import static app.util.ConfigManager.saveSessionRestore;
 import static app.util.ConfigManager.saveCompanionServer;
 import static app.util.ConfigPaths.getConfigDir;
@@ -120,7 +119,8 @@ import static app.util.ConfigPaths.checkIfGameFolderExists;
 import static app.util.Dialogs.showError;
 import static app.util.SlotDataUtils.parseSlotData;
 
-public class MusicAppDemo extends Application implements PlaybackController.Host, CompanionController.Host {
+public class MusicAppDemo extends Application
+        implements PlaybackController.Host, CompanionController.Host, SessionRestoreController.Host {
 
     public static final Logger LOGGER = LoggerFactory.getLogger(MusicAppDemo.class);
 
@@ -135,9 +135,7 @@ public class MusicAppDemo extends Application implements PlaybackController.Host
     private boolean usingMusicLibrary = false;
     private boolean offlineMode = false;
     private final AtomicInteger loadGeneration = new AtomicInteger(0);
-    private record PendingSessionRestore(SessionStore.Snapshot snapshot, int generation) {}
-    private PendingSessionRestore pendingSessionRestore;
-    private final Timeline sessionRestoreDebounce = new Timeline();
+    private SessionRestoreController sessionRestore;
     private boolean volumeAdjustMode = false;
     private final StringBuilder volumeInput = new StringBuilder();
     private AlbumLibrary library;
@@ -218,6 +216,7 @@ public class MusicAppDemo extends Application implements PlaybackController.Host
         albumArtPanel = new AlbumArtPanel();
         playback = new PlaybackController(this, playerPanel, albumArtPanel);
         companion = new CompanionController(this, playback);
+        sessionRestore = new SessionRestoreController(this, playback);
         setupPlayerPanel(playerPanel);
 
         connectionPanel = new ConnectionPanel(gameFolder, () -> client,
@@ -335,7 +334,7 @@ public class MusicAppDemo extends Application implements PlaybackController.Host
         // Periodically snapshot the queue and playback position while the
         // library exists, so a later same-slot connect can restore it.
         Timeline sessionSaver = new Timeline(new KeyFrame(Duration.seconds(5),
-                _ -> maybeSaveSessionSnapshot()));
+                _ -> sessionRestore.saveSnapshot()));
         sessionSaver.setCycleCount(Timeline.INDEFINITE);
         sessionSaver.play();
     }
@@ -344,7 +343,9 @@ public class MusicAppDemo extends Application implements PlaybackController.Host
     @Override
     public void stop() throws Exception {
         super.stop();
-        maybeSaveSessionSnapshot(); // persist queue + position for session restore
+        if (sessionRestore != null) {
+            sessionRestore.saveSnapshot(); // persist queue + position for session restore
+        }
         if (playback != null) {
             playback.shutdown();
         }
@@ -1114,7 +1115,7 @@ public class MusicAppDemo extends Application implements PlaybackController.Host
             playerPanel.addToQueueDisplay(s);
         }
         publishRemoteState();
-        maybeSaveSessionSnapshot();
+        sessionRestore.saveSnapshot();
     }
 
     private void removeFromQueue(Song song) {
@@ -1286,7 +1287,7 @@ public class MusicAppDemo extends Application implements PlaybackController.Host
     private void disconnectFromServer() {
         // Snapshot the session before playback is torn down so reconnecting to
         // the same slot can restore it.
-        maybeSaveSessionSnapshot();
+        sessionRestore.saveSnapshot();
 
         // DISCONNECT
         client.close();
@@ -1344,7 +1345,7 @@ public class MusicAppDemo extends Application implements PlaybackController.Host
         reloadGameLibrary();
         // After the reload bumped the load generation, so the pending restore
         // tracks the library load this connect kicked off.
-        armSessionRestore(gameName, slot);
+        sessionRestore.arm(gameName, slot);
 
         client.setOnErrorCallback(ex -> {
             connectionPanel.setStatus("Connection failed");
@@ -1399,161 +1400,12 @@ public class MusicAppDemo extends Application implements PlaybackController.Host
         }
     }
 
-    // Session restore -----------------------------------------------------
-
     /**
-     * Arms a pending session restore when the session-restore setting is on and
-     * the persisted snapshot belongs to the game/slot being connected to. Must
-     * run after {@link #reloadGameLibrary} so the pending restore tracks the
-     * library load this connect started.
-     */
-    private void armSessionRestore(String gameName, String slot) {
-        pendingSessionRestore = null;
-        if (!loadSessionRestore()) {
-            return;
-        }
-        SessionStore.Snapshot snapshot = SessionStore.load();
-        if (snapshot == null || !snapshot.hasContent()) {
-            return;
-        }
-        if (!snapshot.game().equals(gameName) || !snapshot.slot().equals(slot)) {
-            LOGGER.info("Session restore skipped: snapshot is for game={} slot={}, "
-                    + "connecting to game={} slot={}",
-                    snapshot.game(), snapshot.slot(), gameName, slot);
-            return;
-        }
-        pendingSessionRestore = new PendingSessionRestore(snapshot, loadGeneration.get());
-        LOGGER.info("Session restore armed: {} queued songs, current={} ({} ms)",
-                snapshot.queue().size(), snapshot.currentTitle(), snapshot.positionMs());
-    }
-
-    /**
-     * Requests that the pending session restore be applied after a short
-     * quiescence. The library fires one ReceiveItemEvent per starting-inventory
-     * item with no batch-complete signal, so instead we debounce on the item
-     * stream: every item event re-arms this timer, and the restore only applies
-     * once item events have stopped arriving and unlock state is settled.
-     * No-op when nothing is pending. Must be called on the FX thread.
+     * Re-arms the pending-restore debounce; called on every item event.
+     * Must be called on the FX thread.
      */
     public void scheduleSessionRestoreApply() {
-        if (pendingSessionRestore == null) {
-            return;
-        }
-        sessionRestoreDebounce.stop();
-        sessionRestoreDebounce.getKeyFrames().setAll(
-                new KeyFrame(Duration.millis(150), _ -> tryApplySessionRestore()));
-        sessionRestoreDebounce.play();
-    }
-
-    /**
-     * Applies the pending restore once the library and connection are ready and
-     * the starting-inventory item burst has settled (via
-     * {@link #scheduleSessionRestoreApply}, re-armed on every item event). Only
-     * applies while the queue is empty so it can never clobber live state; if
-     * nothing is playable yet (items still arriving) the restore stays pending.
-     * Auto-reconnect never reaches here because it doesn't reload the library.
-     */
-    public void tryApplySessionRestore() {
-        PendingSessionRestore pending = pendingSessionRestore;
-        if (pending == null) {
-            return;
-        }
-        if (pending.generation() != loadGeneration.get()) {
-            pendingSessionRestore = null; // superseded by a newer load
-            return;
-        }
-        if (client == null || !client.isConnected() || queueManager == null || library == null) {
-            return; // not ready yet — the debounce re-runs this once ready
-        }
-        if (!queueManager.isEmpty()) {
-            LOGGER.info("Session restore skipped: queue is not empty");
-            pendingSessionRestore = null; // the user has taken over — abandon it
-            return;
-        }
-
-        SessionStore.Snapshot snapshot = pending.snapshot();
-        if (!snapshot.hasContent()) {
-            pendingSessionRestore = null;
-            return;
-        }
-
-        List<Song> resolved = new ArrayList<>();
-        for (Map<String, String> entry : snapshot.queue()) {
-            Song song = findSong(entry.get("title"), entry.get("type"));
-            if (song != null
-                    && unlockManager.canQueue(song, library.getAlbumForSong(song.getTitle()))) {
-                resolved.add(song);
-            }
-        }
-        Song current = snapshot.currentTitle() != null
-                ? findSong(snapshot.currentTitle(), snapshot.currentType())
-                : null;
-        boolean currentPlayable = current != null
-                && unlockManager.canPlay(current, library.getAlbumForSong(current.getTitle()));
-
-        if (resolved.isEmpty() && !currentPlayable) {
-            // Nothing is playable yet — usually the starting-inventory items that
-            // would unlock these songs have not been applied. Keep the restore
-            // pending so the next item event's debounce re-attempts it once
-            // unlock state is complete.
-            LOGGER.debug("Session restore deferred: no songs playable yet (items may still be arriving)");
-            return;
-        }
-
-        pendingSessionRestore = null;
-        queueManager.replaceAll(resolved);
-        updateQueueDisplay();
-        if (currentPlayable) {
-            playback.setPendingSeek(Duration.millis((double) Math.max(0, snapshot.positionMs())));
-            playback.playSong(current);
-        }
-        LOGGER.info("Session restored: {} queued songs{}", resolved.size(),
-                currentPlayable ? ", resuming \"" + current.getTitle() + "\"" : "");
-    }
-
-    private Song findSong(String title, String type) {
-        if (title == null || library == null) {
-            return null;
-        }
-        for (Album album : albums) {
-            for (Song song : album.getSongs()) {
-                if (song.getTitle().equals(title) && (type == null || song.getType().equals(type))) {
-                    return song;
-                }
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Persists the current queue and playback position when session restore is
-     * enabled. Skipped when disconnected with nothing queued so a fresh or
-     * failed connection can't overwrite the previous session's snapshot with
-     * the empty state left behind by the library reload.
-     */
-    private void maybeSaveSessionSnapshot() {
-        if (queueManager == null || settingsWindow == null
-                || !settingsWindow.getSessionRestoreCheck().isSelected()) {
-            return;
-        }
-        boolean connected = client != null && client.isConnected();
-        Song currentSong = playback.getCurrentSong();
-        boolean hasState = !queueManager.isEmpty() || currentSong != null;
-        if (!connected && !hasState) {
-            return;
-        }
-        PlaybackEngine engine = playback.getEngine();
-        long positionMs = 0;
-        if (engine != null && engine.getCurrentTime() != null) {
-            positionMs = (long) engine.getCurrentTime().toMillis();
-        }
-        SessionStore.save(new SessionStore.Snapshot(
-                connectionPanel.getGameName(),
-                connectionPanel.getSlot(),
-                queueManager.toEntries(),
-                currentSong != null ? currentSong.getTitle() : null,
-                currentSong != null ? currentSong.getType() : null,
-                positionMs));
+        sessionRestore.scheduleApply();
     }
 
     private void createBottomBar() {
@@ -1916,6 +1768,46 @@ public class MusicAppDemo extends Application implements PlaybackController.Host
     @Override
     public boolean canPlay(Song song, Album album) {
         return unlockManager.canPlay(song, album);
+    }
+
+    @Override
+    public boolean canQueue(Song song, Album album) {
+        return unlockManager.canQueue(song, album);
+    }
+
+    @Override
+    public boolean libraryReady() {
+        return library != null;
+    }
+
+    @Override
+    public List<Album> albums() {
+        return albums;
+    }
+
+    @Override
+    public boolean connected() {
+        return client != null && client.isConnected();
+    }
+
+    @Override
+    public boolean sessionRestoreEnabled() {
+        return settingsWindow != null && settingsWindow.getSessionRestoreCheck().isSelected();
+    }
+
+    @Override
+    public String gameName() {
+        return connectionPanel.getGameName();
+    }
+
+    @Override
+    public String slot() {
+        return connectionPanel.getSlot();
+    }
+
+    @Override
+    public int loadGeneration() {
+        return loadGeneration.get();
     }
 
     @Override
