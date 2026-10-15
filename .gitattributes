@@ -1,0 +1,3 @@
+# Windows batch scripts (including the Gradle wrapper) must keep CRLF endings
+# so they run correctly under cmd.exe; store them normalized and check out CRLF.
+*.bat text eol=crlf

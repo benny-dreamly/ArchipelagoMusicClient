@@ -12,6 +12,7 @@ import javafx.scene.control.Tooltip;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
+import static app.util.ConfigManager.loadCompanionServer;
 import static app.util.ConfigManager.loadDarkMode;
 import static app.util.ConfigManager.loadDeathLink;
 import static app.util.ConfigManager.loadSessionRestore;
@@ -31,6 +32,7 @@ public class SettingsWindow {
     private final CheckBox darkModeCheck;
     private final CheckBox deathLinkCheck;
     private final CheckBox sessionRestoreCheck;
+    private final CheckBox companionServerCheck;
     private final Button convertLibraryButton;
     private final Button openConfigFolderButton;
 
@@ -52,6 +54,13 @@ public class SettingsWindow {
                 "When connecting to the same game and slot, restore the queue\n"
                         + "and resume the current song at its previous position."));
 
+        companionServerCheck = new CheckBox("Enable phone companion server");
+        companionServerCheck.setSelected(loadCompanionServer());
+        companionServerCheck.setTooltip(new Tooltip(
+                "Serves the player over your local network to the companion phone app.\n"
+                        + "While enabled this listens on ports 8311 (streaming) and 8312 (control).\n"
+                        + "Leave off unless you're using the phone remote."));
+
         convertLibraryButton = new Button("Generate music_library.json from locations.json");
         convertLibraryButton.setMaxWidth(Double.MAX_VALUE);
         convertLibraryButton.setTooltip(new Tooltip("""
@@ -71,11 +80,12 @@ public class SettingsWindow {
                 new Label("Appearance"), darkModeCheck,
                 new Label("Gameplay"), deathLinkCheck,
                 new Label("Session"), sessionRestoreCheck,
+                new Label("Companion"), companionServerCheck,
                 new Label("Library"), convertLibraryButton,
                 new Label("Configuration"), openConfigFolderButton
         );
 
-        scene = new Scene(root, 340, 360);
+        scene = new Scene(root, 340, 400);
         if (darkModeCheck.isSelected()) {
             scene.getStylesheets().add(getClass().getResource(DARK_CSS).toExternalForm());
         }
@@ -101,6 +111,10 @@ public class SettingsWindow {
 
     public CheckBox getSessionRestoreCheck() {
         return sessionRestoreCheck;
+    }
+
+    public CheckBox getCompanionServerCheck() {
+        return companionServerCheck;
     }
 
     public Button getConvertLibraryButton() {

@@ -58,6 +58,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     implementation("io.github.archipelagomw:Java-Client:0.2.0")
+    implementation("org.java-websocket:Java-WebSocket:1.6.0")
     implementation("org.fxmisc.richtext:richtextfx:0.11.7")
     implementation("net.jthink:jaudiotagger:3.0.1")
 
