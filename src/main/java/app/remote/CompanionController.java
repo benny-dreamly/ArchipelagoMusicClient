@@ -60,9 +60,11 @@ public class CompanionController {
 
     public void start(List<File> musicRoots) {
         stop();
-        if (musicRoots == null || musicRoots.isEmpty()) return;
-        // Remember the roots so the settings toggle can (re)start the server.
+        // Remember the roots before the empty check so an empty library clears
+        // any previously remembered roots instead of leaving restart() to serve
+        // a stale folder.
         this.musicRoot = musicRoots;
+        if (musicRoots == null || musicRoots.isEmpty()) return;
         if (!loadCompanionServer()) {
             LOGGER.info("Companion server disabled in settings; not starting");
             return;
