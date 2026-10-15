@@ -13,9 +13,9 @@ import app.archipelago.PrintJsonListener;
 import app.archipelago.SlotDataHelper;
 import app.logic.FolderScanner;
 import app.logic.GoalManager;
+import app.logic.LibraryController;
 import app.logic.QueueManager;
 import app.logic.SessionRestoreController;
-import app.logic.SongFileMatcher;
 import app.logic.UnlockManager;
 import app.player.Album;
 import app.player.AlbumConverter;
@@ -24,8 +24,6 @@ import app.player.Song;
 import app.player.json.AlbumMetadata;
 import app.player.json.AlbumMetadataLoader;
 import app.player.json.LibraryLoader;
-import app.player.json.MusicLibraryConverter;
-import app.player.json.MusicLibraryJSON;
 import app.player.json.MusicLibraryLoader;
 import app.player.json.SongJSON;
 import app.player.ui.AlbumArtPanel;
@@ -61,16 +59,11 @@ import javafx.stage.DirectoryChooser;
 import javafx.concurrent.Task;
 import javafx.util.Duration;
 
-import java.awt.Desktop;
 import java.io.File;
 import java.io.FileReader;
 import java.io.Reader;
-import java.io.InputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 
 import java.util.List;
 import java.util.Set;
@@ -142,6 +135,9 @@ public class MusicAppDemo extends Application implements AppContext {
     // album tree
     private TreeController treeController;
 
+    // library maintenance actions
+    private LibraryController libraryController;
+
     // various fields and stuff for the UI (the others are above or locally defined)
     private ConnectionPanel connectionPanel;
     private PlayerPanel playerPanel;
@@ -209,7 +205,7 @@ public class MusicAppDemo extends Application implements AppContext {
 
         playerControls.bindKeyboard(scene);
 
-        File savedBrowse = savedBrowseFolder();
+        File savedBrowse = libraryController.savedBrowseFolder();
         if (savedBrowse != null) {
             browseFolder(savedBrowse);
         } else {
@@ -258,6 +254,7 @@ public class MusicAppDemo extends Application implements AppContext {
 
         // Dedicated settings window: dark mode, deathlink, session restore
         settingsWindow = new SettingsWindow(stage);
+        libraryController = new LibraryController(this, settingsWindow);
         connectionPanel.getOpenSettingsButton().setOnAction(_ -> settingsWindow.show());
         settingsWindow.getDarkModeCheck().selectedProperty().addListener((_, _, isDark) -> {
             String darkCss = getClass().getResource("/dark.css").toExternalForm();
@@ -291,10 +288,10 @@ public class MusicAppDemo extends Application implements AppContext {
         });
 
         // Library converter: rebuild music_library.json from locations.json
-        settingsWindow.getConvertLibraryButton().setOnAction(_ -> convertLocationsToLibrary());
+        settingsWindow.getConvertLibraryButton().setOnAction(_ -> libraryController.convertLocationsToLibrary());
 
         // Open this game's config folder in the OS file manager
-        settingsWindow.getOpenConfigFolderButton().setOnAction(_ -> openConfigFolder());
+        settingsWindow.getOpenConfigFolderButton().setOnAction(_ -> libraryController.openConfigFolder());
 
         // Periodically snapshot the queue and playback position while the
         // library exists, so a later same-slot connect can restore it.
@@ -479,7 +476,7 @@ public class MusicAppDemo extends Application implements AppContext {
             }
 
             // After assigning folder paths in loadTask.setOnSucceeded
-            assignFilesToSongs();
+            libraryController.assignFilesToSongs();
 
             refreshTree(); // populate TreeView after loading
 
@@ -517,79 +514,8 @@ public class MusicAppDemo extends Application implements AppContext {
         return loadTask;
     }
 
-    @SuppressWarnings("unused")
-    private void convertLocationsToLibrary() {
-        File gameFolder = getConfigDir();
-        File locationsFile = new File(gameFolder, "locations.json");
-        if (!locationsFile.isFile()) {
-            showError("No locations.json", "locations.json not found",
-                    "This game folder has no locations.json to convert:\n" + gameFolder.getAbsolutePath());
-            return;
-        }
-
-        File musicLibraryFile = new File(gameFolder, "music_library.json");
-        MusicLibraryConverter converter = new MusicLibraryConverter();
-        settingsWindow.getConvertLibraryButton().setDisable(true);
-        Task<MusicLibraryJSON> task = new Task<>() {
-            @Override
-            protected MusicLibraryJSON call() throws Exception {
-                File backup = new File(gameFolder, "music_library.json.bak");
-                if (musicLibraryFile.exists() && !backup.exists()) {
-                    Files.copy(musicLibraryFile.toPath(), backup.toPath());
-                }
-                MusicLibraryJSON library = converter.convert(locationsFile, gameFolder);
-                converter.write(library, musicLibraryFile);
-                return library;
-            }
-        };
-        task.setOnSucceeded(_ -> {
-            try {
-                MusicLibraryJSON library = task.getValue();
-                int songs = 0;
-                for (MusicLibraryJSON.AlbumJSON album : library.albums) {
-                    songs += album.songs.size();
-                }
-                connectionPanel.getTextClientWindow().appendOutput("Converted locations.json -> music_library.json ("
-                        + library.albums.size() + " albums, " + songs + " songs)");
-                if (savedBrowseFolder() == null) {
-                    reloadGameLibrary();
-                }
-            } finally {
-                settingsWindow.getConvertLibraryButton().setDisable(false);
-            }
-        });
-        task.setOnFailed(_ -> {
-            try {
-                Throwable err = task.getException();
-                LOGGER.error("Failed to convert locations.json to music_library.json", err);
-                String detail = err == null ? "Unknown error"
-                        : (err.getMessage() == null || err.getMessage().isBlank()
-                        ? err.getClass().getSimpleName() : err.getMessage());
-                showError("Conversion Failed", "Could not convert locations.json", detail);
-            } finally {
-                settingsWindow.getConvertLibraryButton().setDisable(false);
-            }
-        });
-        new Thread(task).start();
-    }
-
-    private void openConfigFolder() {
-        File gameFolder = getConfigDir();
-        if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
-            showError("Open Folder Unsupported", "Opening the file manager isn't supported here",
-                    gameFolder.getAbsolutePath());
-            return;
-        }
-        try {
-            Desktop.getDesktop().open(gameFolder);
-        } catch (IOException e) {
-            LOGGER.error("Could not open the config folder {}", gameFolder.getAbsolutePath(), e);
-            showError("Open Folder Failed", "Could not open the config folder",
-                    gameFolder.getAbsolutePath());
-        }
-    }
-
-    private void reloadGameLibrary() {
+    @Override
+    public void reloadGameLibrary() {
         // Buffer item events before invalidating generation
         if (itemListener != null) {
             itemListener.setLibraryLoading(true);
@@ -778,15 +704,6 @@ public class MusicAppDemo extends Application implements AppContext {
         playerPanel.setCurrentSongLabel("Currently Playing: None");
     }
 
-    private File savedBrowseFolder() {
-        String path = loadBrowseFolder();
-        if (path == null) {
-            return null;
-        }
-        File folder = new File(path);
-        return folder.isDirectory() ? folder : null;
-    }
-
     private void onGoalProgressChanged() {
         Platform.runLater(() -> refreshTree());
     }
@@ -839,45 +756,6 @@ public class MusicAppDemo extends Application implements AppContext {
         }
         publishRemoteState();
         sessionRestore.saveSnapshot();
-    }
-
-    private void assignFilesToSongs() {
-        SongFileMatcher.assignFilesToSongs(albums);
-    }
-
-    private void ensureGameDefaults(File gameFolder) {
-        if (!gameFolder.exists()) {
-            //noinspection ResultOfMethodCallIgnored
-            gameFolder.mkdirs();
-        }
-
-        File albumOrderFile = new File(gameFolder, "albumOrder.json");
-        if (!albumOrderFile.exists()) {
-            albumOrderManager.getAlbumOrder(); // this method already generates the default if missing
-        }
-
-        File foldersFile = new File(gameFolder, "albumFolders.json");
-        if (!foldersFile.exists()) {
-            generateDefaultAlbumFolders(albums); // creates default
-        }
-
-        File legacyLocations = new File(gameFolder, "locations.json");
-        File musicLibraryFile = new File(gameFolder, "music_library.json");
-        // Seed the bundled sample music_library.json for brand-new game folders.
-        // Folders with an existing library in either format keep their own data.
-        if (!musicLibraryFile.exists() && !legacyLocations.exists()) {
-            try (InputStream in = getClass().getResourceAsStream("/music_library.json");
-                 FileOutputStream out = new FileOutputStream(musicLibraryFile)) {
-                if (in != null) {
-                    in.transferTo(out);
-                    LOGGER.info("Copied bundled sample music_library.json to {}",
-                            musicLibraryFile.getAbsolutePath());
-                }
-            } catch (IOException e) {
-                LOGGER.error("Failed to copy bundled sample music_library.json to {}",
-                        musicLibraryFile.getAbsolutePath(), e);
-            }
-        }
     }
 
     public Set<String> getUnlockedSongs() {
@@ -1029,7 +907,7 @@ public class MusicAppDemo extends Application implements AppContext {
         // ✅ reload slot options after game changes
         SlotDataHelper.loadSlotOptions(gameFolder.get());
 
-        ensureGameDefaults(gameFolder.get());
+        libraryController.ensureGameDefaults(gameFolder.get());
         reloadGameLibrary();
         // After the reload bumped the load generation, so the pending restore
         // tracks the library load this connect kicked off.

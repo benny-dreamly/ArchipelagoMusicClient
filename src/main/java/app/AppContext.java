@@ -34,6 +34,8 @@ public interface AppContext {
 
     List<String> albumOrder();
 
+    void reloadGameLibrary();
+
     void sendBonusCheck(String location);
 
     boolean libraryReady();
