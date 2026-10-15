@@ -205,6 +205,12 @@ public class MusicAppDemo extends Application implements AppContext {
 
         playerControls.bindKeyboard(scene);
 
+        // Dedicated settings window: dark mode, deathlink, session restore.
+        // Built before the initial browse/load flow below, which needs
+        // libraryController.
+        settingsWindow = new SettingsWindow(stage);
+        libraryController = new LibraryController(this, settingsWindow);
+
         File savedBrowse = libraryController.savedBrowseFolder();
         if (savedBrowse != null) {
             browseFolder(savedBrowse);
@@ -252,9 +258,6 @@ public class MusicAppDemo extends Application implements AppContext {
             scene.getStylesheets().add(getClass().getResource("/dark.css").toExternalForm());
         }
 
-        // Dedicated settings window: dark mode, deathlink, session restore
-        settingsWindow = new SettingsWindow(stage);
-        libraryController = new LibraryController(this, settingsWindow);
         connectionPanel.getOpenSettingsButton().setOnAction(_ -> settingsWindow.show());
         settingsWindow.getDarkModeCheck().selectedProperty().addListener((_, _, isDark) -> {
             String darkCss = getClass().getResource("/dark.css").toExternalForm();
