@@ -73,12 +73,22 @@ public final class CompanionServer {
             @Override
             public void onOpen(WebSocket conn, ClientHandshake handshake) {
                 LOGGER.info("Companion: phone connected from {}", conn.getRemoteSocketAddress());
-                assignActivePhone();
+                // Assign the connection that is actually opening rather than
+                // scanning getConnections(): during onOpen the new connection may
+                // not be visible/open in that collection yet, which left the
+                // active phone unset (flaky under load).
+                WebSocket current = activePhone;
+                if (current == null || !current.isOpen()) {
+                    activePhone = conn;
+                }
             }
 
             @Override
             public void onClose(WebSocket conn, int code, String reason, boolean remote) {
                 LOGGER.info("Companion: phone disconnected ({})", reason);
+                if (activePhone == conn) {
+                    activePhone = null;
+                }
                 assignActivePhone();
             }
 
