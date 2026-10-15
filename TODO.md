@@ -64,6 +64,10 @@ connection, disables it, enables all unlocks); the chosen folder is persisted to
 - **Deathlink support** — stop/skip playback on deathlink ✅
 - **Auto-reconnect** — retry connection if the server drops ✅
 - **Track completion percentage** — show unlock progress per album/world ✅
+- **Alternate goal types (e.g. clear specific albums / N songs)** — *parked idea, option only.*
+  - Today the goal is hardwired in `GoalManager.checkGoal` (GoalManager.java:122-149): every enabled album fully played → `CLIENT_GOAL`. A user suggested supporting "clear N songs" / "clear specific albums" instead.
+  - Preferred shape if ever done: **slot_data-driven**, not a settings toggle. The world author declares it in `slot_data.json` (e.g. `"goal": { "type": "songs", "count": 50 }` or `{ "type": "albums", "names": [...] }`); the client parses it when building the library and `checkGoal` evaluates against it while still reporting `CLIENT_GOAL` unchanged. One code path, no new UI.
+  - Why parked: the goal is really the world's concern — if the client invents a goal the server doesn't know, goal timing can disagree with how the multiworld actually ends. 100% is the safe convention. Scope if picked up: slot_data schema + parsing, a small `Goal` value object, `checkGoal`/`isAlbumFullyPlayed` rework, and tests.
 
 ## Mobile / Remote Player — **6.0.0 target**
 - **Player-system rewrite for remote control** — a whole rewrite of the playback core to allow the phone app to control playback. Sits on the `companion-server` branch with `mobile/` (Android) and `ios/ProtocolCore/` (iOS) built against it.
