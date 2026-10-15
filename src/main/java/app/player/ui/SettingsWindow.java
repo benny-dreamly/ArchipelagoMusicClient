@@ -50,16 +50,16 @@ public class SettingsWindow {
 
         sessionRestoreCheck = new CheckBox("Restore session on reconnect");
         sessionRestoreCheck.setSelected(loadSessionRestore());
-        sessionRestoreCheck.setTooltip(new Tooltip(
-                "When connecting to the same game and slot, restore the queue\n"
-                        + "and resume the current song at its previous position."));
+        sessionRestoreCheck.setTooltip(new Tooltip("""
+                When connecting to the same game and slot, restore the queue
+                and resume the current song at its previous position."""));
 
         companionServerCheck = new CheckBox("Enable phone companion server");
         companionServerCheck.setSelected(loadCompanionServer());
-        companionServerCheck.setTooltip(new Tooltip(
-                "Serves the player over your local network to the companion phone app.\n"
-                        + "While enabled this listens on ports 8311 (streaming) and 8312 (control).\n"
-                        + "Leave off unless you're using the phone remote."));
+        companionServerCheck.setTooltip(new Tooltip("""
+                Serves the player over your local network to the companion phone app.
+                While enabled this listens on ports 8311 (streaming) and 8312 (control).
+                Leave off unless you're using the phone remote."""));
 
         convertLibraryButton = new Button("Generate music_library.json from locations.json");
         convertLibraryButton.setMaxWidth(Double.MAX_VALUE);

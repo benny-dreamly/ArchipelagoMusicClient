@@ -13,109 +13,69 @@ import app.archipelago.PrintJsonListener;
 import app.archipelago.SlotDataHelper;
 import app.logic.FolderScanner;
 import app.logic.GoalManager;
+import app.logic.LibraryController;
 import app.logic.QueueManager;
-import app.logic.SongFileMatcher;
+import app.logic.SessionRestoreController;
 import app.logic.UnlockManager;
 import app.player.Album;
 import app.player.AlbumConverter;
-import app.player.LocalPlayback;
-import app.player.PhonePlayback;
-import app.player.PlaybackEngine;
+import app.player.PlaybackController;
 import app.player.Song;
 import app.player.json.AlbumMetadata;
 import app.player.json.AlbumMetadataLoader;
 import app.player.json.LibraryLoader;
-import app.player.json.MusicLibraryConverter;
-import app.player.json.MusicLibraryJSON;
 import app.player.json.MusicLibraryLoader;
 import app.player.json.SongJSON;
 import app.player.ui.AlbumArtPanel;
 import app.player.ui.ConnectionPanel;
+import app.player.ui.PlayerControlsController;
 import app.player.ui.PlayerPanel;
 import app.player.ui.SettingsWindow;
-import app.remote.CompanionServer;
-import app.remote.CompanionState;
+import app.remote.CompanionController;
+import app.ui.TreeController;
 import app.util.AlbumLibrary;
 import app.util.AlbumOrderManager;
 import app.util.PlayHistoryStore;
 import app.util.SentBonusStore;
-import app.util.SessionStore;
 import app.util.StateManager;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.beans.value.ChangeListener;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.ContextMenu;
-import javafx.scene.control.ListView;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.Slider;
 import javafx.scene.control.TextField;
-import javafx.scene.control.TextInputControl;
 import javafx.scene.control.TreeView;
-import javafx.scene.control.TreeCell;
-import javafx.scene.control.TreeItem;
 import javafx.scene.image.Image;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyEvent;
-import javafx.scene.input.MouseButton;
-import javafx.scene.input.MouseEvent;
-import javafx.scene.input.ClipboardContent;
-import javafx.scene.input.Dragboard;
-import javafx.scene.input.TransferMode;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import javafx.scene.media.MediaPlayer;
 import javafx.stage.Stage;
 import javafx.stage.DirectoryChooser;
 import javafx.concurrent.Task;
 import javafx.util.Duration;
 
-import java.awt.Desktop;
 import java.io.File;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.Reader;
-import java.io.Writer;
-import java.io.InputStream;
-import java.io.FileOutputStream;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 import java.util.Collections;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.jaudiotagger.audio.AudioFileIO;
-import org.jaudiotagger.audio.AudioFile;
-import org.jaudiotagger.tag.Tag;
-import org.jaudiotagger.tag.images.Artwork;
 
 import static app.util.AlbumUtils.generateDefaultAlbumFolders;
 import static app.util.ConfigManager.saveConnectionSettings;
@@ -125,18 +85,15 @@ import static app.util.ConfigManager.loadDeathLink;
 import static app.util.ConfigManager.saveDeathLink;
 import static app.util.ConfigManager.loadBrowseFolder;
 import static app.util.ConfigManager.saveBrowseFolder;
-import static app.util.ConfigManager.loadSessionRestore;
 import static app.util.ConfigManager.saveSessionRestore;
-import static app.util.ConfigManager.loadCompanionServer;
 import static app.util.ConfigManager.saveCompanionServer;
 import static app.util.ConfigPaths.getConfigDir;
 import static app.util.ConfigPaths.getAlbumConfigFile;
 import static app.util.ConfigPaths.checkIfGameFolderExists;
 import static app.util.Dialogs.showError;
 import static app.util.SlotDataUtils.parseSlotData;
-import static app.util.TimeUtils.formatTime;
 
-public class MusicAppDemo extends Application {
+public class MusicAppDemo extends Application implements AppContext {
 
     public static final Logger LOGGER = LoggerFactory.getLogger(MusicAppDemo.class);
 
@@ -151,13 +108,7 @@ public class MusicAppDemo extends Application {
     private boolean usingMusicLibrary = false;
     private boolean offlineMode = false;
     private final AtomicInteger loadGeneration = new AtomicInteger(0);
-    private record PendingSessionRestore(SessionStore.Snapshot snapshot, int generation) {}
-    private PendingSessionRestore pendingSessionRestore;
-    private final Timeline sessionRestoreDebounce = new Timeline();
-    private Duration pendingSeek;
-    private boolean volumeAdjustMode = false;
-    private final StringBuilder volumeInput = new StringBuilder();
-    private final java.util.LinkedList<Song> songHistory = new java.util.LinkedList<>();
+    private SessionRestoreController sessionRestore;
     private AlbumLibrary library;
 
     private AlbumOrderManager albumOrderManager;
@@ -170,45 +121,22 @@ public class MusicAppDemo extends Application {
     private ItemListener itemListener;
     private EnergyLinkListener energyLinkListener;
 
-    private Song currentSong;
-
     private QueueManager queueManager;
 
     // playback
-    private PlaybackEngine playbackEngine;
+    private PlaybackController playback;
+
+    // player panel buttons + keyboard shortcuts
+    private PlayerControlsController playerControls;
 
     // companion phone server
-    private static final int COMPANION_HTTP_PORT = 8311;
-    private static final int COMPANION_WS_PORT = 8312;
-    private CompanionServer companionServer;
-    private ScheduledExecutorService companionTicker;
-    private java.util.concurrent.ScheduledFuture<?> companionTickerTask;
-    // Folder the companion server serves; remembered so toggling the setting
-    // can start it without reloading the library.
-    private List<File> companionMusicRoot;
+    private CompanionController companion;
 
-    // energy link / playback boost
-    private static final double BOOST_RATE_150 = 1.5;
-    private static final double BOOST_RATE_200 = 2.0;
-    private static final double BOOST_COST_150 = 1_500;
-    private static final double BOOST_COST_200 = 2_250;
-    private static final Duration BOOST_DURATION = Duration.seconds(30);
-    private static final double SONG_ENERGY_CREDIT = 500;
-    private static final Duration CLICK_WINDOW = Duration.millis(300);
-    private boolean boostActive = false;
-    private double boostRate = 1.0;
-    private double playbackSpeed = 1.0;
-    private javafx.animation.PauseTransition boostTimer;
-    private javafx.animation.PauseTransition boostClickTimer;
+    // album tree
+    private TreeController treeController;
 
-
-    private boolean isUpdatingSelection = false;
-    private boolean suppressSelection = false;
-    private long artworkRequestId = 0;
-    private final ExecutorService artworkExecutor = new ThreadPoolExecutor(
-            1, 1, 0L, TimeUnit.MILLISECONDS,
-            new ArrayBlockingQueue<>(1),
-            new ThreadPoolExecutor.DiscardOldestPolicy());
+    // library maintenance actions
+    private LibraryController libraryController;
 
     // various fields and stuff for the UI (the others are above or locally defined)
     private ConnectionPanel connectionPanel;
@@ -234,42 +162,30 @@ public class MusicAppDemo extends Application {
 
         initUIComponents();
 
-        // When a tree item (song) is selected, add to queue
-        treeView.getSelectionModel().selectedItemProperty().addListener((_, _, newSel) -> {
-            if (suppressSelection) {
-                suppressSelection = false;
-                return;
-            }
-            handleTreeSelection(newSel);
-        });
-
-        searchField.textProperty().addListener((_, _, _) -> refreshTree());
-
-        setupAlbumContextMenu();
-
-        // Suppress selection handling on right-click so context menu doesn't double-queue
-        treeView.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
-            if (event.getButton() == MouseButton.SECONDARY) {
-                suppressSelection = true;
-            }
-        });
-
         albumOrderManager = new AlbumOrderManager();
         stateManager = new StateManager(this, albumOrderManager);
 
-        refreshTree();
-
         createBottomBar();
 
-        connectionPanel = new ConnectionPanel(gameFolder, () -> client, this::setPlaybackSpeedCommand);
-
         playerPanel = new PlayerPanel();
-        setupPlayerPanel(playerPanel);
+        albumArtPanel = new AlbumArtPanel();
+        playback = new PlaybackController(this, playerPanel, albumArtPanel);
+        companion = new CompanionController(this, playback);
+        sessionRestore = new SessionRestoreController(this, playback);
+
+        treeController = new TreeController(this, playback, treeView, searchField, contextMenu);
+        treeController.bind();
+        treeController.refreshTree();
+
+        connectionPanel = new ConnectionPanel(gameFolder, () -> client,
+                playback::setPlaybackSpeedCommand);
+
+        playerControls = new PlayerControlsController(this, playback, playerPanel, connectionPanel);
+        playerControls.bindPanel();
 
         // Add panels to bottom bar
         bottomBar.getChildren().addAll(connectionPanel, playerPanel);
 
-        albumArtPanel = new AlbumArtPanel();
         albumPanel = new HBox(10);
         VBox treeBox = new VBox(10);
         treeBox.setPrefWidth(400);
@@ -287,9 +203,15 @@ public class MusicAppDemo extends Application {
         setWindowIcons(stage);
         stage.show();
 
-        setupKeyboardShortcuts(scene);
+        playerControls.bindKeyboard(scene);
 
-        File savedBrowse = savedBrowseFolder();
+        // Dedicated settings window: dark mode, deathlink, session restore.
+        // Built before the initial browse/load flow below, which needs
+        // libraryController.
+        settingsWindow = new SettingsWindow(stage);
+        libraryController = new LibraryController(this, settingsWindow);
+
+        File savedBrowse = libraryController.savedBrowseFolder();
         if (savedBrowse != null) {
             browseFolder(savedBrowse);
         } else {
@@ -336,8 +258,6 @@ public class MusicAppDemo extends Application {
             scene.getStylesheets().add(getClass().getResource("/dark.css").toExternalForm());
         }
 
-        // Dedicated settings window: dark mode, deathlink, session restore
-        settingsWindow = new SettingsWindow(stage);
         connectionPanel.getOpenSettingsButton().setOnAction(_ -> settingsWindow.show());
         settingsWindow.getDarkModeCheck().selectedProperty().addListener((_, _, isDark) -> {
             String darkCss = getClass().getResource("/dark.css").toExternalForm();
@@ -364,22 +284,22 @@ public class MusicAppDemo extends Application {
         settingsWindow.getCompanionServerCheck().selectedProperty().addListener((_, _, enabled) -> {
             saveCompanionServer(enabled);
             if (enabled) {
-                if (companionMusicRoot != null) startCompanionServer(companionMusicRoot);
+                companion.restart();
             } else {
-                stopCompanionServer();
+                companion.stop();
             }
         });
 
         // Library converter: rebuild music_library.json from locations.json
-        settingsWindow.getConvertLibraryButton().setOnAction(_ -> convertLocationsToLibrary());
+        settingsWindow.getConvertLibraryButton().setOnAction(_ -> libraryController.convertLocationsToLibrary());
 
         // Open this game's config folder in the OS file manager
-        settingsWindow.getOpenConfigFolderButton().setOnAction(_ -> openConfigFolder());
+        settingsWindow.getOpenConfigFolderButton().setOnAction(_ -> libraryController.openConfigFolder());
 
         // Periodically snapshot the queue and playback position while the
         // library exists, so a later same-slot connect can restore it.
         Timeline sessionSaver = new Timeline(new KeyFrame(Duration.seconds(5),
-                _ -> maybeSaveSessionSnapshot()));
+                _ -> sessionRestore.saveSnapshot()));
         sessionSaver.setCycleCount(Timeline.INDEFINITE);
         sessionSaver.play();
     }
@@ -388,8 +308,12 @@ public class MusicAppDemo extends Application {
     @Override
     public void stop() throws Exception {
         super.stop();
-        maybeSaveSessionSnapshot(); // persist queue + position for session restore
-        artworkExecutor.shutdownNow();
+        if (sessionRestore != null) {
+            sessionRestore.saveSnapshot(); // persist queue + position for session restore
+        }
+        if (playback != null) {
+            playback.shutdown();
+        }
         if (client != null) {
             client.close();
         }
@@ -513,7 +437,7 @@ public class MusicAppDemo extends Application {
                 pendingPlayedGeneration = -1;
             }
 
-            installTreeCellFactory();
+            treeController.installTreeCellFactory();
 
             // Fallback: load albumFolders.json for albums without a path from music_library.json
             {
@@ -555,7 +479,7 @@ public class MusicAppDemo extends Application {
             }
 
             // After assigning folder paths in loadTask.setOnSucceeded
-            assignFilesToSongs();
+            libraryController.assignFilesToSongs();
 
             refreshTree(); // populate TreeView after loading
 
@@ -564,7 +488,7 @@ public class MusicAppDemo extends Application {
                 applyOfflineUnlocks();
             }
 
-            startCompanionServer(albumMusicRoots());
+            companion.start(albumMusicRoots());
 
             restoreLibraryControls();
 
@@ -593,93 +517,18 @@ public class MusicAppDemo extends Application {
         return loadTask;
     }
 
-    @SuppressWarnings("unused")
-    private void convertLocationsToLibrary() {
-        File gameFolder = getConfigDir();
-        File locationsFile = new File(gameFolder, "locations.json");
-        if (!locationsFile.isFile()) {
-            showError("No locations.json", "locations.json not found",
-                    "This game folder has no locations.json to convert:\n" + gameFolder.getAbsolutePath());
-            return;
-        }
-
-        File musicLibraryFile = new File(gameFolder, "music_library.json");
-        MusicLibraryConverter converter = new MusicLibraryConverter();
-        settingsWindow.getConvertLibraryButton().setDisable(true);
-        Task<MusicLibraryJSON> task = new Task<>() {
-            @Override
-            protected MusicLibraryJSON call() throws Exception {
-                File backup = new File(gameFolder, "music_library.json.bak");
-                if (musicLibraryFile.exists() && !backup.exists()) {
-                    Files.copy(musicLibraryFile.toPath(), backup.toPath());
-                }
-                MusicLibraryJSON library = converter.convert(locationsFile, gameFolder);
-                converter.write(library, musicLibraryFile);
-                return library;
-            }
-        };
-        task.setOnSucceeded(_ -> {
-            try {
-                MusicLibraryJSON library = task.getValue();
-                int songs = 0;
-                for (MusicLibraryJSON.AlbumJSON album : library.albums) {
-                    songs += album.songs.size();
-                }
-                connectionPanel.getTextClientWindow().appendOutput("Converted locations.json -> music_library.json ("
-                        + library.albums.size() + " albums, " + songs + " songs)");
-                if (savedBrowseFolder() == null) {
-                    reloadGameLibrary();
-                }
-            } finally {
-                settingsWindow.getConvertLibraryButton().setDisable(false);
-            }
-        });
-        task.setOnFailed(_ -> {
-            try {
-                Throwable err = task.getException();
-                LOGGER.error("Failed to convert locations.json to music_library.json", err);
-                String detail = err == null ? "Unknown error"
-                        : (err.getMessage() == null || err.getMessage().isBlank()
-                        ? err.getClass().getSimpleName() : err.getMessage());
-                showError("Conversion Failed", "Could not convert locations.json", detail);
-            } finally {
-                settingsWindow.getConvertLibraryButton().setDisable(false);
-            }
-        });
-        new Thread(task).start();
-    }
-
-    private void openConfigFolder() {
-        File gameFolder = getConfigDir();
-        if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
-            showError("Open Folder Unsupported", "Opening the file manager isn't supported here",
-                    gameFolder.getAbsolutePath());
-            return;
-        }
-        try {
-            Desktop.getDesktop().open(gameFolder);
-        } catch (IOException e) {
-            LOGGER.error("Could not open the config folder {}", gameFolder.getAbsolutePath(), e);
-            showError("Open Folder Failed", "Could not open the config folder",
-                    gameFolder.getAbsolutePath());
-        }
-    }
-
-    private void reloadGameLibrary() {
+    @Override
+    public void reloadGameLibrary() {
         // Buffer item events before invalidating generation
         if (itemListener != null) {
             itemListener.setLibraryLoading(true);
         }
         loadGeneration.incrementAndGet(); // invalidate any in-flight load task
-        stopCompanionServer();
+        companion.stop();
         // Stop and dispose current playback
-        if (playbackEngine != null) {
-            playbackEngine.stopAndRelease();
-        }
-        currentSong = null;
+        playback.resetTrack();
 
         // Clear old state before reloading
-        songHistory.clear();
         albums.clear();
         unlockManager.getUnlockedAlbums().clear();
         unlockManager.getUnlockedSongs().clear();
@@ -728,16 +577,12 @@ public class MusicAppDemo extends Application {
             itemListener.setLibraryLoading(true);
         }
         loadGeneration.incrementAndGet(); // invalidate any in-flight load task
-        stopCompanionServer();
+        companion.stop();
 
         // Stop and dispose current playback
-        if (playbackEngine != null) {
-            playbackEngine.stopAndRelease();
-        }
-        currentSong = null;
+        playback.resetTrack();
 
         // Clear old state before loading the scanned library
-        songHistory.clear();
         albums.clear();
         bonusLocations.clear();
         unlockManager.getUnlockedAlbums().clear();
@@ -803,11 +648,11 @@ public class MusicAppDemo extends Application {
             goalManager = new GoalManager(unlockManager, albums, this::onGoalProgressChanged);
             goalManager.loadFromLocal(PlayHistoryStore.load());
 
-            installTreeCellFactory();
+            treeController.installTreeCellFactory();
             applyOfflineUnlocks();
             refreshTree();
 
-            startCompanionServer(List.of(folder));
+            companion.start(List.of(folder));
             restoreLibraryControls();
             connectionPanel.setStatus("Browsing " + folder.getName()
                     + " (" + albums.size() + " albums, "
@@ -836,66 +681,6 @@ public class MusicAppDemo extends Application {
         new Thread(scanTask).start();
     }
 
-    private void installTreeCellFactory() {
-        treeView.setCellFactory(tv -> new TreeCell<>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-
-                if (empty || item == null) {
-                    setText(null);
-                    setStyle("");
-                    getStyleClass().removeAll("song-unlocked", "album-unlocked");
-                } else {
-                    TreeItem<String> treeItem = getTreeItem();
-
-                    if (treeItem != null && treeItem.isLeaf()) {
-                        // Song nodes
-                        getStyleClass().remove("album-unlocked");
-                        setText(item);
-                        Song song = library.getSongByTitle(item);
-                        if (song != null && unlockManager.isSongUnlocked(song.getTitle())) {
-                            getStyleClass().add("song-unlocked");
-                        } else {
-                            getStyleClass().remove("song-unlocked");
-                        }
-                    } else {
-                        // Album nodes
-                        getStyleClass().remove("song-unlocked");
-                        if (item.equals("Albums")) {
-                            // Root "Albums" node — show overall world completion
-                            UnlockManager.AlbumProgress world = unlockManager.getWorldProgress(library.getAlbums());
-                            int worldPlayed = goalManager != null
-                                    ? goalManager.getWorldPlayedCount(library.getAlbums())
-                                    : world.unlocked();
-                            setText(item + " (" + worldPlayed + "/" + world.total() + ")");
-                            getStyleClass().remove("album-unlocked");
-                        } else {
-                            // Regular album node
-                            Album album = library.getAlbumByName(item);
-                            if (album != null) {
-                                UnlockManager.AlbumProgress progress = unlockManager.getAlbumProgress(album);
-                                int albumPlayed = goalManager != null
-                                        ? goalManager.getPlayedCount(album)
-                                        : progress.unlocked();
-                                setText(item + " (" + albumPlayed + "/" + progress.total() + ")");
-                            } else {
-                                setText(item);
-                            }
-                            if (album != null && unlockManager.isAlbumUnlocked(album.getName())) {
-                                // unlocked → bold
-                                getStyleClass().add("album-unlocked");
-                            } else {
-                                // locked → normal
-                                getStyleClass().remove("album-unlocked");
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-
     private void restoreLibraryControls() {
         playerPanel.getLoadQueueBtn().setDisable(false);
         playerPanel.getPlayButton().setDisable(false);
@@ -922,182 +707,13 @@ public class MusicAppDemo extends Application {
         playerPanel.setCurrentSongLabel("Currently Playing: None");
     }
 
-    private File savedBrowseFolder() {
-        String path = loadBrowseFolder();
-        if (path == null) {
-            return null;
-        }
-        File folder = new File(path);
-        return folder.isDirectory() ? folder : null;
-    }
-
     private void onGoalProgressChanged() {
         Platform.runLater(() -> refreshTree());
     }
 
     public void refreshTree() {
-        // Custom album order
-        List<String> albumOrder = albumOrderManager.getAlbumOrder();
-
-        // Sort albums according to albumOrder
-        albums.sort(Comparator.comparingInt(a -> {
-            int idx = albumOrder.indexOf(a.getName());
-            return idx >= 0 ? idx : Integer.MAX_VALUE; // albums not in the list go last
-        }));
-
-        TreeItem<String> rootItem = new TreeItem<>("Albums");
-        rootItem.setExpanded(true);
-
-        String query = searchField.getText().trim().toLowerCase(Locale.ROOT);
-
-        for (Album album : albums) {
-            // Skip albums not unlocked in slot data
-            if (!unlockManager.getEnabledAlbums().contains(album.getName())) continue;
-
-            boolean albumMatches = album.getName().toLowerCase(Locale.ROOT).contains(query);
-            TreeItem<String> albumItem = new TreeItem<>(album.getName());
-            boolean hasSongs = false;
-
-            for (Song song : album.getSongs()) {
-                if (unlockManager.getEnabledSets().contains(song.getType())) {
-                    if (!albumMatches && !song.getTitle().toLowerCase(Locale.ROOT).contains(query)) continue;
-                    TreeItem<String> songItem = new TreeItem<>(song.getTitle());
-                    albumItem.getChildren().add(songItem);
-                    hasSongs = true;
-                }
-            }
-
-            if (hasSongs) rootItem.getChildren().add(albumItem);
-        }
-
-        if (!bonusLocations.isEmpty()) {
-            boolean bonusMatches = "bonus".contains(query);
-            Set<String> sentForSlot = Set.copyOf(SentBonusStore.load(connectionPanel.getSlot()));
-            TreeItem<String> bonusItem = new TreeItem<>("Bonus");
-            for (String location : bonusLocations) {
-                if (sentForSlot.contains(location)) continue;
-                if (bonusMatches || location.toLowerCase(Locale.ROOT).contains(query)) {
-                    bonusItem.getChildren().add(new TreeItem<>(location));
-                }
-            }
-            if (!bonusItem.getChildren().isEmpty()) {
-                rootItem.getChildren().add(bonusItem);
-            }
-        }
-
-        treeView.setRoot(rootItem);
-    }
-
-    private void setupAlbumContextMenu() {
-        treeView.setOnContextMenuRequested(event -> {
-            suppressSelection = false;
-            TreeItem<String> item = treeView.getSelectionModel().getSelectedItem();
-            if (item == null || item.getParent() == null) return;
-
-            contextMenu.getItems().clear(); // reset the context menu
-
-            if (item.isLeaf() && item.getParent().getParent() != null && !"Bonus".equals(item.getParent().getValue())) {
-                MenuItem queueNext = new MenuItem("Play Next");
-                queueNext.setOnAction(_ -> {
-                    Album album = library.getAlbumByName(item.getParent().getValue());
-                    queueSongNext(item.getValue(), album);
-                });
-                contextMenu.getItems().add(queueNext);
-                contextMenu.show(treeView, event.getScreenX(), event.getScreenY());
-                event.consume();
-            }
-
-            // Only show for album nodes (non-leaf, child of root, not Bonus)
-            if (!item.isLeaf() && item.getParent().getParent() == null && !"Bonus".equals(item.getValue())) {
-                MenuItem queueAll = new MenuItem("Queue All Songs");
-                queueAll.setOnAction(_ -> queueAlbum(item.getValue()));
-                contextMenu.getItems().add(queueAll);
-                if (goalManager != null) {
-                    MenuItem queueUnplayed = new MenuItem("Queue Unplayed");
-                    queueUnplayed.setOnAction(_ -> queueUnplayedAlbum(item.getValue()));
-                    contextMenu.getItems().add(queueUnplayed);
-                }
-                contextMenu.show(treeView, event.getScreenX(), event.getScreenY());
-                event.consume();
-            }
-        });
-    }
-
-    private void queueAlbum(String albumName) {
-        Album album = library.getAlbumByName(albumName);
-        if (album == null) return;
-
-        List<Song> queueable = album.getQueueableSongs(unlockManager.getEnabledSets(),
-                unlockManager.getUnlockedSongs(), unlockManager.getUnlockedAlbums());
-        if (queueable.isEmpty()) {
-            LOGGER.info("No queueable songs in album '{}'", albumName);
-            return;
-        }
-
-        queueManager.addAll(queueable);
-        LOGGER.info("Queued {} songs from album '{}'", queueable.size(), albumName);
-        updateQueueDisplay();
-
-        // If nothing is playing, start the first queued song
-if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.PLAYING)
-                && !queueManager.isEmpty()) {
-            Song next = queueManager.poll();
-            updateQueueDisplay();
-            if (next != null) {
-                playSong(next);
-            }
-        }
-    }
-
-    private void queueUnplayedAlbum(String albumName) {
-        Album album = library.getAlbumByName(albumName);
-        if (album == null || goalManager == null) return;
-
-        List<Song> queueable = album.getQueueableSongs(unlockManager.getEnabledSets(),
-                unlockManager.getUnlockedSongs(), unlockManager.getUnlockedAlbums());
-        List<Song> unplayed = queueable.stream()
-                .filter(song -> !goalManager.isSongPlayed(song.getTitle(), albumName))
-                .toList();
-        if (unplayed.isEmpty()) {
-            LOGGER.info("No unplayed songs in album '{}'", albumName);
-            return;
-        }
-
-        queueManager.addAll(unplayed);
-        LOGGER.info("Queued {} unplayed songs from album '{}'", unplayed.size(), albumName);
-        updateQueueDisplay();
-
-        // If nothing is playing, start the first queued song
-        if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.PLAYING)
-                && !queueManager.isEmpty()) {
-            Song next = queueManager.poll();
-            updateQueueDisplay();
-            if (next != null) {
-                playSong(next);
-            }
-        }
-    }
-
-    private void queueSongNext(String songTitle, Album album) {
-        Song song = album != null ? album.getSong(songTitle) : null;
-        if (song == null) {
-            song = library.getSongByTitle(songTitle);
-        }
-        if (song == null) return;
-
-        if (!unlockManager.canPlay(song, album)) return;
-
-        // insert at front
-        queueManager.addFirst(song);
-        updateQueueDisplay();
-
-        // If nothing is playing, start the first queued song
-        if (playbackEngine == null && !queueManager.isEmpty()) {
-            Song next = queueManager.poll();
-            updateQueueDisplay();
-            if (next != null) {
-                playSong(next);
-            }
+        if (treeController != null) {
+            treeController.refreshTree();
         }
     }
 
@@ -1113,166 +729,6 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         unlockManager.enableAlbumForDisplay(albumName);
     }
 
-    private void playSong(Song song) {
-        if (song == null) return;
-
-        // One-shot seek requested by a session restore; consume it so a
-        // failed start can't leak it into a later song.
-        Duration restoreSeek = pendingSeek;
-        pendingSeek = null;
-
-        Album album = library.getAlbumForSong(song);
-        boolean canPlay = unlockManager.canPlay(song, album);
-
-        if (!canPlay) {
-            String msg = lockedSongMessage(song, album);
-            LOGGER.info("Cannot play song. {}", msg);
-            showError("Locked Song", "Cannot play song", msg);
-            return;
-        }
-
-        this.currentSong = song;
-
-        queueManager.recordSnapshot(song);
-
-        songHistory.remove(song);
-        songHistory.addLast(song);
-        while (songHistory.size() > 100) {
-            songHistory.removeFirst();
-        }
-
-        if (song.getFilePath() == null || !new File(song.getFilePath()).exists()) {
-            LOGGER.info("Song trying to be played ({})'s file path ({}) does not exist or is null.",
-                song.getTitle(), song.getFilePath());
-            showError("File Not Found", "Cannot play song", "File not found for: " + song.getTitle());
-            playNextInQueue();
-            return;
-        }
-
-        if (playbackEngine == null) {
-            playbackEngine = new LocalPlayback();
-        }
-        playerPanel.resetProgress();
-
-        // Extract album art in background
-        long requestId = ++artworkRequestId;
-        albumArtPanel.clearArtwork();
-        String filePath = song.getFilePath();
-        String trackInfo = song.getTitle();
-        artworkExecutor.execute(() -> {
-            try {
-                AudioFile audioFile = AudioFileIO.read(new File(filePath));
-                Tag tag = audioFile.getTag();
-                if (tag != null) {
-                    Artwork artwork = tag.getFirstArtwork();
-                    if (artwork != null) {
-                        byte[] data = artwork.getBinaryData();
-                        Image image = new Image(new ByteArrayInputStream(data), 180, 180, true, true);
-                        Platform.runLater(() -> {
-                            if (requestId == artworkRequestId) {
-                                albumArtPanel.setArtwork(image, trackInfo);
-                            }
-                        });
-                        return;
-                    }
-                }
-            } catch (Exception e) {
-                LOGGER.debug("Could not extract album art for {}: {}", trackInfo, e.getMessage());
-            }
-            Platform.runLater(() -> {
-                if (requestId == artworkRequestId) {
-                    albumArtPanel.clearArtwork();
-                }
-            });
-        });
-
-        configureEngine(playbackEngine, song, album, restoreSeek);
-
-        playbackEngine.loadAndPlay(song);
-        playerPanel.setCurrentSongLabel("Currently Playing: " + song.getTitle());
-        updateQueueDisplay();
-        highlightCurrentSong(album, song.getTitle());
-        publishRemoteState();
-    }
-
-    private void configureEngine(PlaybackEngine engine, Song song, Album album, Duration restoreSeek) {
-        engine.setVolume(playerPanel.getVolumeSlider().getValue() / 100.0);
-        engine.setRate(boostActive ? boostRate : playbackSpeed);
-
-        engine.setOnCurrentTime(newTime -> {
-            if (!playerPanel.getProgressSlider().isValueChanging()) {
-                Duration total = playbackEngine.getTotalDuration();
-                if (total != null && total.greaterThan(Duration.ZERO)) {
-                    playerPanel.getProgressSlider().setValue(newTime.toMillis() / total.toMillis());
-                    playerPanel.getElapsedLabel().setText(formatTime(newTime));
-                }
-            }
-        });
-
-        // Set duration label once media is ready
-        engine.setOnReady(() -> {
-            applyPlaybackRate(engine);
-            Duration total = playbackEngine.getTotalDuration();
-            if (total != null) {
-                playerPanel.getDurationLabel().setText(formatTime(total));
-                if (restoreSeek != null
-                        && restoreSeek.greaterThan(Duration.ZERO)
-                        && restoreSeek.lessThan(total)) {
-                    engine.seek(restoreSeek);
-                }
-            }
-            publishRemoteState();
-        });
-
-        engine.setOnEnded(() -> {
-            if (client != null && client.isConnected()) {
-                client.sendCheck(song.getLocation());
-                creditSongEnergy();
-            }
-            // Use the album carried through this playback rather than looking the
-            // song up by title again, so duplicate titles stay with the album that
-            // was actually played.
-            if (goalManager != null && album != null) {
-                // Connected or not, record the play; GoalManager routes it to
-                // the server or the local play_history.json accordingly.
-                goalManager.markPlayed(song.getTitle(), album.getName(),
-                        client != null && client.isConnected() ? client : null);
-            }
-            if (queueManager.getRepeatMode() == QueueManager.RepeatMode.SONG) {
-                playSong(song);
-            } else {
-                playNextInQueue();
-            }
-        });
-
-        engine.setOnError(errorMessage -> {
-            LOGGER.error("Error playing '{}': {}", song.getTitle(), errorMessage);
-            showError("Playback Error", "Cannot play song", "Error playing " + song.getTitle() + ": " + errorMessage);
-            playNextInQueue();
-        });
-    }
-
-    private void playNextInQueue() {
-        if (queueManager == null) return;
-        Song next = queueManager.nextSong(currentSong);
-        updateQueueDisplay();
-        if (next != null) {
-            playSong(next);
-        } else {
-            playerPanel.setCurrentSongLabel("Currently Playing: None");
-            if (playbackEngine != null) {
-                playbackEngine.stopAndRelease();
-            }
-            long id = ++artworkRequestId;
-            Platform.runLater(() -> {
-                if (id == artworkRequestId) {
-                    albumArtPanel.clearArtwork();
-                }
-            });
-            playerPanel.resetProgress();
-        }
-    }
-
     private List<File> albumMusicRoots() {
         return albums.stream()
                 .map(Album::getFolderPath)
@@ -1283,428 +739,26 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
                 .toList();
     }
 
-    private void startCompanionServer(List<File> musicRoots) {
-        stopCompanionServer();
-        if (musicRoots == null || musicRoots.isEmpty()) return;
-        // Remember the roots so the settings toggle can (re)start the server.
-        companionMusicRoot = musicRoots;
-        if (!loadCompanionServer()) {
-            LOGGER.info("Companion server disabled in settings; not starting");
-            return;
-        }
-        companionServer = new CompanionServer(musicRoots, COMPANION_HTTP_PORT, COMPANION_WS_PORT);
-        companionServer.setCommandHandler(this::handleRemoteCommand);
-        companionServer.setEventHandler(json -> Platform.runLater(() -> {
-            if (playbackEngine instanceof PhonePlayback phone) {
-                phone.handlePhoneEvent(json);
-            }
-        }));
-        try {
-            companionServer.start();
-        } catch (Exception e) {
-            LOGGER.warn("Could not start companion server: {}", e.getMessage());
-            companionServer = null;
-            return;
-        }
-        companionTicker = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r, "companion-state-ticker");
-            t.setDaemon(true);
-            return t;
-        });
-        companionTickerTask = companionTicker.scheduleAtFixedRate(
-                () -> Platform.runLater(this::tickCompanion), 250, 500, TimeUnit.MILLISECONDS);
+    @Override
+    public void publishRemoteState() {
+        companion.publishState();
     }
 
-    private void stopCompanionServer() {
-        switchPlaybackMode(false);
-        if (companionTickerTask != null) {
-            companionTickerTask.cancel(false);
-            companionTickerTask = null;
-        }
-        if (companionTicker != null) {
-            companionTicker.shutdownNow();
-            companionTicker = null;
-        }
-        if (companionServer != null) {
-            companionServer.stop();
-            companionServer = null;
-        }
-    }
-
-    private void tickCompanion() {
-        boolean phonePresent = companionServer != null && companionServer.hasActivePhone();
-        if (phonePresent != (playbackEngine instanceof PhonePlayback)) {
-            switchPlaybackMode(phonePresent);
-        }
-        publishRemoteState();
-    }
-
-    private void publishRemoteState() {
-        CompanionServer server = companionServer;
-        if (server == null || !server.hasClients()) return;
-
-        String title = null;
-        String album = null;
-        String stream = null;
-        long durationMs = 0;
-        long positionMs = 0;
-        boolean playing = false;
-        if (currentSong != null) {
-            title = currentSong.getTitle();
-            if (library != null) {
-                Album songAlbum = library.getAlbumForSong(title);
-                if (songAlbum != null) album = songAlbum.getName();
-            }
-            if (currentSong.getFilePath() != null) {
-                stream = server.streamPath(new File(currentSong.getFilePath()));
-            }
-        }
-        if (playbackEngine != null) {
-            playing = playbackEngine.isPlaying();
-            positionMs = (long) playbackEngine.getCurrentTime().toMillis();
-            Duration total = playbackEngine.getTotalDuration();
-            if (total != null) durationMs = (long) total.toMillis();
-        }
-        List<String> queue = queueManager != null
-                ? queueManager.asList().stream().map(Song::getTitle).toList()
-                : Collections.emptyList();
-        int volume = (int) playerPanel.getVolumeSlider().getValue();
-        String activeSource = playbackEngine instanceof PhonePlayback
-                ? CompanionState.SOURCE_PHONE : CompanionState.SOURCE_DESKTOP;
-
-        server.broadcast(new CompanionState(title, album, stream, durationMs, positionMs,
-                playing, volume, queue, activeSource).toJson());
-    }
-
-    /**
-     * Swaps the audio sink between the desktop speakers and the connected
-     * phone. A phone-mode switch hands the current track over to the phone at
-     * its current position; leaving phone mode resumes that position locally.
-     * Only the active engine plays: no double audio.
-     */
-    private void switchPlaybackMode(boolean phoneMode) {
-        CompanionServer server = companionServer;
-        if (server == null) return;
-        if (phoneMode == (playbackEngine instanceof PhonePlayback)) return;
-
-        PlaybackEngine oldEngine = playbackEngine;
-        Song song = currentSong;
-        Duration resumeAt = oldEngine != null ? oldEngine.getCurrentTime() : Duration.ZERO;
-        boolean wasLoaded = oldEngine != null && oldEngine.isLoaded();
-        boolean wasPlaying = oldEngine != null && oldEngine.isPlaying();
-
-        if (playbackEngine != null) {
-            playbackEngine.stopAndRelease();
-        }
-
-        if (phoneMode) {
-            PhonePlayback phone = new PhonePlayback(server::send,
-                    s -> server.streamPath(new File(s.getFilePath())));
-            playbackEngine = phone;
-            if (song != null && song.getFilePath() != null && wasLoaded) {
-                configureEngine(phone, song, library.getAlbumForSong(song), null);
-                phone.loadAndPlay(song);
-                if (resumeAt != null && resumeAt.greaterThan(Duration.ZERO)) {
-                    phone.seek(resumeAt);
-                }
-                if (!wasPlaying) {
-                    phone.pause();
-                }
-            }
-        } else {
-            LocalPlayback local = new LocalPlayback();
-            playbackEngine = local;
-            if (song != null && song.getFilePath() != null && wasLoaded) {
-                configureEngine(local, song, library.getAlbumForSong(song), resumeAt);
-                local.loadAndPlay(song);
-                if (!wasPlaying) {
-                    local.pause();
-                }
-            }
-        }
-        publishRemoteState();
-    }
-
-    private void handleRemoteCommand(JsonObject message) {
-        Platform.runLater(() -> {
-            String cmd = message.has("cmd") ? message.get("cmd").getAsString() : "";
-            switch (cmd) {
-                case "toggle" -> togglePlayPause();
-                case "pause" -> {
-                    if (playbackEngine != null && playbackEngine.isPlaying()) {
-                        togglePlayPause();
-                    }
-                }
-                case "play" -> {
-                    if (playbackEngine != null && playbackEngine.isPaused()) {
-                        togglePlayPause();
-                    } else if ((playbackEngine == null || !playbackEngine.isLoaded())
-                        && queueManager != null && !queueManager.isEmpty()) {
-                        togglePlayPause();
-                    }
-                }
-                case "next" -> playNextInQueue();
-                case "volume" -> {
-                    if (message.has("value")) {
-                        double value = message.get("value").getAsDouble();
-                        playerPanel.getVolumeSlider().setValue(Math.max(0, Math.min(100, value)));
-                    }
-                }
-                case "seek" -> {
-                    if (playbackEngine != null && playbackEngine.isLoaded() && message.has("positionMs")) {
-                        playbackEngine.seek(Duration.millis(message.get("positionMs").getAsDouble()));
-                    }
-                }
-                default -> LOGGER.info("Companion: unknown command '{}'", cmd);
-            }
-            publishRemoteState();
-        });
-    }
-
-    private void onBoostClick() {
-        if (boostClickTimer != null) {
-            // Second click within the window → double-click = 2x boost
-            boostClickTimer.stop();
-            boostClickTimer = null;
-            startBoost(BOOST_RATE_200, BOOST_COST_200);
-            return;
-        }
-        boostClickTimer = new javafx.animation.PauseTransition(CLICK_WINDOW);
-        boostClickTimer.setOnFinished(_ -> {
-            boostClickTimer = null;
-            // No second click followed within the window → single click = 1.5x boost
-            startBoost(BOOST_RATE_150, BOOST_COST_150);
-        });
-        boostClickTimer.play();
-    }
-
-    private void startBoost(double rate, double cost) {
-        EnergyLinkListener link = energyLinkListener;
-        if (link != null && client != null && client.isConnected()) {
-            Double balance = link.getBalance();
-            if (balance == null) {
-                LOGGER.info("Boost rejected: EnergyLink is not ready yet");
-                connectionPanel.getTextClientWindow().appendOutput("EnergyLink is not ready for boost yet");
-                return;
-            }
-            if (balance < cost) {
-                LOGGER.info("Boost rejected: need {} but only {} available",
-                        formatEnergy(cost), formatEnergy(balance));
-                connectionPanel.getTextClientWindow().appendOutput(
-                        String.format("Not enough energy (%s needed, %s available)",
-                                formatEnergy(cost), formatEnergy(balance)));
-                return;
-            }
-            if (!link.withdraw(cost)) {
-                connectionPanel.getTextClientWindow().appendOutput(
-                        String.format("Not enough energy to boost (%s available)",
-                                formatEnergy(balance)));
-                return;
-            }
-        }
-        applyBoost(rate);
-    }
-
-    private void applyBoost(double rate) {
-        boostRate = rate;
-        boostActive = true;
-        if (playbackEngine != null) {
-            playbackEngine.setRate(rate);
-        }
-        if (boostTimer != null) {
-            boostTimer.stop();
-        }
-        boostTimer = new javafx.animation.PauseTransition(BOOST_DURATION);
-        boostTimer.setOnFinished(_ -> endBoost());
-        boostTimer.play();
-        LOGGER.info("Playback boost engaged at {}x for {}s", rate, (int) BOOST_DURATION.toSeconds());
-    }
-
-    private String setPlaybackSpeedCommand(String arg) {
-        String trimmed = arg == null ? "" : arg.trim();
-        double rate;
-        if (trimmed.isEmpty()) {
-            rate = playbackSpeed == 1.0 ? 3.0 : 1.0;
-        } else {
-            try {
-                rate = Double.parseDouble(trimmed);
-            } catch (NumberFormatException e) {
-                return "Usage: /speed [rate]";
-            }
-        }
-        if (rate < 0.1 || rate > 4.0) {
-            return "Speed must be between 0.1 and 4.0.";
-        }
-        playbackSpeed = rate;
-        if (!boostActive) {
-            applyPlaybackRate(playbackEngine);
-        }
-        return playbackSpeed == 1.0
-                ? "Playback speed reset."
-                : String.format(Locale.ROOT, "Playback speed set to %.2fx", playbackSpeed);
-    }
-
-    private void applyPlaybackRate(PlaybackEngine engine) {
-        if (engine == null) {
-            return;
-        }
-        double rate = boostActive ? boostRate : playbackSpeed;
-        // macOS resets the native rate to 1.0 when playback (re)starts (JDK-8236146),
-        // so force the property to change to make the target rate stick.
-        engine.setRate(1.0);
-        engine.setRate(rate);
-        LOGGER.info("Applied playback rate {}", rate);
-    }
-
-    private void endBoost() {
-        boostActive = false;
-        boostRate = 1.0;
-        if (boostTimer != null) {
-            boostTimer.stop();
-            boostTimer = null;
-        }
-        applyPlaybackRate(playbackEngine);
-        LOGGER.info("Playback boost ended");
-    }
-
-    private void creditSongEnergy() {
-        EnergyLinkListener link = energyLinkListener;
-        if (link != null && client != null && client.isConnected()) {
-            link.deposit(SONG_ENERGY_CREDIT);
-        }
-    }
-
-    static String formatEnergy(double joules) {
-        if (joules >= 1_000_000) {
-            return String.format("%.2f MJ", joules / 1_000_000);
-        }
-        if (joules >= 1_000) {
-            return String.format("%.1f kJ", joules / 1_000);
-        }
-        return String.format("%.1f J", joules);
-    }
-
-    private void playPreviousTrack() {
-        if (queueManager == null) return;
-
-        // If more than a few seconds in, restart the current track instead
-        if (playbackEngine != null && currentSong != null) {
-            Duration current = playbackEngine.getCurrentTime();
-            if (current != null && current.greaterThan(Duration.seconds(3))) {
-                playbackEngine.seek(Duration.ZERO);
-                return;
-            }
-        }
-
-        if (songHistory.size() > 1) {
-            songHistory.removeLast();
-            Song prev = songHistory.removeLast();
-            queueManager.addFirst(currentSong);
-            playSong(prev);
-        }
-    }
-
-    private void highlightCurrentSong(Album album, String songTitle) {
-        if (isUpdatingSelection) return;
-
-        TreeItem<String> root = treeView.getRoot();
-        if (root == null) return;
-
-        isUpdatingSelection = true;
-
-        for (TreeItem<String> albumItem : root.getChildren()) {
-            if (!albumItem.getValue().equals(album.getName())) {
-                continue; // different album — skip (duplicate titles across albums stay distinct)
-            }
-            for (TreeItem<String> songItem : albumItem.getChildren()) {
-                if (songItem.getValue().equals(songTitle)) {
-                    treeView.getSelectionModel().select(songItem);
-                    int row = treeView.getRow(songItem);
-                    if (row >= 0) {
-                        treeView.scrollTo(row);
-                    }
-                    isUpdatingSelection = false;
-                    return;
-                }
-            }
-        }
-
-        isUpdatingSelection = false;
+    @Override
+    public void highlightCurrentSong(Album album, String songTitle) {
+        treeController.highlightCurrentSong(album, songTitle);
     }
 
     // Queue helpers -----------------------------------------------------
 
-    private void updateQueueDisplay() {
+    @Override
+    public void updateQueueDisplay() {
         playerPanel.clearQueueDisplay();
         for (Song s : queueManager.asList()) {
             playerPanel.addToQueueDisplay(s);
         }
         publishRemoteState();
-        maybeSaveSessionSnapshot();
-    }
-
-    private void removeFromQueue(Song song) {
-        queueManager.remove(song);
-    }
-
-    private void moveInQueue(int fromIndex, int toIndex) {
-        queueManager.move(fromIndex, toIndex);
-        updateQueueDisplay();
-    }
-
-    private int getQueueIndexAtY(ListView<Song> listView, double y) {
-        for (javafx.scene.Node node : listView.lookupAll(".list-cell")) {
-            if (node instanceof javafx.scene.control.ListCell<?> cell) {
-                if (cell.getItem() == null) continue;
-                if (cell.getListView() != listView) continue;
-                javafx.geometry.Bounds cellBounds = listView.sceneToLocal(
-                    node.localToScene(node.getBoundsInLocal()));
-                if (y >= cellBounds.getMinY() && y < cellBounds.getMaxY()) {
-                    double midpoint = cellBounds.getMinY() + cellBounds.getHeight() / 2.0;
-                    return y < midpoint ? cell.getIndex() : cell.getIndex() + 1;
-                }
-            }
-        }
-        return listView.getItems().size();
-    }
-
-    private void assignFilesToSongs() {
-        SongFileMatcher.assignFilesToSongs(albums);
-    }
-
-    private void ensureGameDefaults(File gameFolder) {
-        if (!gameFolder.exists()) {
-            //noinspection ResultOfMethodCallIgnored
-            gameFolder.mkdirs();
-        }
-
-        File albumOrderFile = new File(gameFolder, "albumOrder.json");
-        if (!albumOrderFile.exists()) {
-            albumOrderManager.getAlbumOrder(); // this method already generates the default if missing
-        }
-
-        File foldersFile = new File(gameFolder, "albumFolders.json");
-        if (!foldersFile.exists()) {
-            generateDefaultAlbumFolders(albums); // creates default
-        }
-
-        File legacyLocations = new File(gameFolder, "locations.json");
-        File musicLibraryFile = new File(gameFolder, "music_library.json");
-        // Seed the bundled sample music_library.json for brand-new game folders.
-        // Folders with an existing library in either format keep their own data.
-        if (!musicLibraryFile.exists() && !legacyLocations.exists()) {
-            try (InputStream in = getClass().getResourceAsStream("/music_library.json");
-                 FileOutputStream out = new FileOutputStream(musicLibraryFile)) {
-                if (in != null) {
-                    in.transferTo(out);
-                    LOGGER.info("Copied bundled sample music_library.json to {}",
-                            musicLibraryFile.getAbsolutePath());
-                }
-            } catch (IOException e) {
-                LOGGER.error("Failed to copy bundled sample music_library.json to {}",
-                        musicLibraryFile.getAbsolutePath(), e);
-            }
-        }
+        sessionRestore.saveSnapshot();
     }
 
     public Set<String> getUnlockedSongs() {
@@ -1762,19 +816,6 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         unlockManager.applyOfflineUnlocks(albums);
     }
 
-    public void stopCurrentSong() {
-        if (playbackEngine != null) {
-            playbackEngine.stopAndRelease();
-        }
-        long id = ++artworkRequestId;
-        Platform.runLater(() -> {
-            if (id == artworkRequestId) {
-                albumArtPanel.clearArtwork();
-            }
-        });
-        playerPanel.resetProgress();
-    }
-
     private void applyDeathLinkEnabled(boolean enabled) {
         if (client != null) {
             client.setDeathLinkEnabled(enabled);
@@ -1786,21 +827,12 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         LOGGER.info("Deathlink activated by {}: {}", source, cause);
 
         // Stop current playback on death
-        stopCurrentSong();
+        playback.stopCurrentSong();
         playerPanel.setCurrentSongLabel("Currently Playing: None");
         connectionPanel.setStatus("Deathlink from " + source);
         connectionPanel.getTextClientWindow().appendOutput(
                 "You died from " + source + (cause == null || cause.isBlank() ? "" : " (" + cause + ")") + "\n");
     }
-
-    private final ChangeListener<Boolean> seekListener = (_, _, isChanging) -> {
-        if (!isChanging && playbackEngine != null && playbackEngine.isLoaded()) {
-            Duration total = playbackEngine.getTotalDuration();
-            if (total != null) {
-                playbackEngine.seek(total.multiply(playerPanel.getProgressSlider().getValue()));
-            }
-        }
-    };
 
     public void resetTextClientReadyState() {
         connectionPanel.getTextClientWindow().resetReadyState();
@@ -1824,7 +856,7 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
     private void disconnectFromServer() {
         // Snapshot the session before playback is torn down so reconnecting to
         // the same slot can restore it.
-        maybeSaveSessionSnapshot();
+        sessionRestore.saveSnapshot();
 
         // DISCONNECT
         client.close();
@@ -1836,15 +868,11 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         connectionPanel.setGameFieldTooltip(null);
 
         // stop playback
-        stopCurrentSong();
+        playback.stopCurrentSong();
         playerPanel.clearPlaybackState();
 
         // stop any active playback boost and clear energy state
-        endBoost();
-        if (boostClickTimer != null) {
-            boostClickTimer.stop();
-            boostClickTimer = null;
-        }
+        playback.reset();
         energyLinkListener = null;
         playerPanel.setEnergyLabel("Energy: --");
 
@@ -1882,11 +910,11 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         // ✅ reload slot options after game changes
         SlotDataHelper.loadSlotOptions(gameFolder.get());
 
-        ensureGameDefaults(gameFolder.get());
+        libraryController.ensureGameDefaults(gameFolder.get());
         reloadGameLibrary();
         // After the reload bumped the load generation, so the pending restore
         // tracks the library load this connect kicked off.
-        armSessionRestore(gameName, slot);
+        sessionRestore.arm(gameName, slot);
 
         client.setOnErrorCallback(ex -> {
             connectionPanel.setStatus("Connection failed");
@@ -1922,7 +950,7 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
                             connectionPanel.getTextClientWindow()
                                     .onNameGroupsRetrieved(source, result))));
             energyLinkListener = new EnergyLinkListener(client, value -> Platform.runLater(() ->
-                    playerPanel.setEnergyLabel("Energy: " + formatEnergy(value))));
+                    playerPanel.setEnergyLabel("Energy: " + EnergyLinkListener.formatEnergy(value))));
             client.getEventManager().registerListener(energyLinkListener);
             client.getEventManager().registerListener(new DeathLinkListener(this));
             applyDeathLinkEnabled(loadDeathLink());
@@ -1941,159 +969,12 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         }
     }
 
-    // Session restore -----------------------------------------------------
-
     /**
-     * Arms a pending session restore when the session-restore setting is on and
-     * the persisted snapshot belongs to the game/slot being connected to. Must
-     * run after {@link #reloadGameLibrary} so the pending restore tracks the
-     * library load this connect started.
-     */
-    private void armSessionRestore(String gameName, String slot) {
-        pendingSessionRestore = null;
-        if (!loadSessionRestore()) {
-            return;
-        }
-        SessionStore.Snapshot snapshot = SessionStore.load();
-        if (snapshot == null || !snapshot.hasContent()) {
-            return;
-        }
-        if (!snapshot.game().equals(gameName) || !snapshot.slot().equals(slot)) {
-            LOGGER.info("Session restore skipped: snapshot is for game={} slot={}, "
-                    + "connecting to game={} slot={}",
-                    snapshot.game(), snapshot.slot(), gameName, slot);
-            return;
-        }
-        pendingSessionRestore = new PendingSessionRestore(snapshot, loadGeneration.get());
-        LOGGER.info("Session restore armed: {} queued songs, current={} ({} ms)",
-                snapshot.queue().size(), snapshot.currentTitle(), snapshot.positionMs());
-    }
-
-    /**
-     * Requests that the pending session restore be applied after a short
-     * quiescence. The library fires one ReceiveItemEvent per starting-inventory
-     * item with no batch-complete signal, so instead we debounce on the item
-     * stream: every item event re-arms this timer, and the restore only applies
-     * once item events have stopped arriving and unlock state is settled.
-     * No-op when nothing is pending. Must be called on the FX thread.
+     * Re-arms the pending-restore debounce; called on every item event.
+     * Must be called on the FX thread.
      */
     public void scheduleSessionRestoreApply() {
-        if (pendingSessionRestore == null) {
-            return;
-        }
-        sessionRestoreDebounce.stop();
-        sessionRestoreDebounce.getKeyFrames().setAll(
-                new KeyFrame(Duration.millis(150), _ -> tryApplySessionRestore()));
-        sessionRestoreDebounce.play();
-    }
-
-    /**
-     * Applies the pending restore once the library and connection are ready and
-     * the starting-inventory item burst has settled (via
-     * {@link #scheduleSessionRestoreApply}, re-armed on every item event). Only
-     * applies while the queue is empty so it can never clobber live state; if
-     * nothing is playable yet (items still arriving) the restore stays pending.
-     * Auto-reconnect never reaches here because it doesn't reload the library.
-     */
-    public void tryApplySessionRestore() {
-        PendingSessionRestore pending = pendingSessionRestore;
-        if (pending == null) {
-            return;
-        }
-        if (pending.generation() != loadGeneration.get()) {
-            pendingSessionRestore = null; // superseded by a newer load
-            return;
-        }
-        if (client == null || !client.isConnected() || queueManager == null || library == null) {
-            return; // not ready yet — the debounce re-runs this once ready
-        }
-        if (!queueManager.isEmpty()) {
-            LOGGER.info("Session restore skipped: queue is not empty");
-            pendingSessionRestore = null; // the user has taken over — abandon it
-            return;
-        }
-
-        SessionStore.Snapshot snapshot = pending.snapshot();
-        if (!snapshot.hasContent()) {
-            pendingSessionRestore = null;
-            return;
-        }
-
-        List<Song> resolved = new ArrayList<>();
-        for (Map<String, String> entry : snapshot.queue()) {
-            Song song = findSong(entry.get("title"), entry.get("type"));
-            if (song != null
-                    && unlockManager.canQueue(song, library.getAlbumForSong(song.getTitle()))) {
-                resolved.add(song);
-            }
-        }
-        Song current = snapshot.currentTitle() != null
-                ? findSong(snapshot.currentTitle(), snapshot.currentType())
-                : null;
-        boolean currentPlayable = current != null
-                && unlockManager.canPlay(current, library.getAlbumForSong(current.getTitle()));
-
-        if (resolved.isEmpty() && !currentPlayable) {
-            // Nothing is playable yet — usually the starting-inventory items that
-            // would unlock these songs have not been applied. Keep the restore
-            // pending so the next item event's debounce re-attempts it once
-            // unlock state is complete.
-            LOGGER.debug("Session restore deferred: no songs playable yet (items may still be arriving)");
-            return;
-        }
-
-        pendingSessionRestore = null;
-        queueManager.replaceAll(resolved);
-        updateQueueDisplay();
-        if (currentPlayable) {
-            pendingSeek = Duration.millis((double) Math.max(0, snapshot.positionMs()));
-            playSong(current);
-        }
-        LOGGER.info("Session restored: {} queued songs{}", resolved.size(),
-                currentPlayable ? ", resuming \"" + current.getTitle() + "\"" : "");
-    }
-
-    private Song findSong(String title, String type) {
-        if (title == null || library == null) {
-            return null;
-        }
-        for (Album album : albums) {
-            for (Song song : album.getSongs()) {
-                if (song.getTitle().equals(title) && (type == null || song.getType().equals(type))) {
-                    return song;
-                }
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Persists the current queue and playback position when session restore is
-     * enabled. Skipped when disconnected with nothing queued so a fresh or
-     * failed connection can't overwrite the previous session's snapshot with
-     * the empty state left behind by the library reload.
-     */
-    private void maybeSaveSessionSnapshot() {
-        if (queueManager == null || settingsWindow == null
-                || !settingsWindow.getSessionRestoreCheck().isSelected()) {
-            return;
-        }
-        boolean connected = client != null && client.isConnected();
-        boolean hasState = !queueManager.isEmpty() || currentSong != null;
-        if (!connected && !hasState) {
-            return;
-        }
-        long positionMs = 0;
-        if (playbackEngine != null && playbackEngine.getCurrentTime() != null) {
-            positionMs = (long) playbackEngine.getCurrentTime().toMillis();
-        }
-        SessionStore.save(new SessionStore.Snapshot(
-                connectionPanel.getGameName(),
-                connectionPanel.getSlot(),
-                queueManager.toEntries(),
-                currentSong != null ? currentSong.getTitle() : null,
-                currentSong != null ? currentSong.getType() : null,
-                positionMs));
+        sessionRestore.scheduleApply();
     }
 
     private void createBottomBar() {
@@ -2103,342 +984,140 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
         bottomBar.setAlignment(Pos.CENTER);
     }
 
-    private void setupPlayerPanel(PlayerPanel panel) {
-
-        // Play button behaviour
-        panel.getPlayButton().setOnAction(_ -> {
-            // If paused, resume. If nothing playing but queue has items, start next.
-            if (playbackEngine != null && playbackEngine.isPaused()) {
-                playbackEngine.resume();
-                if (currentSong != null) {
-                    playerPanel.setCurrentSongLabel("Currently Playing: " + currentSong.getTitle());
-                }
-                return;
-            }
-
-            if (currentSong != null
-                && (playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.PLAYING)) {
-                LOGGER.info("Current song ({})'s file path: {}", currentSong.getTitle(), currentSong.getFilePath());
-                // start current (if file exists)
-                if (currentSong.getFilePath() != null) {
-                    playSong(currentSong);
-                } else {
-                    showError("File Not Found", "Cannot play song", "File not found for: " + currentSong.getTitle());
-                }
-            } else if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.PLAYING)
-                && !queueManager.isEmpty()) {
-                Song next = queueManager.poll();
-                updateQueueDisplay();
-                if (next != null) playSong(next);
-            }
-        });
-
-        panel.getPauseButton().setOnAction(_ -> {
-            if (playbackEngine != null) {
-                MediaPlayer.Status status = playbackEngine.getStatus();
-                if (status == MediaPlayer.Status.PLAYING) {
-                    playbackEngine.pause();
-                    if (currentSong != null) playerPanel.setCurrentSongLabel("Paused: " + currentSong.getTitle());
-                } else if (status == MediaPlayer.Status.PAUSED) {
-                    playbackEngine.resume();
-                    if (currentSong != null) {
-                        playerPanel.setCurrentSongLabel("Currently Playing: " + currentSong.getTitle());
-                    }
-                }
-            }
-        });
-
-        // Repeat button cycles: Off → Queue → Song → Album → Off
-        panel.getRepeatButton().setOnAction(_ -> {
-            QueueManager.RepeatMode nextMode = queueManager.getRepeatMode().next();
-            queueManager.setRepeatMode(nextMode);
-            panel.getRepeatButton().setText(nextMode.label());
-        });
-
-        // Previous track button
-        panel.getPreviousButton().setOnAction(_ -> playPreviousTrack());
-
-        // Next track button
-        panel.getNextButton().setOnAction(_ -> playNextInQueue());
-
-        // EnergyLink speed boost: spend energy for a timed playback speed-up
-        // single click = 1.5x, double click = 2x
-        panel.getBoostButton().setOnAction(_ -> onBoostClick());
-
-        // Remove selected from the queue (both ListView and underlying queue)
-        panel.getRemoveSelectedBtn().setOnAction(_ -> {
-            Song sel = playerPanel.getQueueListView().getSelectionModel().getSelectedItem();
-            if (sel != null) {
-                removeFromQueue(sel);
-                updateQueueDisplay();
-            }
-        });
-
-        // Clear queue
-        panel.getClearQueueBtn().setOnAction(_ -> {
-            queueManager.clear();
-            updateQueueDisplay();
-        });
-
-        // Shuffle queue
-        panel.getShuffleQueueBtn().setOnAction(_ -> {
-            queueManager.shuffle();
-            updateQueueDisplay();
-        });
-
-        // Save queue
-        panel.getSaveQueueBtn().setOnAction(_ -> {
-            File queueFile = new File(getConfigDir(), "queue.json");
-            List<Map<String, String>> entries = queueManager.toEntries();
-            try (Writer writer = new FileWriter(queueFile, StandardCharsets.UTF_8)) {
-                new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create().toJson(entries, writer);
-                LOGGER.info("Queue saved to {}", queueFile.getAbsolutePath());
-            } catch (IOException e) {
-                LOGGER.error("Failed to save queue", e);
-            }
-        });
-
-        // Load queue
-        panel.getLoadQueueBtn().setOnAction(_ -> {
-            File queueFile = new File(getConfigDir(), "queue.json");
-            if (!queueFile.exists()) return;
-            try (Reader reader = new FileReader(queueFile, StandardCharsets.UTF_8)) {
-                Type listType = new TypeToken<List<Map<String, String>>>() {}.getType();
-                List<Map<String, String>> entries = new Gson().fromJson(reader, listType);
-                if (entries == null) return;
-
-                List<Song> resolved = new ArrayList<>();
-                for (Map<String, String> entry : entries) {
-                    String title = entry.get("title");
-                    String type = entry.get("type");
-                    if (title == null) continue;
-                    for (Album album : albums) {
-                        for (Song song : album.getSongs()) {
-                            if (song.getTitle().equals(title) && song.getType().equals(type)) {
-                                if (unlockManager.canQueue(song, album)) {
-                                    resolved.add(song);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                queueManager.replaceAll(resolved);
-                updateQueueDisplay();
-                LOGGER.info("Queue loaded from {} ({} songs)", queueFile.getAbsolutePath(), queueManager.size());
-            } catch (Exception e) {
-                LOGGER.error("Failed to load queue from {}", queueFile.getAbsolutePath(), e);
-            }
-        });
-
-        // Volume slider updates live during playback
-        panel.getVolumeSlider().valueProperty().addListener((_, _, newVal) -> {
-            if (playbackEngine != null) {
-                playbackEngine.setVolume(newVal.doubleValue() / 100.0);
-            }
-            publishRemoteState();
-        });
-
-        // Drag-and-drop reordering for queue
-        ListView<Song> queueList = panel.getQueueListView();
-        final int[] dragToIndex = {-1};
-
-        queueList.setOnDragDetected(event -> {
-            int index = queueList.getSelectionModel().getSelectedIndex();
-            if (index < 0) return;
-
-            Dragboard db = queueList.startDragAndDrop(TransferMode.MOVE);
-            ClipboardContent content = new ClipboardContent();
-            content.putString(String.valueOf(index));
-            db.setContent(content);
-            dragToIndex[0] = index;
-            event.consume();
-        });
-
-        queueList.setOnDragOver(event -> {
-            if (event.getGestureSource() == queueList && event.getDragboard().hasString()) {
-                event.acceptTransferModes(TransferMode.MOVE);
-                int target = getQueueIndexAtY(queueList, event.getY());
-                if (target >= 0) {
-                    dragToIndex[0] = target;
-                }
-            }
-            event.consume();
-        });
-
-        queueList.setOnDragDropped(event -> {
-            if (event.getGestureSource() != queueList || !event.getDragboard().hasString()) {
-                event.setDropCompleted(false);
-                event.consume();
-                return;
-            }
-
-            int fromIndex = Integer.parseInt(event.getDragboard().getString());
-            int toIndex = dragToIndex[0];
-            dragToIndex[0] = -1;
-            if (fromIndex == toIndex) return;
-
-            moveInQueue(fromIndex, toIndex);
-            event.setDropCompleted(true);
-            event.consume();
-        });
-
-        panel.bindSeekCheckBox(seekListener);
+    @Override
+    public void togglePlayPause() {
+        playerControls.togglePlayPause();
     }
 
-    private void setupKeyboardShortcuts(Scene scene) {
-        scene.addEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyPress);
+    @Override
+    public boolean offlineMode() {
+        return offlineMode;
     }
 
-    private void handleKeyPress(KeyEvent event) {
-        if (event.getTarget() instanceof TextInputControl) {
-            return;
-        }
-
-        if (volumeAdjustMode) {
-            handleVolumeModeKey(event.getCode());
-            event.consume();
-            return;
-        }
-
-        switch (event.getCode()) {
-            case SPACE -> {
-                togglePlayPause();
-                event.consume();
-            }
-            case LEFT -> {
-                if (playerPanel.getEnableSeekCheck().isSelected()) {
-                    seekRelative(-5);
-                    event.consume();
-                }
-            }
-            case RIGHT -> {
-                if (playerPanel.getEnableSeekCheck().isSelected()) {
-                    seekRelative(5);
-                    event.consume();
-                }
-            }
-            case T -> {
-                connectionPanel.getTextClientWindow().show();
-                event.consume();
-            }
-            case O -> {
-                connectionPanel.getOfflineCheck().setSelected(
-                    !connectionPanel.getOfflineCheck().isSelected()
-                );
-                event.consume();
-            }
-            case N -> {
-                playNextInQueue();
-                event.consume();
-            }
-            case V -> {
-                enterVolumeAdjustMode();
-                event.consume();
-            }
-            default -> { /* ignore other keys */ }
-        }
-    }
-
-    private void togglePlayPause() {
-        if (playbackEngine != null) {
-            MediaPlayer.Status status = playbackEngine.getStatus();
-            if (status == MediaPlayer.Status.PLAYING) {
-                playbackEngine.pause();
-                if (currentSong != null) playerPanel.setCurrentSongLabel("Paused: " + currentSong.getTitle());
-            } else if (status == MediaPlayer.Status.PAUSED) {
-                playbackEngine.resume();
-                if (currentSong != null) {
-                    playerPanel.setCurrentSongLabel("Currently Playing: " + currentSong.getTitle());
-                }
-            }
-        } else if (queueManager != null && !queueManager.isEmpty()) {
-            Song next = queueManager.poll();
-            updateQueueDisplay();
-            if (next != null) playSong(next);
-        }
-        publishRemoteState();
-    }
-
-    private void seekRelative(int seconds) {
-        if (playbackEngine == null || playbackEngine.getStatus() == MediaPlayer.Status.STOPPED) return;
-        Duration current = playbackEngine.getCurrentTime();
-        Duration total = playbackEngine.getTotalDuration();
-        if (total == null) return;
-        Duration newTime = current.add(Duration.seconds(seconds));
-        if (newTime.greaterThan(total)) newTime = total;
-        if (newTime.lessThan(Duration.ZERO)) newTime = Duration.ZERO;
-        playbackEngine.seek(newTime);
-    }
-
-    private void enterVolumeAdjustMode() {
-        volumeAdjustMode = true;
-        volumeInput.setLength(0);
-        connectionPanel.setStatus("Volume: " + (int) playerPanel.getVolumeSlider().getValue()
-                + "% (arrows/numbers, Enter=set, Esc=cancel)");
-    }
-
-    private void exitVolumeAdjustMode() {
-        volumeAdjustMode = false;
-        volumeInput.setLength(0);
-        connectionPanel.setStatus(offlineMode ? "Offline Mode"
-                : (client != null && client.isConnected() ? "Connected!" : "Not connected"));
-    }
-
-    private void handleVolumeModeKey(KeyCode code) {
-        switch (code) {
-            case ESCAPE -> exitVolumeAdjustMode();
-            case ENTER -> {
-                if (volumeInput.length() > 0) {
-                    playerPanel.getVolumeSlider().setValue(
-                        Math.min(100, Math.max(0, Integer.parseInt(volumeInput.toString())))
-                    );
-                }
-                exitVolumeAdjustMode();
-            }
-            case UP -> {
-                Slider slider = playerPanel.getVolumeSlider();
-                slider.setValue(Math.min(100, slider.getValue() + 10));
-                volumeInput.setLength(0);
-            }
-            case DOWN -> {
-                Slider slider = playerPanel.getVolumeSlider();
-                slider.setValue(Math.max(0, slider.getValue() - 10));
-                volumeInput.setLength(0);
-            }
-            case LEFT -> {
-                Slider slider = playerPanel.getVolumeSlider();
-                slider.setValue(Math.max(0, slider.getValue() - 1));
-                volumeInput.setLength(0);
-            }
-            case RIGHT -> {
-                Slider slider = playerPanel.getVolumeSlider();
-                slider.setValue(Math.min(100, slider.getValue() + 1));
-                volumeInput.setLength(0);
-            }
-            case DIGIT0, DIGIT1, DIGIT2, DIGIT3, DIGIT4, DIGIT5, DIGIT6, DIGIT7, DIGIT8, DIGIT9 -> {
-                int digit = switch (code) {
-                    case DIGIT0 -> 0; case DIGIT1 -> 1; case DIGIT2 -> 2; case DIGIT3 -> 3;
-                    case DIGIT4 -> 4; case DIGIT5 -> 5; case DIGIT6 -> 6; case DIGIT7 -> 7;
-                    case DIGIT8 -> 8; default -> 9;
-                };
-                if (volumeInput.length() < 3) {
-                    volumeInput.append(digit);
-                }
-                connectionPanel.setStatus("Volume: " + volumeInput.toString() + "% (Enter=set)");
-            }
-            default -> { /* ignore */ }
-        }
-    }
-
-    private String lockedSongMessage(Song song, Album album) {
+    @Override
+    public String lockedSongMessage(Song song, Album album) {
         if (album != null && !unlockManager.isAlbumUnlocked(album.getName())) {
             return song.getTitle() + " requires album " + album.getName() + " to be unlocked!";
         }
         return song.getTitle() + " is not unlocked yet!";
     }
 
-    private void sendBonusCheck(String location) {
+    @Override
+    public Album albumForSong(Song song) {
+        return library == null ? null : library.getAlbumForSong(song);
+    }
+
+    @Override
+    public boolean canPlay(Song song, Album album) {
+        return unlockManager.canPlay(song, album);
+    }
+
+    @Override
+    public boolean canQueue(Song song, Album album) {
+        return unlockManager.canQueue(song, album);
+    }
+
+    @Override
+    public boolean libraryReady() {
+        return library != null;
+    }
+
+    @Override
+    public List<Album> albums() {
+        return albums;
+    }
+
+    @Override
+    public AlbumLibrary library() {
+        return library;
+    }
+
+    @Override
+    public UnlockManager unlockManager() {
+        return unlockManager;
+    }
+
+    @Override
+    public GoalManager goalManager() {
+        return goalManager;
+    }
+
+    @Override
+    public List<String> bonusLocations() {
+        return bonusLocations;
+    }
+
+    @Override
+    public List<String> albumOrder() {
+        return albumOrderManager.getAlbumOrder();
+    }
+
+    @Override
+    public boolean connected() {
+        return client != null && client.isConnected();
+    }
+
+    @Override
+    public boolean sessionRestoreEnabled() {
+        return settingsWindow != null && settingsWindow.getSessionRestoreCheck().isSelected();
+    }
+
+    @Override
+    public String gameName() {
+        return connectionPanel.getGameName();
+    }
+
+    @Override
+    public String slot() {
+        return connectionPanel.getSlot();
+    }
+
+    @Override
+    public int loadGeneration() {
+        return loadGeneration.get();
+    }
+
+    @Override
+    public QueueManager queueManager() {
+        return queueManager;
+    }
+
+    @Override
+    public double volume() {
+        return playerPanel.getVolumeSlider().getValue();
+    }
+
+    @Override
+    public void setVolume(double percent) {
+        playerPanel.getVolumeSlider().setValue(Math.max(0, Math.min(100, percent)));
+    }
+
+    @Override
+    public void onSongFinished(Song song, Album album) {
+        if (client != null && client.isConnected()) {
+            client.sendCheck(song.getLocation());
+            playback.creditSongEnergy();
+        }
+        // Connected or not, record the play; GoalManager routes it to
+        // the server or the local play_history.json accordingly.
+        if (goalManager != null && album != null) {
+            goalManager.markPlayed(song.getTitle(), album.getName(),
+                    client != null && client.isConnected() ? client : null);
+        }
+    }
+
+    @Override
+    public EnergyLinkListener energyLink() {
+        return energyLinkListener;
+    }
+
+    @Override
+    public void appendOutput(String message) {
+        connectionPanel.getTextClientWindow().appendOutput(message);
+    }
+
+    @Override
+    public void sendBonusCheck(String location) {
         if (client != null && client.isConnected()) {
             if (client.sendCheck(location)) {
                 bonusLocations.remove(location);
@@ -2450,56 +1129,6 @@ if ((playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.
                 showError("Bonus Check Failed", "Cannot send bonus check",
                         "The server does not recognize the location \"" + location + "\". "
                         + "This bonus location is not defined for your game on this server.");
-            }
-        }
-    }
-
-    private void handleTreeSelection(TreeItem<String> newSel) {
-        if (newSel == null) return;
-        if (isUpdatingSelection) return;
-
-        // Only leaf nodes are actionable; ignore album and root nodes
-        if (!newSel.isLeaf()) return;
-
-        String value = newSel.getValue();
-
-        // Bonus locations: send check if selected leaf is under the "Bonus" branch
-        TreeItem<String> parent = newSel.getParent();
-        if (parent != null && "Bonus".equals(parent.getValue())) {
-            sendBonusCheck(value);
-            return;
-        }
-        if (parent == null) return;
-
-        // Resolve the song via its album first so duplicate titles across albums
-        // stay distinguishable; fall back to the title-wide lookup as a safety net.
-        Album album = library.getAlbumByName(parent.getValue());
-        if (album == null) return;
-        Song song = album.getSong(value);
-        if (song == null) {
-            song = library.getSongByTitle(value);
-        }
-
-        if (song == null) return;
-
-        // Don't re-queue the currently playing song (e.g. from highlightCurrentSong)
-        if (song == currentSong) return;
-
-        if (!unlockManager.canPlay(song, album)) {
-            showError("Locked Song", "Cannot play song", lockedSongMessage(song, album));
-            return;
-        }
-
-        // Add to queue, song has passed checks
-        queueManager.add(song);
-        updateQueueDisplay();
-
-        // If nothing is playing, start immediately
-        if (playbackEngine == null || playbackEngine.getStatus() != MediaPlayer.Status.PLAYING) {
-            Song next = queueManager.poll();
-            updateQueueDisplay();
-            if (next != null) {
-                playSong(next);
             }
         }
     }
