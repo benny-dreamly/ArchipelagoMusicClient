@@ -4,6 +4,7 @@
 package app.remote;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -66,11 +67,19 @@ public final class RootedPathResolver {
             }
             if (!candidate.startsWith(base)) continue;
             File file = candidate.toFile();
-            if (file.isFile()) {
-                return file;
-            }
+            if (!file.isFile()) continue;
+            if (!isRealPathWithin(file, base)) continue;
+            return file;
         }
         return null;
+    }
+
+    private static boolean isRealPathWithin(File file, Path base) {
+        try {
+            return file.toPath().toRealPath().startsWith(base.toRealPath());
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     public String streamPath(File file) {

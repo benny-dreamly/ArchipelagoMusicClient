@@ -3,9 +3,11 @@
  */
 package app.remote;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -57,5 +59,21 @@ class RootedPathResolverTest {
 
         assertNull(resolver.resolve("/../outside/secret.mp3"));
         assertNull(resolver.streamPath(outside.resolve("secret.mp3").toFile()));
+    }
+
+    @Test
+    void rejectsSymlinksThatEscapeTheRoot() throws Exception {
+        Path album = Files.createDirectories(tempDir.resolve("album"));
+        Path outside = Files.createDirectories(tempDir.resolve("outside"));
+        Files.write(outside.resolve("secret.mp3"), new byte[]{1});
+        try {
+            Files.createSymbolicLink(album.resolve("escape.mp3"), outside.resolve("secret.mp3"));
+        } catch (UnsupportedOperationException | IOException e) {
+            Assumptions.abort("symlinks unavailable: " + e.getMessage());
+        }
+
+        RootedPathResolver resolver = new RootedPathResolver(album.toFile());
+
+        assertNull(resolver.resolve("/escape.mp3"));
     }
 }
