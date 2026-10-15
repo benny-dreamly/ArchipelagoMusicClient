@@ -53,6 +53,8 @@ public interface AppContext {
 
     boolean sessionRestoreEnabled();
 
+    boolean offlineMode();
+
     String gameName();
 
     String slot();
