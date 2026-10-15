@@ -11,7 +11,9 @@ import app.player.PhonePlayback;
 import app.player.PlaybackController;
 import app.player.PlaybackEngine;
 import app.player.Song;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import javafx.application.Platform;
 import javafx.util.Duration;
 import org.slf4j.Logger;
@@ -207,8 +209,30 @@ public class CompanionController {
     }
 
     private void handleCommand(JsonObject message) {
+        // Validate off the JavaFX thread: a JSON null or wrong-typed field would
+        // otherwise throw inside the runLater callback (past CompanionServer's
+        // try/catch) and skip the publishState() below.
+        if (message == null) {
+            return;
+        }
+        if (message.has("cmd") && !isString(message.get("cmd"))) {
+            LOGGER.info("Companion: ignoring command with a non-string 'cmd'");
+            return;
+        }
+        if (message.has("value") && readNumber(message.get("value")) == null) {
+            LOGGER.info("Companion: ignoring command with an invalid 'value'");
+            return;
+        }
+        if (message.has("positionMs") && readNumber(message.get("positionMs")) == null) {
+            LOGGER.info("Companion: ignoring command with an invalid 'positionMs'");
+            return;
+        }
+
+        String cmd = message.has("cmd") ? message.get("cmd").getAsString() : "";
+        Double volume = readNumber(message.get("value"));
+        Double positionMs = readNumber(message.get("positionMs"));
+
         Platform.runLater(() -> {
-            String cmd = message.has("cmd") ? message.get("cmd").getAsString() : "";
             switch (cmd) {
                 case "toggle" -> host.togglePlayPause();
                 case "pause" -> {
@@ -229,19 +253,35 @@ public class CompanionController {
                 }
                 case "next" -> playback.playNextInQueue();
                 case "volume" -> {
-                    if (message.has("value")) {
-                        host.setVolume(message.get("value").getAsDouble());
+                    if (volume != null) {
+                        host.setVolume(volume);
                     }
                 }
                 case "seek" -> {
                     PlaybackEngine engine = playback.getEngine();
-                    if (engine != null && engine.isLoaded() && message.has("positionMs")) {
-                        engine.seek(Duration.millis(message.get("positionMs").getAsDouble()));
+                    if (engine != null && engine.isLoaded() && positionMs != null) {
+                        engine.seek(Duration.millis(positionMs));
                     }
                 }
                 default -> LOGGER.info("Companion: unknown command '{}'", cmd);
             }
             publishState();
         });
+    }
+
+    private static boolean isString(JsonElement element) {
+        return element != null && element.isJsonPrimitive() && element.getAsJsonPrimitive().isString();
+    }
+
+    private static Double readNumber(JsonElement element) {
+        if (element == null || !element.isJsonPrimitive()) {
+            return null;
+        }
+        JsonPrimitive primitive = element.getAsJsonPrimitive();
+        if (!primitive.isNumber()) {
+            return null;
+        }
+        double value = primitive.getAsDouble();
+        return Double.isFinite(value) ? value : null;
     }
 }
