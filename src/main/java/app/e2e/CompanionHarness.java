@@ -6,6 +6,8 @@ package app.e2e;
 import app.remote.CompanionServer;
 import app.remote.CompanionState;
 import com.google.gson.JsonObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,6 +33,8 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public final class CompanionHarness {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(CompanionHarness.class);
+
     private static final int HTTP_PORT = 8311;
     private static final int WS_PORT = 8312;
     private static final int DURATION = 30; // seconds per track
@@ -48,11 +52,11 @@ public final class CompanionHarness {
         Path songB = root.resolve("Song B.wav");
         writeWav(songA, DURATION, 440);
         writeWav(songB, DURATION, 660);
-        System.out.println("[harness] library at " + root);
+        LOGGER.info("[harness] library at {}", root);
 
         CompanionServer server = new CompanionServer(root.toFile(), HTTP_PORT, WS_PORT);
         server.start();
-        System.out.println("[harness] reachable at " + server.reachableAddresses());
+        LOGGER.info("[harness] reachable at {}", server.reachableAddresses());
 
         AtomicReference<Path> current = new AtomicReference<>(songA);
         AtomicInteger volume = new AtomicInteger(50);
@@ -61,7 +65,7 @@ public final class CompanionHarness {
 
         server.setCommandHandler(cmd -> {
             String name = cmd.has("cmd") ? cmd.get("cmd").getAsString() : "";
-            System.out.println("[cmd] " + name);
+            LOGGER.info("[cmd] {}", name);
             switch (name) {
                 case "toggle" -> {
                     if (playing.getAndSet(!playing.get())) {
@@ -94,7 +98,7 @@ public final class CompanionHarness {
         });
 
         server.setEventHandler(event -> {
-            System.out.println("[event] " + event);
+            LOGGER.info("[event] {}", event);
             if (!event.has("event")) return;
             if ("ended".equals(event.get("event").getAsString())) {
                 Path next = otherTrack(songA, songB, current.get());
@@ -117,10 +121,10 @@ public final class CompanionHarness {
             }
             ticks.shutdownNow();
             server.stop();
-            System.out.println("[harness] stopped");
+            LOGGER.info("[harness] stopped");
         }));
 
-        System.out.println("[harness] running. Connect the phone to this host, then press Ctrl-C.");
+        LOGGER.info("[harness] running. Connect the phone to this host, then press Ctrl-C.");
         Thread.currentThread().join();
     }
 
