@@ -5,7 +5,7 @@
 - ~~Queue All Songs doesn't obey the currently unlocked state, as well as Play Next~~ ✅ FIXED — `Album.getQueueableSongs`, `UnlockManager.canPlay`/`canQueue`, `playSong`, and `queueSongNext` now all require the album itself to be unlocked (`albumUnlocked && (fullAlbumUnlock || songUnlocked)`), matching `handleTreeSelection` and the design (full-album unlock → album item unlocks the whole album; otherwise song + album items needed).
 
 ## Dead Code
-- **`MusicAppDemo.unlockSong` is unused** — the public delegate at `MusicAppDemo.java:493` has no callers anywhere (never used by `ItemListener` or anything else). Keep `UnlockManager.unlockSong` (used by `unlockAlbum` + tests). Decide: remove the dead `MusicAppDemo` wrapper.
+- ~~**`MusicAppDemo.unlockSong` is unused** — the public delegate at `MusicAppDemo.java:493` has no callers anywhere (never used by `ItemListener` or anything else). Keep `UnlockManager.unlockSong` (used by `unlockAlbum` + tests). Decide: remove the dead `MusicAppDemo` wrapper.~~ ✅ DONE — the dead `MusicAppDemo.unlockSong` wrapper no longer exists; `UnlockManager.unlockSong` remains and is covered by `UnlockManagerTest`.
 
 ## Folder Scanner (Browse Folder mode)
 Add a "Browse Folder" button that imports local music without needing an Archipelago manual:
@@ -75,7 +75,10 @@ connection, disables it, enables all unlocks); the chosen folder is persisted to
   - Risk: another "might never actually work" feature — remote playback needs to work reliably on a phone (seek, volume, queue control, connection) or it isn't worth 6.0.0. If it ships, it's a major because it rewrites the player API; otherwise it stays parked.
 
 ## Testing / Quality
-- **Decompose `MusicAppDemo`** — currently ~1956 lines (god class). Split into focused controllers/components (tree/context menu, playback/energy/link, queue UI, connection/deathlink/energylink, offline/browse folder). Hands-on task to reclaim the solving. Keep behavior identical; run the full gate after each extraction.
+- **Decompose `MusicAppDemo`** — was ~1956 lines (god class). Split into focused controllers/components (tree/context menu, playback/energy/link, queue UI, connection/deathlink/energylink, offline/browse folder). Hands-on task to reclaim the solving. Keep behavior identical; run the full gate after each extraction.
+  - **Progress:** 2531 → **1157 lines** (≈897 non-blank/non-comment). Extracted so far: `PlaybackController`, `CompanionController`, `SessionRestoreController`, `AppContext` (shared host interface), `PlayerControlsController`, `TreeController`, `LibraryController`. Gate fully clean (zero warnings) as of the "Fix compiler and checkstyle warnings" commit.
+  - **Remaining (optional, both high-difficulty):** library load flow (~370 lines → `LibraryLoader`) and connection lifecycle (~185 lines → `ConnectionController`), plus `start()` wiring (~145) and small wrappers (~60). Realistic floor ~450–550 non-blank lines. Best done after first pulling the shared mutable state (`albums`/`library`/`queueManager`/`goalManager`/`pendingPlayed*`/`usingLibrary`/`bonusLocations`) into a `SessionState`/`LibraryModel` — see **`docs/refactor-musicappdemo.md`** for the full breakdown, line numbers and ordering.
+  - Current state is considered good; the remaining extractions are documented for a future session rather than pending.
 - **Unit tests** — JUnit is configured but unused; start with domain logic tests (already started with `AlbumTest`)
 - **Extract file matching** — pull `assignFilesToSongs` into a standalone utility for testability (it has zero JavaFX dependency) ✅
 - **Logging cleanup** — replace remaining `e.printStackTrace()` calls with SLF4J ✅
