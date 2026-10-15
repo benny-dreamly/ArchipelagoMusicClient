@@ -18,8 +18,6 @@ import app.logic.SongFileMatcher;
 import app.logic.UnlockManager;
 import app.player.Album;
 import app.player.AlbumConverter;
-import app.player.LocalPlayback;
-import app.player.PhonePlayback;
 import app.player.PlaybackController;
 import app.player.PlaybackEngine;
 import app.player.Song;
@@ -34,8 +32,7 @@ import app.player.ui.AlbumArtPanel;
 import app.player.ui.ConnectionPanel;
 import app.player.ui.PlayerPanel;
 import app.player.ui.SettingsWindow;
-import app.remote.CompanionServer;
-import app.remote.CompanionState;
+import app.remote.CompanionController;
 import app.util.AlbumLibrary;
 import app.util.AlbumOrderManager;
 import app.util.PlayHistoryStore;
@@ -45,7 +42,6 @@ import app.util.StateManager;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -103,9 +99,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -120,7 +113,6 @@ import static app.util.ConfigManager.loadBrowseFolder;
 import static app.util.ConfigManager.saveBrowseFolder;
 import static app.util.ConfigManager.loadSessionRestore;
 import static app.util.ConfigManager.saveSessionRestore;
-import static app.util.ConfigManager.loadCompanionServer;
 import static app.util.ConfigManager.saveCompanionServer;
 import static app.util.ConfigPaths.getConfigDir;
 import static app.util.ConfigPaths.getAlbumConfigFile;
@@ -128,7 +120,7 @@ import static app.util.ConfigPaths.checkIfGameFolderExists;
 import static app.util.Dialogs.showError;
 import static app.util.SlotDataUtils.parseSlotData;
 
-public class MusicAppDemo extends Application implements PlaybackController.Host {
+public class MusicAppDemo extends Application implements PlaybackController.Host, CompanionController.Host {
 
     public static final Logger LOGGER = LoggerFactory.getLogger(MusicAppDemo.class);
 
@@ -166,14 +158,7 @@ public class MusicAppDemo extends Application implements PlaybackController.Host
     private PlaybackController playback;
 
     // companion phone server
-    private static final int COMPANION_HTTP_PORT = 8311;
-    private static final int COMPANION_WS_PORT = 8312;
-    private CompanionServer companionServer;
-    private ScheduledExecutorService companionTicker;
-    private java.util.concurrent.ScheduledFuture<?> companionTickerTask;
-    // Folder the companion server serves; remembered so toggling the setting
-    // can start it without reloading the library.
-    private List<File> companionMusicRoot;
+    private CompanionController companion;
 
     private boolean isUpdatingSelection = false;
     private boolean suppressSelection = false;
@@ -229,17 +214,18 @@ public class MusicAppDemo extends Application implements PlaybackController.Host
 
         createBottomBar();
 
-        connectionPanel = new ConnectionPanel(gameFolder, () -> client,
-                arg -> playback.setPlaybackSpeedCommand(arg));
-
         playerPanel = new PlayerPanel();
+        albumArtPanel = new AlbumArtPanel();
+        playback = new PlaybackController(this, playerPanel, albumArtPanel);
+        companion = new CompanionController(this, playback);
         setupPlayerPanel(playerPanel);
+
+        connectionPanel = new ConnectionPanel(gameFolder, () -> client,
+                playback::setPlaybackSpeedCommand);
 
         // Add panels to bottom bar
         bottomBar.getChildren().addAll(connectionPanel, playerPanel);
 
-        albumArtPanel = new AlbumArtPanel();
-        playback = new PlaybackController(this, playerPanel, albumArtPanel);
         albumPanel = new HBox(10);
         VBox treeBox = new VBox(10);
         treeBox.setPrefWidth(400);
@@ -334,9 +320,9 @@ public class MusicAppDemo extends Application implements PlaybackController.Host
         settingsWindow.getCompanionServerCheck().selectedProperty().addListener((_, _, enabled) -> {
             saveCompanionServer(enabled);
             if (enabled) {
-                if (companionMusicRoot != null) startCompanionServer(companionMusicRoot);
+                companion.restart();
             } else {
-                stopCompanionServer();
+                companion.stop();
             }
         });
 
@@ -536,7 +522,7 @@ public class MusicAppDemo extends Application implements PlaybackController.Host
                 applyOfflineUnlocks();
             }
 
-            startCompanionServer(albumMusicRoots());
+            companion.start(albumMusicRoots());
 
             restoreLibraryControls();
 
@@ -643,7 +629,7 @@ public class MusicAppDemo extends Application implements PlaybackController.Host
             itemListener.setLibraryLoading(true);
         }
         loadGeneration.incrementAndGet(); // invalidate any in-flight load task
-        stopCompanionServer();
+        companion.stop();
         // Stop and dispose current playback
         playback.resetTrack();
 
@@ -696,7 +682,7 @@ public class MusicAppDemo extends Application implements PlaybackController.Host
             itemListener.setLibraryLoading(true);
         }
         loadGeneration.incrementAndGet(); // invalidate any in-flight load task
-        stopCompanionServer();
+        companion.stop();
 
         // Stop and dispose current playback
         playback.resetTrack();
@@ -771,7 +757,7 @@ public class MusicAppDemo extends Application implements PlaybackController.Host
             applyOfflineUnlocks();
             refreshTree();
 
-            startCompanionServer(List.of(folder));
+            companion.start(List.of(folder));
             restoreLibraryControls();
             connectionPanel.setStatus("Browsing " + folder.getName()
                     + " (" + albums.size() + " albums, "
@@ -1085,188 +1071,9 @@ public class MusicAppDemo extends Application implements PlaybackController.Host
                 .toList();
     }
 
-    private void startCompanionServer(List<File> musicRoots) {
-        stopCompanionServer();
-        if (musicRoots == null || musicRoots.isEmpty()) return;
-        // Remember the roots so the settings toggle can (re)start the server.
-        companionMusicRoot = musicRoots;
-        if (!loadCompanionServer()) {
-            LOGGER.info("Companion server disabled in settings; not starting");
-            return;
-        }
-        companionServer = new CompanionServer(musicRoots, COMPANION_HTTP_PORT, COMPANION_WS_PORT);
-        companionServer.setCommandHandler(this::handleRemoteCommand);
-        companionServer.setEventHandler(json -> Platform.runLater(() -> {
-            if (playback.getEngine() instanceof PhonePlayback phone) {
-                phone.handlePhoneEvent(json);
-            }
-        }));
-        try {
-            companionServer.start();
-        } catch (Exception e) {
-            LOGGER.warn("Could not start companion server: {}", e.getMessage());
-            companionServer = null;
-            return;
-        }
-        companionTicker = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r, "companion-state-ticker");
-            t.setDaemon(true);
-            return t;
-        });
-        companionTickerTask = companionTicker.scheduleAtFixedRate(
-                () -> Platform.runLater(this::tickCompanion), 250, 500, TimeUnit.MILLISECONDS);
-    }
-
-    private void stopCompanionServer() {
-        switchPlaybackMode(false);
-        if (companionTickerTask != null) {
-            companionTickerTask.cancel(false);
-            companionTickerTask = null;
-        }
-        if (companionTicker != null) {
-            companionTicker.shutdownNow();
-            companionTicker = null;
-        }
-        if (companionServer != null) {
-            companionServer.stop();
-            companionServer = null;
-        }
-    }
-
-    private void tickCompanion() {
-        boolean phonePresent = companionServer != null && companionServer.hasActivePhone();
-        if (phonePresent != (playback.getEngine() instanceof PhonePlayback)) {
-            switchPlaybackMode(phonePresent);
-        }
-        publishRemoteState();
-    }
-
     @Override
     public void publishRemoteState() {
-        CompanionServer server = companionServer;
-        if (server == null || !server.hasClients()) return;
-
-        String title = null;
-        String album = null;
-        String stream = null;
-        long durationMs = 0;
-        long positionMs = 0;
-        boolean playing = false;
-        Song currentSong = playback.getCurrentSong();
-        if (currentSong != null) {
-            title = currentSong.getTitle();
-            if (library != null) {
-                Album songAlbum = library.getAlbumForSong(title);
-                if (songAlbum != null) album = songAlbum.getName();
-            }
-            if (currentSong.getFilePath() != null) {
-                stream = server.streamPath(new File(currentSong.getFilePath()));
-            }
-        }
-        PlaybackEngine engine = playback.getEngine();
-        if (engine != null) {
-            playing = engine.isPlaying();
-            positionMs = (long) engine.getCurrentTime().toMillis();
-            Duration total = engine.getTotalDuration();
-            if (total != null) durationMs = (long) total.toMillis();
-        }
-        List<String> queue = queueManager != null
-                ? queueManager.asList().stream().map(Song::getTitle).toList()
-                : Collections.emptyList();
-        int volume = (int) playerPanel.getVolumeSlider().getValue();
-        String activeSource = engine instanceof PhonePlayback
-                ? CompanionState.SOURCE_PHONE : CompanionState.SOURCE_DESKTOP;
-
-        server.broadcast(new CompanionState(title, album, stream, durationMs, positionMs,
-                playing, volume, queue, activeSource).toJson());
-    }
-
-    /**
-     * Swaps the audio sink between the desktop speakers and the connected
-     * phone. A phone-mode switch hands the current track over to the phone at
-     * its current position; leaving phone mode resumes that position locally.
-     * Only the active engine plays: no double audio.
-     */
-    private void switchPlaybackMode(boolean phoneMode) {
-        CompanionServer server = companionServer;
-        if (server == null) return;
-        if (phoneMode == (playback.getEngine() instanceof PhonePlayback)) return;
-
-        PlaybackEngine oldEngine = playback.getEngine();
-        Song song = playback.getCurrentSong();
-        Duration resumeAt = oldEngine != null ? oldEngine.getCurrentTime() : Duration.ZERO;
-        boolean wasLoaded = oldEngine != null && oldEngine.isLoaded();
-        boolean wasPlaying = oldEngine != null && oldEngine.isPlaying();
-
-        if (oldEngine != null) {
-            oldEngine.stopAndRelease();
-        }
-
-        if (phoneMode) {
-            PhonePlayback phone = new PhonePlayback(server::send,
-                    s -> server.streamPath(new File(s.getFilePath())));
-            playback.setEngine(phone);
-            if (song != null && song.getFilePath() != null && wasLoaded) {
-                playback.configureEngine(phone, song, library.getAlbumForSong(song), null);
-                phone.loadAndPlay(song);
-                if (resumeAt != null && resumeAt.greaterThan(Duration.ZERO)) {
-                    phone.seek(resumeAt);
-                }
-                if (!wasPlaying) {
-                    phone.pause();
-                }
-            }
-        } else {
-            LocalPlayback local = new LocalPlayback();
-            playback.setEngine(local);
-            if (song != null && song.getFilePath() != null && wasLoaded) {
-                playback.configureEngine(local, song, library.getAlbumForSong(song), resumeAt);
-                local.loadAndPlay(song);
-                if (!wasPlaying) {
-                    local.pause();
-                }
-            }
-        }
-        publishRemoteState();
-    }
-
-    private void handleRemoteCommand(JsonObject message) {
-        Platform.runLater(() -> {
-            String cmd = message.has("cmd") ? message.get("cmd").getAsString() : "";
-            switch (cmd) {
-                case "toggle" -> togglePlayPause();
-                case "pause" -> {
-                    PlaybackEngine engine = playback.getEngine();
-                    if (engine != null && engine.isPlaying()) {
-                        togglePlayPause();
-                    }
-                }
-                case "play" -> {
-                    PlaybackEngine engine = playback.getEngine();
-                    if (engine != null && engine.isPaused()) {
-                        togglePlayPause();
-                    } else if ((engine == null || !engine.isLoaded())
-                        && queueManager != null && !queueManager.isEmpty()) {
-                        togglePlayPause();
-                    }
-                }
-                case "next" -> playback.playNextInQueue();
-                case "volume" -> {
-                    if (message.has("value")) {
-                        double value = message.get("value").getAsDouble();
-                        playerPanel.getVolumeSlider().setValue(Math.max(0, Math.min(100, value)));
-                    }
-                }
-                case "seek" -> {
-                    PlaybackEngine engine = playback.getEngine();
-                    if (engine != null && engine.isLoaded() && message.has("positionMs")) {
-                        engine.seek(Duration.millis(message.get("positionMs").getAsDouble()));
-                    }
-                }
-                default -> LOGGER.info("Companion: unknown command '{}'", cmd);
-            }
-            publishRemoteState();
-        });
+        companion.publishState();
     }
 
     @Override
@@ -1998,7 +1805,8 @@ public class MusicAppDemo extends Application implements PlaybackController.Host
         }
     }
 
-    private void togglePlayPause() {
+    @Override
+    public void togglePlayPause() {
         PlaybackEngine engine = playback.getEngine();
         Song currentSong = playback.getCurrentSong();
         if (engine != null) {
@@ -2113,6 +1921,16 @@ public class MusicAppDemo extends Application implements PlaybackController.Host
     @Override
     public QueueManager queueManager() {
         return queueManager;
+    }
+
+    @Override
+    public double volume() {
+        return playerPanel.getVolumeSlider().getValue();
+    }
+
+    @Override
+    public void setVolume(double percent) {
+        playerPanel.getVolumeSlider().setValue(Math.max(0, Math.min(100, percent)));
     }
 
     @Override
