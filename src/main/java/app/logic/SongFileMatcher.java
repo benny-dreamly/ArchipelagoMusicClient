@@ -10,10 +10,16 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static app.util.Normalization.levenshteinDistance;
 import static app.util.Normalization.normalizeFilename;
@@ -25,6 +31,17 @@ public class SongFileMatcher {
     private static final Logger LOGGER = LoggerFactory.getLogger(SongFileMatcher.class);
     private static final String SEGMENT_SEPARATOR = " - ";
 
+    // Edit-distance matching only fires below this distance.
+    private static final int MAX_EDIT_DISTANCE = 5;
+    // A fuzzy match is thrown away when a sibling song is within this margin.
+    private static final int AMBIGUITY_MARGIN = 1;
+    // Albums whose titles are this close are treated as collision-prone, which
+    // enables the track-number mapping used to disambiguate them.
+    private static final int MIN_COLLIDING_TITLE_LENGTH = 5;
+    private static final int COLLIDING_TITLE_DISTANCE = 3;
+    private static final Pattern TRACK_NUMBER =
+            Pattern.compile("(?:^|[\\s\\-_])(\\d{1,3})(?=[\\s\\-_]|$)");
+
     public static void assignFilesToSongs(List<Album> albums) {
         for (Album album : albums) {
             String folderPath = album.getFolderPath();
@@ -35,10 +52,12 @@ public class SongFileMatcher {
             File[] files = albumDirectory.listFiles(file -> isAudioFile(file.getName()));
             if (files == null) continue;
 
+            List<Song> songs = album.getSongs();
+            Map<String, Song> positional = buildPositionalMapping(files, songs);
             String folderPrefix = commonFolderPrefix(files);
             for (File file : files) {
                 List<String> candidates = buildCandidates(file.getName(), folderPrefix);
-                Song matchedSong = findBestMatch(candidates, album.getSongs());
+                Song matchedSong = findBestMatch(candidates, songs, positional.get(file.getName()));
 
                 if (matchedSong != null) {
                     if (matchedSong.getFilePath() == null) {
@@ -54,16 +73,43 @@ public class SongFileMatcher {
     }
 
     static Song findBestMatch(String normalizedFilename, List<Song> songs) {
-        return findBestMatch(List.of(normalizedFilename), songs);
+        return findBestMatch(List.of(normalizedFilename), songs, null);
     }
 
     static Song findBestMatch(List<String> candidates, List<Song> songs) {
+        return findBestMatch(candidates, songs, null);
+    }
+
+    /**
+     * Resolves a file to a song, trying the strategies in descending confidence:
+     * exact title/alias/feat/truncation equality, then a track-number mapping
+     * (only supplied for collision-prone albums), then edit distance. Every
+     * normalized candidate (full name, artist/album prefix stripped, or a
+     * separator suffix) is tried so files like "Artist - Album - 01 Title.mp3"
+     * still match.
+     */
+    static Song findBestMatch(List<String> candidates, List<Song> songs, Song positionalSong) {
+        Song exact = findExactMatch(candidates, songs);
+        if (exact != null) {
+            return exact;
+        }
+        // A track-number mapping beats edit-distance guessing: on albums whose
+        // titles are near-identical to each other the closest string is often a
+        // sibling song, while track order is unambiguous. Only supplied for
+        // albums that actually have such collisions (see buildPositionalMapping).
+        if (positionalSong != null) {
+            return positionalSong;
+        }
+        return findFuzzyMatch(candidates, songs);
+    }
+
+    private static Song findExactMatch(List<String> candidates, List<Song> songs) {
         // Exact title matches take precedence over aliases regardless of song
         // order: a later song whose title equals the file wins over an earlier
-        // song's alias. Feat-stripped, truncation, and edit-distance tiers keep
-        // their relative per-song order below. Every normalized candidate
-        // (full name, artist/album prefix stripped, or a separator suffix) is
-        // tried so files like "Artist - Album - 01 Title.mp3" still match.
+        // song's alias. Feat-stripped and truncation tiers keep their relative
+        // per-song order below. Every normalized candidate (full name,
+        // artist/album prefix stripped, or a separator suffix) is tried so files
+        // like "Artist - Album - 01 Title.mp3" still match.
         for (String candidate : candidates) {
             for (Song song : songs) {
                 if (normalizedFileEquals(candidate, normalizeSongTitle(song.getTitle()))) {
@@ -72,12 +118,7 @@ public class SongFileMatcher {
             }
         }
 
-        Song matchedSong = null;
-        int bestDistance = Integer.MAX_VALUE;
-
         for (String candidate : candidates) {
-            String lowerFile = candidate.toLowerCase(Locale.ROOT);
-
             for (Song song : songs) {
                 // Try the title first, then any file-name aliases the song declares.
                 for (String matchName : song.getMatchNames()) {
@@ -96,6 +137,7 @@ public class SongFileMatcher {
                     // Only treat it as truncation when the cut is mid-word; a clean prefix that ends at
                     // a word boundary is a distinct complete title, not a truncated one
                     // (e.g. "Is It Over Now? (Taylor's Version)" vs "... (From The Vault)").
+                    String lowerFile = candidate.toLowerCase(Locale.ROOT);
                     String lowerSong = normalizedSong.toLowerCase(Locale.ROOT);
 
                     if (lowerFile.length() >= 15 && lowerSong.length() >= 15) {
@@ -103,18 +145,126 @@ public class SongFileMatcher {
                             return song;
                         }
                     }
+                }
+            }
+        }
+        return null;
+    }
 
-                    int dist = levenshteinDistance(lowerFile, lowerSong);
-                    if (dist < 5 && dist < bestDistance) { // tweak threshold if needed
-                        matchedSong = song;
-                        bestDistance = dist;
-                    }
+    private static Song findFuzzyMatch(List<String> candidates, List<Song> songs) {
+        Song bestSong = null;
+        String bestCandidate = null;
+        int bestDistance = Integer.MAX_VALUE;
+
+        for (String candidate : candidates) {
+            String lowerFile = candidate.toLowerCase(Locale.ROOT);
+            for (Song song : songs) {
+                int dist = shortestDistance(lowerFile, song);
+                if (dist < MAX_EDIT_DISTANCE && dist < bestDistance) {
+                    bestDistance = dist;
+                    bestSong = song;
+                    bestCandidate = lowerFile;
                 }
             }
         }
 
-        return matchedSong;
+        if (bestSong == null) {
+            return null;
+        }
+        // Refuse to guess when a sibling song is just as close: on troll albums
+        // like "Super Ghost Busters" every title is a 1-3 edit neighbour, and
+        // playing the wrong file is worse than playing none.
+        int near = 0;
+        for (Song song : songs) {
+            int dist = shortestDistance(bestCandidate, song);
+            if (dist < MAX_EDIT_DISTANCE && dist <= bestDistance + AMBIGUITY_MARGIN) {
+                near++;
+            }
+        }
+        return near > 1 ? null : bestSong;
     }
+
+    private static int shortestDistance(String lowerCandidate, Song song) {
+        int best = Integer.MAX_VALUE;
+        for (String matchName : song.getMatchNames()) {
+            String normalizedSong = normalizeSongTitle(matchName).toLowerCase(Locale.ROOT);
+            best = Math.min(best, levenshteinDistance(lowerCandidate, normalizedSong));
+        }
+        return best;
+    }
+
+    /**
+     * Builds a filename -> song mapping from track numbers, but only for albums
+     * whose song titles collide (near-identical to one another), such as the
+     * "Super Ghost Busters" troll world where "Ghost Buster", "Ghostdubster"
+     * and friends are 1-3 edits apart. For those albums edit-distance matching
+     * is a coin flip, so track order is the more reliable signal. Returns an
+     * empty map whenever a clean 1:1 mapping cannot be established, leaving
+     * every other album on its existing name-based path.
+     */
+    static Map<String, Song> buildPositionalMapping(File[] files, List<Song> songs) {
+        if (files == null || songs.isEmpty() || files.length != songs.size()) {
+            return Map.of();
+        }
+        if (!hasCollidingTitles(songs)) {
+            return Map.of();
+        }
+
+        Map<File, Integer> trackByFile = new HashMap<>();
+        Set<Integer> seenTracks = new HashSet<>();
+        for (File file : files) {
+            int track = parseTrackNumber(file.getName());
+            if (track <= 0 || !seenTracks.add(track)) {
+                return Map.of();
+            }
+            trackByFile.put(file, track);
+        }
+
+        List<File> ordered = new ArrayList<>(List.of(files));
+        ordered.sort(Comparator.comparingInt(trackByFile::get));
+
+        Map<String, Song> mapping = new HashMap<>();
+        for (int i = 0; i < ordered.size(); i++) {
+            mapping.put(ordered.get(i).getName(), songs.get(i));
+        }
+        return mapping;
+    }
+
+    private static boolean hasCollidingTitles(List<Song> songs) {
+        for (int i = 0; i < songs.size(); i++) {
+            String a = comparableTitle(songs.get(i).getTitle());
+            if (a.length() < MIN_COLLIDING_TITLE_LENGTH) continue;
+            for (int j = i + 1; j < songs.size(); j++) {
+                String b = comparableTitle(songs.get(j).getTitle());
+                if (b.length() < MIN_COLLIDING_TITLE_LENGTH) continue;
+                if (levenshteinDistance(a, b) <= COLLIDING_TITLE_DISTANCE) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static String comparableTitle(String title) {
+        return normalizeSongTitle(title).toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * Extracts the last standalone 1-3 digit number from a filename, which is
+     * the track number in common layouts such as "05 Title.mp3",
+     * "2-05 Title.mp3" and "Artist - Album - 05 Title.mp3". Returns -1 when no
+     * track number is present.
+     */
+    static int parseTrackNumber(String fileName) {
+        String base = fileName.replaceFirst("[.][^.]+$", "");
+        Matcher matcher = TRACK_NUMBER.matcher(base);
+        int track = -1;
+        while (matcher.find()) {
+            track = Integer.parseInt(matcher.group(1));
+        }
+        return track;
+    }
+
 
     /**
      * Builds the normalized strings used to look up a song for a file. The raw

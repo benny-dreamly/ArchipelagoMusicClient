@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -253,6 +254,81 @@ class SongFileMatcherTest {
 
         SongFileMatcher.assignFilesToSongs(List.of(album));
 
+        assertEquals(first.getAbsolutePath(), song1.getFilePath());
+        assertEquals(second.getAbsolutePath(), song2.getFilePath());
+    }
+
+    @Test
+    void testParseTrackNumberCommonLayouts() {
+        assertEquals(5, SongFileMatcher.parseTrackNumber("05 Title.mp3"));
+        assertEquals(5, SongFileMatcher.parseTrackNumber("5 - Title.mp3"));
+        assertEquals(5, SongFileMatcher.parseTrackNumber("Artist - Album - 05 Title.mp3"));
+        assertEquals(1, SongFileMatcher.parseTrackNumber("2-01 Title.mp3"));
+        assertEquals(-1, SongFileMatcher.parseTrackNumber("No Number Here.mp3"));
+    }
+
+    @Test
+    void testBuildPositionalMappingForCollidingAlbum() {
+        File[] files = {
+                new File("Vargskelethor - Super Ghostbusters - 01 Ghostbusters.mp3"),
+                new File("Vargskelethor - Super Ghostbusters - 02 Ghost Buster.mp3"),
+                new File("Vargskelethor - Super Ghostbusters - 03 Ghostdubster.mp3"),
+        };
+        Song song1 = new Song("Ghostbusters", "normal");
+        Song song2 = new Song("Ghost Buster", "normal");
+        Song song3 = new Song("Ghostdubster", "normal");
+
+        Map<String, Song> mapping = SongFileMatcher.buildPositionalMapping(files, List.of(song1, song2, song3));
+
+        assertEquals(song1, mapping.get(files[0].getName()));
+        assertEquals(song2, mapping.get(files[1].getName()));
+        assertEquals(song3, mapping.get(files[2].getName()));
+    }
+
+    @Test
+    void testBuildPositionalMappingEmptyWithoutTrackNumbers() {
+        File[] files = { new File("Ghostbusters.mp3"), new File("Ghost Buster.mp3") };
+        List<Song> songs = List.of(new Song("Ghostbusters", "normal"), new Song("Ghost Buster", "normal"));
+
+        assertTrue(SongFileMatcher.buildPositionalMapping(files, songs).isEmpty());
+    }
+
+    @Test
+    void testFuzzyReturnsNullWhenTwoSongsNearlyEquidistant() {
+        // "ghost dubster" is 1 edit from Ghostdubster and 2 from Ghost Buster;
+        // with no positional signal the matcher refuses to guess.
+        List<Song> songs = List.of(new Song("Ghost Buster", "normal"), new Song("Ghostdubster", "normal"));
+
+        assertNull(SongFileMatcher.findBestMatch("ghost dubster", songs));
+    }
+
+    @Test
+    void testPositionalSongBeatsAmbiguousFuzzy() {
+        Song wrong = new Song("Ghost Buster", "normal");
+        Song right = new Song("Ghostdubster", "normal");
+        List<Song> songs = List.of(wrong, right);
+
+        assertEquals(right, SongFileMatcher.findBestMatch(List.of("ghost dubster"), songs, right));
+    }
+
+    @Test
+    void testAssignFilesToSongsDisambiguatesCollidingTitles() throws IOException {
+        File albumFolder = tempDir.toFile();
+        File first = new File(albumFolder, "Vargskelethor - Super Ghostbusters - 01 Ghostbusters.mp3");
+        File second = new File(albumFolder, "Vargskelethor - Super Ghostbusters - 02 Ghostbusterz.mp3");
+        assertTrue(first.createNewFile());
+        assertTrue(second.createNewFile());
+
+        Song song1 = new Song("Ghostbusters", "normal");
+        Song song2 = new Song("Ghost Buster", "normal");
+        Album album = new Album("Super Ghostbusters", "normal");
+        album.getSongs().add(song1);
+        album.getSongs().add(song2);
+        album.setFolderPath(albumFolder.getAbsolutePath());
+
+        SongFileMatcher.assignFilesToSongs(List.of(album));
+
+        // "Ghostbusterz" fuzzy-matches song1 but positional mapping sends it to song2.
         assertEquals(first.getAbsolutePath(), song1.getFilePath());
         assertEquals(second.getAbsolutePath(), song2.getFilePath());
     }
