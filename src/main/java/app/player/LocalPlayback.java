@@ -7,6 +7,7 @@ import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.util.Duration;
 
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.function.Consumer;
 
@@ -25,11 +26,23 @@ public final class LocalPlayback implements PlaybackEngine {
 
     @Override
     public void loadAndPlay(Song song) {
-        release();
         if (song == null || song.getFilePath() == null) {
+            release();
             return;
         }
-        Media media = new Media(Paths.get(song.getFilePath()).toUri().toString());
+        loadAndPlay(song, Paths.get(song.getFilePath()));
+    }
+
+    /**
+     * Loads and plays {@code song} from a specific file — used by the Audio
+     * Reversal trap to play the cached reversed copy instead of the original.
+     */
+    void loadAndPlay(Song song, Path mediaPath) {
+        release();
+        if (song == null || mediaPath == null) {
+            return;
+        }
+        Media media = new Media(mediaPath.toUri().toString());
         player = new MediaPlayer(media);
         player.currentTimeProperty().addListener((_, _, newTime) -> {
             if (onCurrentTime != null) {

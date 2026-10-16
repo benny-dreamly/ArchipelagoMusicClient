@@ -22,9 +22,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.Locale;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -71,6 +74,10 @@ public class PlaybackController {
     private double playbackSpeed = 1.0;
     private PauseTransition boostTimer;
     private PauseTransition boostClickTimer;
+
+    // audio reversal trap: one pending reversed song per received trap item
+    private final ReversedAudioCache reversedAudioCache = new ReversedAudioCache();
+    private int reverseTrapCharges;
 
     public PlaybackController(AppContext host, PlayerPanel playerPanel, AlbumArtPanel albumArtPanel) {
         this.host = host;
@@ -184,13 +191,67 @@ public class PlaybackController {
             });
         });
 
-        configureEngine(engine, song, album, restoreSeek);
+        if (reverseTrapCharges > 0 && engine instanceof LocalPlayback) {
+            reverseTrapCharges--;
+            startReversedPlayback(song, album, restoreSeek);
+            return;
+        }
+        startPlayback(song, album, restoreSeek, null);
+    }
 
-        engine.loadAndPlay(song);
-        playerPanel.setCurrentSongLabel("Currently Playing: " + song.getTitle());
+    /** Configure the engine for {@code song} and start it, optionally from a reversed copy. */
+    private void startPlayback(Song song, Album album, Duration restoreSeek, Path reversedPath) {
+        configureEngine(engine, song, album, restoreSeek);
+        if (reversedPath != null && engine instanceof LocalPlayback local) {
+            local.loadAndPlay(song, reversedPath);
+        } else {
+            engine.loadAndPlay(song);
+        }
+        playerPanel.setCurrentSongLabel("Currently Playing: " + song.getTitle()
+                + (reversedPath != null ? " (reversed)" : ""));
         host.updateQueueDisplay();
         host.highlightCurrentSong(album, song.getTitle());
         host.publishRemoteState();
+    }
+
+    /**
+     * Audio Reversal trap: reverse the song's file in the background and play
+     * the cached reversed copy when it's ready. Falls back to normal playback
+     * when the reversal fails (e.g. no ffmpeg on the machine).
+     */
+    private void startReversedPlayback(Song song, Album album, Duration restoreSeek) {
+        LOGGER.info("Audio Reversal trap active: playing '{}' reversed", song.getTitle());
+        playerPanel.setCurrentSongLabel("Reversing " + song.getTitle() + "…");
+        Path originalPath = Paths.get(song.getFilePath());
+        CompletableFuture<Path> reversedPlayback = reversedAudioCache.getReversedAsync(originalPath);
+        var unused = reversedPlayback.whenComplete((reversedPath, error) -> {
+            if (error != null) {
+                LOGGER.warn("Could not reverse '{}' ({}), playing it normally", song.getTitle(), error);
+                Platform.runLater(() -> {
+                    if (currentSong == song) startPlayback(song, album, restoreSeek, null);
+                });
+                return;
+            }
+            Platform.runLater(() -> {
+                if (currentSong == song) startPlayback(song, album, restoreSeek, reversedPath);
+            });
+        });
+    }
+
+    /**
+     * Audio Reversal trap: the next song started locally plays from a reversed
+     * copy, however long the player sits idle first — so a trap received on
+     * connect still catches the first song you play. Receiving further traps
+     * stacks one more reversed song each time.
+     */
+    public void activateReverseTrap() {
+        reverseTrapCharges++;
+        host.appendOutput(reverseTrapCharges == 1
+                ? "🔀 Audio Reversal trap! Your next song will play in reverse"
+                : "🔀 Audio Reversal trap stacked! Your next " + reverseTrapCharges
+                        + " songs will play in reverse");
+        LOGGER.info("Audio Reversal trap activated; next {} song(s) will play reversed",
+                reverseTrapCharges);
     }
 
     public void configureEngine(PlaybackEngine target, Song song, Album album, Duration restoreSeek) {

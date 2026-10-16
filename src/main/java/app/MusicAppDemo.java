@@ -1111,6 +1111,11 @@ public class MusicAppDemo extends Application implements AppContext {
         return energyLinkListener;
     }
 
+    /** Audio Reversal trap from another player: the next song(s) you play get reversed. */
+    public void activateReverseTrap() {
+        playback.activateReverseTrap();
+    }
+
     @Override
     public void appendOutput(String message) {
         connectionPanel.getTextClientWindow().appendOutput(message);
