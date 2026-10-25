@@ -6,6 +6,7 @@ package app.logic;
 import app.player.Album;
 import app.player.Song;
 import app.util.PlayHistoryStore;
+import io.github.archipelagomw.APResult;
 import io.github.archipelagomw.Client;
 import io.github.archipelagomw.ClientStatus;
 import io.github.archipelagomw.network.client.SetPacket;
@@ -85,8 +86,9 @@ public class GoalManager {
         String key = PLAYED_SONGS_KEY + client.getSlot();
         SetPacket packet = new SetPacket(key, new ArrayList<String>());
         packet.addDataStorageOperation(SetPacket.Operation.REPLACE, new ArrayList<>(playedSongs));
-        int requestId = client.dataStorageSet(packet);
-        LOGGER.info("Persisted {} played songs to server (key={}, requestId={})", playedSongs.size(), key, requestId);
+        APResult<Integer> result = client.dataStorageSet(packet);
+        LOGGER.info("Persisted {} played songs to server (key={}, requestId={}, result={})",
+                playedSongs.size(), key, result.getValue(), result.getCode());
     }
 
     private void checkAlbumProgress(String albumName) {

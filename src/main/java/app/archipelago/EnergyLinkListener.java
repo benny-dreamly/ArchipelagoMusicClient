@@ -3,6 +3,7 @@
  */
 package app.archipelago;
 
+import io.github.archipelagomw.APResult;
 import io.github.archipelagomw.events.ArchipelagoEventListener;
 import io.github.archipelagomw.events.RetrievedEvent;
 import io.github.archipelagomw.events.SetReplyEvent;
@@ -148,10 +149,11 @@ public class EnergyLinkListener {
         CompletableFuture<SetReplyEvent> reply = new CompletableFuture<>();
         int requestId = packet.getRequestID();
         pendingWithdrawals.put(requestId, reply);
-        int sentId = client.dataStorageSet(packet);
-        if (sentId == 0 || sentId != requestId) {
+        APResult<Integer> result = client.dataStorageSet(packet);
+        Integer sentId = result.getValue();
+        if (result.getCode() != APResult.ResultCode.SUCCESS || sentId == null || sentId != requestId) {
             pendingWithdrawals.remove(requestId);
-            LOGGER.warn("Failed to send EnergyLink withdrawal for '{}'", key);
+            LOGGER.warn("Failed to send EnergyLink withdrawal for '{}' ({})", key, result.getCode());
             return false;
         }
         try {
