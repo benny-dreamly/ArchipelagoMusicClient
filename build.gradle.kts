@@ -71,8 +71,15 @@ dependencies {
     // SpotBugs annotations (optional but helpful)
     compileOnly("com.github.spotbugs:spotbugs-annotations:4.9.8")
 
-    // ✅ Add Apache HttpClient (required by Java-Client and SpotBugs analysis)
-    implementation("org.apache.httpcomponents.core5:httpcore5:5.2.4")
+    // Apache HttpCore at the patched 5.4.3 (CVE-2026-54399); Java-Client pulls it transitively
+    implementation("org.apache.httpcomponents.core5:httpcore5:5.4.3")
+
+    // Force Java-Client's transitive Apache HTTP stack to the patched versions
+    // (httpclient5 CVE-2026-64607, httpcore5-h2 CVE-2026-54428)
+    constraints {
+        implementation("org.apache.httpcomponents.client5:httpclient5:5.6.3")
+        implementation("org.apache.httpcomponents.core5:httpcore5-h2:5.4.3")
+    }
 
     // ✅ Error Prone dependencies
     errorprone("com.google.errorprone:error_prone_core:2.44.0")  // Updated to latest
