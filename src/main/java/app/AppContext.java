@@ -76,5 +76,7 @@ public interface AppContext {
 
     String slot();
 
+    String port();
+
     int loadGeneration();
 }

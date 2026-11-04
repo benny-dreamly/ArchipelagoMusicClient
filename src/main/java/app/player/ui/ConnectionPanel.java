@@ -156,6 +156,11 @@ public class ConnectionPanel extends VBox {
         return Integer.parseInt(portField.getText());
     }
 
+    /** Raw port text — safe while the field is being edited or holds junk. */
+    public String getPortText() {
+        return portField.getText();
+    }
+
     public String getSlot() {
         return slotField.getText();
     }
