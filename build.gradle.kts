@@ -57,7 +57,7 @@ dependencies {
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    implementation("io.github.archipelagomw:Java-Client:0.2.1")
+    implementation("io.github.archipelagomw:Java-Client:0.2.2")
     implementation("org.java-websocket:Java-WebSocket:1.6.0")
     implementation("org.fxmisc.richtext:richtextfx:0.11.7")
     implementation("net.jthink:jaudiotagger:3.0.1")
@@ -71,15 +71,9 @@ dependencies {
     // SpotBugs annotations (optional but helpful)
     compileOnly("com.github.spotbugs:spotbugs-annotations:4.9.8")
 
-    // Apache HttpCore at the patched 5.4.3 (CVE-2026-54399); Java-Client pulls it transitively
-    implementation("org.apache.httpcomponents.core5:httpcore5:5.4.3")
-
-    // Force Java-Client's transitive Apache HTTP stack to the patched versions
-    // (httpclient5 CVE-2026-64607, httpcore5-h2 CVE-2026-54428)
-    constraints {
-        implementation("org.apache.httpcomponents.client5:httpclient5:5.6.3")
-        implementation("org.apache.httpcomponents.core5:httpcore5-h2:5.4.3")
-    }
+    // httpcore5 stays compile-visible: Java-Client's copy is runtime-scoped, so
+    // without this line SpotBugs analysis reports its classes as missing
+    implementation("org.apache.httpcomponents.core5:httpcore5:5.4.4")
 
     // ✅ Error Prone dependencies
     errorprone("com.google.errorprone:error_prone_core:2.44.0")  // Updated to latest
