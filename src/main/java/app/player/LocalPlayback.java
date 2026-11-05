@@ -19,6 +19,10 @@ import java.util.function.Consumer;
 public final class LocalPlayback implements PlaybackEngine {
 
     private MediaPlayer player;
+    // MediaPlayer defaults to full volume and loadAndPlay swaps the player on
+    // every song, so the intended volume has to be remembered and re-applied —
+    // otherwise each track starts at max regardless of the slider.
+    private double volume = 1.0;
     private Runnable onReady;
     private Runnable onEnded;
     private Consumer<String> onError;
@@ -44,6 +48,7 @@ public final class LocalPlayback implements PlaybackEngine {
         }
         Media media = new Media(mediaPath.toUri().toString());
         player = new MediaPlayer(media);
+        player.setVolume(volume);
         player.currentTimeProperty().addListener((_, _, newTime) -> {
             if (onCurrentTime != null) {
                 onCurrentTime.accept(newTime);
@@ -142,6 +147,7 @@ public final class LocalPlayback implements PlaybackEngine {
 
     @Override
     public void setVolume(double volume) {
+        this.volume = volume;
         if (player != null) {
             player.setVolume(volume);
         }
