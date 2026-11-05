@@ -119,7 +119,7 @@ public class TreeController {
         List<String> bonusLocations = context.bonusLocations();
         if (!bonusLocations.isEmpty()) {
             boolean bonusMatches = "bonus".contains(query);
-            Set<String> sentForSlot = Set.copyOf(SentBonusStore.load(context.slot()));
+            Set<String> sentForSlot = Set.copyOf(SentBonusStore.load(context.port(), context.slot()));
             TreeItem<String> bonusItem = new TreeItem<>("Bonus");
             for (String location : bonusLocations) {
                 if (sentForSlot.contains(location)) continue;

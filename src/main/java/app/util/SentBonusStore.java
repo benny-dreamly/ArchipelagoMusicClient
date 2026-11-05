@@ -36,26 +36,33 @@ public class SentBonusStore {
 
     private SentBonusStore() {} // utility class
 
-    /** Bonus checks already sent for the given slot, or an empty list. */
-    public static List<String> load(String slot) {
-        return load(getConfigDir(), slot);
+    /** Bonus checks already sent from the given port and slot, or an empty list. */
+    public static List<String> load(String port, String slot) {
+        return load(getConfigDir(), port, slot);
     }
 
-    /** Marks a bonus check as sent for the given slot. */
-    public static void markSent(String slot, String location) {
-        markSent(getConfigDir(), slot, location);
+    /** Marks a bonus check as sent for the given port and slot. */
+    public static void markSent(String port, String slot, String location) {
+        markSent(getConfigDir(), port, slot, location);
     }
 
-    static List<String> load(File configDir, String slot) {
-        return all(configDir).getOrDefault(slot, List.of());
+    static List<String> load(File configDir, String port, String slot) {
+        return all(configDir).getOrDefault(key(port, slot), List.of());
     }
 
-    static void markSent(File configDir, String slot, String location) {
+    static void markSent(File configDir, String port, String slot, String location) {
         Map<String, List<String>> sent = all(configDir);
-        LinkedHashSet<String> forSlot = new LinkedHashSet<>(sent.getOrDefault(slot, List.of()));
-        forSlot.add(location);
-        sent.put(slot, new ArrayList<>(forSlot));
+        // Older releases keyed entries by slot alone; those can't be attributed
+        // to a server, so drop them as the file moves to the port:slot format.
+        sent.keySet().removeIf(entryKey -> !entryKey.contains(":"));
+        LinkedHashSet<String> forKey = new LinkedHashSet<>(sent.getOrDefault(key(port, slot), List.of()));
+        forKey.add(location);
+        sent.put(key(port, slot), new ArrayList<>(forKey));
         write(configDir, sent);
+    }
+
+    private static String key(String port, String slot) {
+        return (port == null ? "" : port) + ":" + (slot == null ? "" : slot);
     }
 
     private static Map<String, List<String>> all(File configDir) {

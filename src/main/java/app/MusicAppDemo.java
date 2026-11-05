@@ -1073,6 +1073,11 @@ public class MusicAppDemo extends Application implements AppContext {
     }
 
     @Override
+    public String port() {
+        return connectionPanel.getPortText();
+    }
+
+    @Override
     public int loadGeneration() {
         return loadGeneration.get();
     }
@@ -1126,7 +1131,7 @@ public class MusicAppDemo extends Application implements AppContext {
         if (client != null && client.isConnected()) {
             if (client.sendCheck(location)) {
                 bonusLocations.remove(location);
-                SentBonusStore.markSent(connectionPanel.getSlot(), location);
+                SentBonusStore.markSent(connectionPanel.getPortText(), connectionPanel.getSlot(), location);
                 Platform.runLater(this::refreshTree);
                 LOGGER.info("Sent bonus check: {}", location);
             } else {
