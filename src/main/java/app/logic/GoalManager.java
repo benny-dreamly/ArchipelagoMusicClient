@@ -18,6 +18,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 
 public class GoalManager {
 
@@ -38,14 +39,21 @@ public class GoalManager {
     private final UnlockManager unlockManager;
     private final List<Album> albums;
     private final Runnable onChange;
+    private final Consumer<Set<String>> localHistorySaver;
 
     private boolean goalSent = false;
     private boolean serverDataLoaded = false;
 
     public GoalManager(UnlockManager unlockManager, List<Album> albums, Runnable onChange) {
+        this(unlockManager, albums, onChange, PlayHistoryStore::save);
+    }
+
+    GoalManager(UnlockManager unlockManager, List<Album> albums, Runnable onChange,
+            Consumer<Set<String>> localHistorySaver) {
         this.unlockManager = unlockManager;
         this.albums = albums;
         this.onChange = onChange;
+        this.localHistorySaver = localHistorySaver;
     }
 
     public void markPlayed(String songTitle, String albumName, Client client) {
@@ -69,7 +77,7 @@ public class GoalManager {
             // persistToServer or checkGoal may use playedSongs again, keeping
             // local-only plays out of the server-backed set.
             localHistory.add(key);
-            PlayHistoryStore.save(localHistory);
+            localHistorySaver.accept(localHistory);
             serverDataLoaded = false;
         }
         checkAlbumProgress(albumName);
