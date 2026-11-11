@@ -97,6 +97,20 @@ public class LibraryController {
 
     public void openConfigFolder() {
         File gameFolder = getConfigDir();
+        // getConfigDir() tries to create the folder, but mkdirs() can fail
+        // silently (a game name that isn't a valid folder name on this OS,
+        // missing permissions, the folder deleted since startup). Desktop.open
+        // throws an unchecked IllegalArgumentException for a missing folder,
+        // so check up front instead of crashing the FX thread.
+        if (!gameFolder.isDirectory()) {
+            LOGGER.error("Config folder does not exist: {}", gameFolder.getAbsolutePath());
+            showError("Config Folder Missing", "The config folder does not exist",
+                    "Expected at:\n" + gameFolder.getAbsolutePath()
+                            + "\n\nIt is created automatically when the library loads. Check that the"
+                            + " game name is a valid folder name on your system, or create the"
+                            + " folder manually.");
+            return;
+        }
         if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
             showError("Open Folder Unsupported", "Opening the file manager isn't supported here",
                     gameFolder.getAbsolutePath());
@@ -104,7 +118,7 @@ public class LibraryController {
         }
         try {
             Desktop.getDesktop().open(gameFolder);
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
             LOGGER.error("Could not open the config folder {}", gameFolder.getAbsolutePath(), e);
             showError("Open Folder Failed", "Could not open the config folder",
                     gameFolder.getAbsolutePath());
