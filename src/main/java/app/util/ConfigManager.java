@@ -36,7 +36,10 @@ public class ConfigManager {
 
     /** Keys that live in settings.json rather than connection.json. */
     private static final List<String> APP_SETTING_KEYS =
-            List.of("dark_mode", "deathlink", "session_restore", "companion_server");
+            List.of("dark_mode", "deathlink", "session_restore", "companion_server", "volume");
+
+    /** Volume used when nothing valid is persisted — the old fixed slider default. */
+    static final double DEFAULT_VOLUME = 100.0;
 
     private ConfigManager() {} // utility class
 
@@ -136,6 +139,34 @@ public class ConfigManager {
         }
         data.put("companion_server", enabled);
         writeSettings(data);
+    }
+
+    public static double loadVolume() {
+        return clampVolume(loadSettings().get("volume"));
+    }
+
+    public static void saveVolume(double volume) {
+        Map<String, Object> data = loadSettings();
+        if (data.get("volume") instanceof Number number && number.doubleValue() == volume) {
+            return;
+        }
+        data.put("volume", volume);
+        writeSettings(data);
+    }
+
+    /**
+     * Reads a persisted volume, clamped to the slider's range. Anything that
+     * isn't a finite number (missing key, hand-edited junk, NaN) falls back
+     * to the default instead of reaching the slider.
+     */
+    static double clampVolume(Object value) {
+        if (value instanceof Number number) {
+            double volume = number.doubleValue();
+            if (!Double.isNaN(volume) && !Double.isInfinite(volume)) {
+                return Math.max(0, Math.min(100, volume));
+            }
+        }
+        return DEFAULT_VOLUME;
     }
 
     public static String loadBrowseFolder() {

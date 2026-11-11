@@ -20,6 +20,8 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
+import static app.util.ConfigManager.loadVolume;
+
 public class PlayerPanel extends VBox {
 
     private final Label currentSongLabel;
@@ -105,13 +107,14 @@ public class PlayerPanel extends VBox {
             }
         });
 
-        volumeSlider = new Slider(0, 100, 100);
+        volumeSlider = new Slider(0, 100, loadVolume());
         volumeSlider.setPrefWidth(120);
         volumeSlider.setShowTickLabels(true);
         volumeSlider.setShowTickMarks(true);
         volumeSlider.setMajorTickUnit(50);
 
-        Tooltip volumeTooltip = new Tooltip("100%");
+        Tooltip volumeTooltip = new Tooltip(
+                String.format("%.0f%%", volumeSlider.getValue()));
         volumeSlider.setTooltip(volumeTooltip);
         volumeSlider.valueProperty().addListener((_, _, newVal) ->
             volumeTooltip.setText(String.format("%.0f%%", newVal.doubleValue()))
