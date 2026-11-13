@@ -311,6 +311,12 @@ public class MusicAppDemo extends Application implements AppContext {
         if (sessionRestore != null) {
             sessionRestore.saveSnapshot(); // persist queue + position for session restore
         }
+        if (playerControls != null) {
+            // A volume change from the last 300 ms may still be waiting for the
+            // debounce; saveVolume writes synchronously, so nothing is lost by
+            // the System.exit below.
+            playerControls.flushVolumeSave();
+        }
         if (playback != null) {
             playback.shutdown();
         }

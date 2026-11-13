@@ -12,6 +12,7 @@ import app.player.Song;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import javafx.animation.PauseTransition;
 import javafx.beans.value.ChangeListener;
 import javafx.geometry.Bounds;
 import javafx.scene.Node;
@@ -42,6 +43,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static app.util.ConfigManager.saveVolume;
 import static app.util.ConfigPaths.getConfigDir;
 import static app.util.Dialogs.showError;
 
@@ -63,6 +65,10 @@ public class PlayerControlsController {
     private boolean volumeAdjustMode = false;
     private final StringBuilder volumeInput = new StringBuilder();
     private final ChangeListener<Boolean> seekListener;
+
+    /** Saves the volume shortly after the slider stops moving, so a drag
+     *  doesn't write settings.json dozens of times. */
+    private final PauseTransition volumeSaveDebounce = new PauseTransition(Duration.millis(300));
 
     public PlayerControlsController(AppContext context, PlaybackController playback,
             PlayerPanel playerPanel, ConnectionPanel connectionPanel) {
@@ -216,12 +222,14 @@ public class PlayerControlsController {
         });
 
         // Volume slider updates live during playback
+        volumeSaveDebounce.setOnFinished(_ -> saveVolume(playerPanel.getVolumeSlider().getValue()));
         playerPanel.getVolumeSlider().valueProperty().addListener((_, _, newVal) -> {
             PlaybackEngine engine = playback.getEngine();
             if (engine != null) {
                 engine.setVolume(newVal.doubleValue() / 100.0);
             }
             context.publishRemoteState();
+            volumeSaveDebounce.playFromStart();
         });
 
         // Drag-and-drop reordering for queue
@@ -356,6 +364,12 @@ public class PlayerControlsController {
         if (newTime.greaterThan(total)) newTime = total;
         if (newTime.lessThan(Duration.ZERO)) newTime = Duration.ZERO;
         engine.seek(newTime);
+    }
+
+    /** Persists the current volume immediately, cancelling any pending debounced save. */
+    public void flushVolumeSave() {
+        volumeSaveDebounce.stop();
+        saveVolume(playerPanel.getVolumeSlider().getValue());
     }
 
     private void adjustVolume(double delta) {
