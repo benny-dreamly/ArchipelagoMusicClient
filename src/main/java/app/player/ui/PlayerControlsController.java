@@ -366,6 +366,12 @@ public class PlayerControlsController {
         engine.seek(newTime);
     }
 
+    /** Persists the current volume immediately, cancelling any pending debounced save. */
+    public void flushVolumeSave() {
+        volumeSaveDebounce.stop();
+        saveVolume(playerPanel.getVolumeSlider().getValue());
+    }
+
     private void adjustVolume(double delta) {
         Slider slider = playerPanel.getVolumeSlider();
         slider.setValue(Math.min(100, Math.max(0, slider.getValue() + delta)));
